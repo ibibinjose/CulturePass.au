@@ -3,6 +3,12 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { kvStorage } from "@/lib/storage";
 import type { HubType } from "@/lib/constants";
 
+interface HubImage {
+  url: string;
+  alt?: string;
+  type?: "logo" | "cover" | "gallery";
+}
+
 export interface HubDraft {
   type?: HubType;
   name: string;
@@ -24,6 +30,8 @@ export interface HubDraft {
   contact_email: string;
   phone: string;
   tags: string[];
+  
+  images?: HubImage[];
 }
 
 export const EMPTY_DRAFT: HubDraft = {
@@ -44,6 +52,7 @@ export const EMPTY_DRAFT: HubDraft = {
   contact_email: "",
   phone: "",
   tags: [],
+  images: [],
 };
 
 export const HUB_WIZARD_STEPS = ["Type", "Identity", "Place", "Culture", "Review"] as const;

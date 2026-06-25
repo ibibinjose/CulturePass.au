@@ -1,0 +1,168 @@
+import { useState, useCallback } from "react";
+import { View, Alert, Image as RNImage } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+
+import { Button } from "./Button";
+import { Text } from "./Text";
+import { supabase } from "@/lib/supabase/client";
+
+interface ImagePickerProps {
+  currentImageUrl?: string | null;
+  onImageChange: (url: string | null) => void;
+  imageType: "avatar" | "hub" | "event" | "cover";
+  folderPath: string;
+  label: string;
+  helperText: string;
+}
+
+export function ImagePickerComponent({
+  currentImageUrl,
+  onImageChange,
+  imageType,
+  folderPath,
+  label,
+  helperText,
+}: ImagePickerProps) {
+  const [previewUri, setPreviewUri] = useState<string | null>(currentImageUrl || null);
+  const [uploading, setUploading] = useState(false);
+
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission required", "Please allow access to your media library to upload images.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      const selectedImage = result.assets[0];
+      if (selectedImage && selectedImage.uri) {
+        setPreviewUri(selectedImage.uri);
+        await uploadImage(selectedImage.uri);
+      }
+    }
+  };
+
+  const takePhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert("Permission required", "Please allow camera access to take photos.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      const capturedImage = result.assets[0];
+      if (capturedImage && capturedImage.uri) {
+        setPreviewUri(capturedImage.uri);
+        await uploadImage(capturedImage.uri);
+      }
+    }
+  };
+
+  const uploadImage = async (uri: string) => {
+    setUploading(true);
+    try {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+
+      // Generate unique filename
+      const filename = `${folderPath}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
+      
+      const { data, error } = await supabase.storage
+        .from("media")
+        .upload(filename, blob, { cacheControl: "3600", upsert: true });
+
+      if (error) throw error;
+
+      const { data: publicUrlData } = supabase.storage.from("media").getPublicUrl(data.path);
+      onImageChange(publicUrlData.publicUrl);
+    } catch (error) {
+      console.error("Upload error:", error);
+      Alert.alert("Upload failed", "Failed to upload image. Please try again.");
+      onImageChange(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = () => {
+    setPreviewUri(null);
+    onImageChange(null);
+  };
+
+  return (
+    <View className="gap-4">
+      <Text variant="label">{label}</Text>
+      <Text variant="caption" tone="muted">
+        {helperText}
+      </Text>
+
+      {previewUri ? (
+        <View className="gap-3">
+          <RNImage source={{ uri: previewUri }} className="w-full h-48 rounded-xl" resizeMode="cover" />
+          <View className="flex-row gap-2">
+            <Button
+              label="Change"
+              variant="outline"
+              size="sm"
+              onPress={pickImage}
+              disabled={uploading}
+            />
+            <Button
+              label="Take Photo"
+              variant="outline"
+              size="sm"
+              onPress={takePhoto}
+              disabled={uploading}
+            />
+            <Button
+              label="Remove"
+              variant="outline"
+              size="sm"
+              className="ml-auto"
+              onPress={removeImage}
+              disabled={uploading}
+            />
+          </View>
+        </View>
+      ) : (
+        <View className="flex-row gap-2">
+          <Button
+            label="Choose from Library"
+            variant="outline"
+            size="sm"
+            onPress={pickImage}
+            disabled={uploading}
+          />
+          <Button
+            label="Take Photo"
+            variant="outline"
+            size="sm"
+            onPress={takePhoto}
+            disabled={uploading}
+          />
+        </View>
+      )}
+
+      {uploading && (
+        <Text variant="caption" tone="muted">
+          Uploading...
+        </Text>
+      )}
+    </View>
+  );
+}

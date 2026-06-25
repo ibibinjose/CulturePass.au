@@ -18,8 +18,10 @@ export const qk = {
   hubs: (filters?: object) => ["hubs", filters ?? {}] as const,
   hub: (slug: string) => ["hub", slug] as const,
   myHubs: ["my-hubs"] as const,
+  hubEvents: (hubId: string) => ["hub-events", hubId] as const,
   events: (filters?: object) => ["events", filters ?? {}] as const,
   event: (id: string) => ["event", id] as const,
   profile: (id: string) => ["profile", id] as const,
+  myProfile: ["my-profile"] as const,
   session: ["session"] as const,
 };

@@ -19,6 +19,12 @@ major_version = 17
 [db.pooler]
 enabled = false
 
+# seed.sql (states + councils) must run before seed_localities.sql, which
+# references australian_states. Both are generated; do not edit by hand.
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql", "./seed_localities.sql"]
+
 [studio]
 enabled = true
 port = 54323
@@ -52,3 +58,14 @@ double_confirm_changes = true
 
 [edge_runtime]
 enabled = true
+
+[functions.hello-world]
+enabled = true
+verify_jwt = false
+import_map = "./functions/hello-world/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/hello-world/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/hello-world/*.html" ]

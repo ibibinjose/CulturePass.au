@@ -9,13 +9,20 @@ import { Card } from "@/components/ui/Card";
 import { Divider } from "@/components/ui/Divider";
 import { WelcomeToCountry } from "@/components/cultural/WelcomeToCountry";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
+import { EventCard } from "@/features/events/EventCard";
 import { useHub } from "@/features/hubs/api";
+import { useHubEvents } from "@/features/events/api";
+import { useMyProfile } from "@/features/profiles/api";
+import { CreateEventButton } from "@/features/events/CreateEventButton";
 import { HUB_TYPE_LABELS, type HubType } from "@/lib/constants";
+import { Image } from "expo-image";
 
 export default function HubScreen() {
   const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { data: hub, isLoading, isError } = useHub(slug ?? "");
+  const { data: events, isLoading: eventsLoading } = useHubEvents(hub?.id || '');
+  const { data: profile } = useMyProfile();
 
   if (isLoading) {
     return (
@@ -50,13 +57,26 @@ export default function HubScreen() {
       : council?.traditional_custodians) ?? null;
   const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
 
+  // Check if the current user is the hub owner or has editor rights
+  const isOwnerOrEditor = profile && (hub.owner_id === profile.id);
+
   return (
     <Screen maxWidth="prose" contentClassName="pt-10">
       <View className="mb-6 flex-row items-center justify-between">
         <Button label="← Back" variant="ghost" size="sm" onPress={() => router.back()} />
-        {hub.verification_status === "verified" ? (
-          <Badge label="Verified" variant="eucalyptus" />
-        ) : null}
+        <View className="flex-row gap-2">
+          {isOwnerOrEditor && (
+            <Button 
+              label="Edit" 
+              variant="outline" 
+              size="sm" 
+              onPress={() => router.push(`/hub/edit/${hub.slug}`)}
+            />
+          )}
+          {hub.verification_status === "verified" ? (
+            <Badge label="Verified" variant="eucalyptus" />
+          ) : null}
+        </View>
       </View>
 
       {/* Header */}
@@ -71,6 +91,21 @@ export default function HubScreen() {
         <Text variant="bodyLarge" tone="muted" className="mt-3">
           {hub.short_description}
         </Text>
+      ) : null}
+
+      {/* Display Hub Image if available */}
+      {hub.images && hub.images.length > 0 && hub.images[0].url ? (
+        <View className="mt-6">
+          <Card className="p-0 overflow-hidden">
+            <View className="aspect-square w-full bg-sand justify-center items-center">
+              <Image 
+                source={{ uri: hub.images[0].url }} 
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+              />
+            </View>
+          </Card>
+        </View>
       ) : null}
 
       {/* Welcome to Country — placed high, as a sign of respect */}
@@ -105,6 +140,53 @@ export default function HubScreen() {
           {hub.contact_email ? <DetailRow label="Email" value={hub.contact_email} /> : null}
           {hub.phone ? <DetailRow label="Phone" value={hub.phone} /> : null}
         </Card>
+      </View>
+
+      {/* Events Section */}
+      <View className="mt-10">
+        <View className="flex-row items-center justify-between">
+          <Text variant="overline" tone="faint">
+            Events
+          </Text>
+          {isOwnerOrEditor && (
+            <CreateEventButton 
+              hubId={hub.id} 
+              hubOwnerId={hub.owner_id} 
+              label="+ Add Event"
+              variant="ghost"
+              size="sm"
+            />
+          )}
+        </View>
+        
+        {eventsLoading ? (
+          <Text variant="caption" tone="faint" className="mt-3">
+            Loading events…
+          </Text>
+        ) : events && events.length > 0 ? (
+          <View className="mt-3 gap-4">
+            {events.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </View>
+        ) : (
+          <Card className="mt-3">
+            <Text variant="subheading">No events yet</Text>
+            <Text variant="caption" tone="muted" className="mt-1">
+              This hub doesn't have any events scheduled.
+            </Text>
+            {isOwnerOrEditor && (
+              <CreateEventButton
+                hubId={hub.id}
+                hubOwnerId={hub.owner_id}
+                label="Create your first event"
+                variant="secondary"
+                size="md"
+                className="mt-4 self-start"
+              />
+            )}
+          </Card>
+        )}
       </View>
 
       {hub.indigenous_partners && hub.indigenous_partners.length > 0 ? (

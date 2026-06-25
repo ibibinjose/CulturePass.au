@@ -74,3 +74,78 @@ export function useCreateHub() {
     },
   });
 }
+
+/**
+ * Update a hub. RLS ensures only the owner can update their hub.
+ */
+export function useUpdateHub() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Database["public"]["Tables"]["hubs"]["Update"];
+    }) => {
+      const { data, error } = await supabase
+        .from("hubs")
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: qk.hub(data.slug) });
+      qc.invalidateQueries({ queryKey: qk.myHubs });
+      qc.invalidateQueries({ queryKey: ["hubs"] });
+    },
+  });
+}
+
+/**
+ * Delete a hub. RLS ensures only the owner can delete their hub.
+ */
+export function useDeleteHub() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("hubs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.myHubs });
+      qc.invalidateQueries({ queryKey: ["hubs"] });
+    },
+  });
+}
+
+/**
+ * Fetch hubs owned by the current user.
+ */
+export function useMyHubs() {
+  return useQuery({
+    queryKey: qk.myHubs,
+    queryFn: async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .single();
+      
+      if (!profile) {
+        throw new Error("User not authenticated");
+      }
+
+      const { data, error } = await supabase
+        .from("hubs")
+        .select(HUB_CARD_COLUMNS)
+        .eq("owner_id", profile.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+  });
+}

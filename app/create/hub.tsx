@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -12,6 +12,7 @@ import { Chip } from "@/components/ui/Chip";
 import { OptionCard } from "@/components/ui/OptionCard";
 import { Stepper } from "@/components/ui/Stepper";
 import { TagInput } from "@/components/ui/TagInput";
+import { ImagePickerComponent } from "@/components/ui/ImagePicker";
 
 import {
   HUB_TYPES,
@@ -41,11 +42,25 @@ export default function CreateHubWizard() {
 
   async function submit(publish: boolean) {
     setBanner(null);
+    
+    // Validate draft before submission
     const schema = publish ? hubPublishSchema : hubDraftSchema;
     const parsed = schema.safeParse({ ...draft });
     if (!parsed.success) {
       setBanner(parsed.error.issues[0]?.message ?? "Please check your details.");
       return;
+    }
+    
+    // Validate images array
+    if (parsed.data.images && !Array.isArray(parsed.data.images)) {
+      try {
+        // Try to parse images if it's a JSON string
+        parsed.data.images = JSON.parse(parsed.data.images);
+      } catch (error) {
+        console.error("Failed to parse images JSON", error);
+        setBanner("Invalid images format. Please try re-uploading the image.");
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -188,6 +203,22 @@ function StepIdentity({ draft, update }: StepProps) {
           onChangeText={(full_description) => update({ full_description })}
           placeholder="Tell people who you are and what you do…"
           multiline
+        />
+      </Field>
+      <Field label="Hub Images" optional>
+        <ImagePickerComponent
+          currentImageUrl={Array.isArray(draft.images) && draft.images.length > 0 ? draft.images[0].url : null}
+          onImageChange={(url) => {
+            if (url) {
+              update({ images: [{ url, type: "cover", alt: "Hub cover image" }] });
+            } else {
+              update({ images: [] });
+            }
+          }}
+          imageType="hub"
+          folderPath="hub-images"
+          label="Upload Hub Image"
+          helperText="Add a cover image for your hub"
         />
       </Field>
     </View>
@@ -432,6 +463,18 @@ function StepHeading({ title, subtitle }: { title: string; subtitle?: string }) 
 
 function buildInsert(draft: HubDraft, ownerId: string, publish: boolean) {
   const orNull = (v: string) => (v.trim().length > 0 ? v.trim() : null);
+  
+  // Convert images array to JSON string for Supabase
+  let imagesJson = null;
+  try {
+    imagesJson = draft.images && draft.images.length > 0 
+      ? JSON.stringify(draft.images) 
+      : null;
+  } catch (error) {
+    console.error("Failed to stringify images array", error);
+    imagesJson = null;
+  }
+  
   return {
     owner_id: ownerId,
     type: draft.type!,
@@ -450,6 +493,7 @@ function buildInsert(draft: HubDraft, ownerId: string, publish: boolean) {
     website: orNull(draft.website),
     contact_email: orNull(draft.contact_email),
     phone: orNull(draft.phone),
+    images: imagesJson, // Store images as JSON string
     tags: draft.tags,
     status: publish ? ("published" as const) : ("draft" as const),
   };

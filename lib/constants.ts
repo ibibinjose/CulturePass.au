@@ -89,6 +89,20 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   other: "Other",
 };
 
+export const EVENT_TYPE_DESCRIPTIONS: Record<EventType, string> = {
+  event: "General events and gatherings",
+  activity: "Interactive activities and experiences",
+  workshop: "Learning and skill-building sessions",
+  art: "Art exhibitions and creative showcases",
+  movie: "Film screenings and cinema events",
+  dining: "Food and dining experiences",
+  shopping: "Markets and shopping opportunities",
+  offer: "Special offers and deals",
+  classes_gym: "Fitness classes and gym activities",
+  travel: "Travel and exploration experiences",
+  other: "Other types of events",
+};
+
 export const VERIFICATION_STATUSES = ["pending", "verified", "rejected"] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
 

@@ -47,3 +47,34 @@ export const professionalProfileSchema = profileSchema
   });
 
 export type ProfessionalProfileInput = z.input<typeof professionalProfileSchema>;
+
+/**
+ * Settings stored in profiles.preferences (jsonb). Every field has a default so
+ * reading an empty `{}` yields a fully-populated, typed object.
+ */
+export const profilePreferencesSchema = z
+  .object({
+    privacy: z
+      .object({
+        discoverable: z.boolean().default(true),
+        show_location: z.boolean().default(true),
+        show_interests: z.boolean().default(true),
+      })
+      .default({}),
+    notifications: z
+      .object({
+        email_event_reminders: z.boolean().default(true),
+        email_hub_updates: z.boolean().default(true),
+        email_announcements: z.boolean().default(false),
+        weekly_digest: z.boolean().default(false),
+      })
+      .default({}),
+  })
+  .default({});
+
+export type ProfilePreferences = z.infer<typeof profilePreferencesSchema>;
+
+/** Parse the raw jsonb (or null/undefined) into a typed, defaulted object. */
+export function parsePreferences(raw: unknown): ProfilePreferences {
+  return profilePreferencesSchema.parse(raw ?? {});
+}

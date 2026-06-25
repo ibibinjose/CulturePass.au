@@ -2,7 +2,7 @@ import { View } from "react-native";
 import { cn } from "@/lib/utils/cn";
 import { Text } from "./Text";
 
-type Variant = "neutral" | "ochre" | "eucalyptus" | "terracotta" | "outline";
+type Variant = "neutral" | "ochre" | "eucalyptus" | "terracotta" | "outline" | "success" | "info" | "warning" | "danger";
 
 const STYLES: Record<Variant, { container: string; label: string }> = {
   neutral: { container: "bg-sand", label: "text-ink-muted" },
@@ -10,6 +10,10 @@ const STYLES: Record<Variant, { container: string; label: string }> = {
   eucalyptus: { container: "bg-eucalyptus-50", label: "text-eucalyptus-700" },
   terracotta: { container: "bg-terracotta-50", label: "text-terracotta-600" },
   outline: { container: "bg-transparent border border-linen", label: "text-ink-muted" },
+  success: { container: "bg-success/10", label: "text-success" },
+  info: { container: "bg-inkMuted/10", label: "text-inkMuted" },
+  warning: { container: "bg-warning/10", label: "text-warning" },
+  danger: { container: "bg-danger/10", label: "text-danger" },
 };
 
 interface BadgeProps {

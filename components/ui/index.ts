@@ -9,3 +9,8 @@ export { Divider } from "./Divider";
 export { Screen } from "./Screen";
 export { OptionCard } from "./OptionCard";
 export { Chip } from "./Chip";
+export { Avatar } from "./Avatar";
+export { Toggle } from "./Toggle";
+export { ListRow } from "./ListRow";
+export { TagInput } from "./TagInput";
+export { ImagePickerComponent } from "./ImagePicker";

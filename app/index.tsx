@@ -7,15 +7,18 @@ import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Avatar } from "@/components/ui/Avatar";
 import { AcknowledgementBar } from "@/components/cultural/AcknowledgementBar";
 import { HubCard } from "@/features/hubs/HubCard";
 import { useHubs } from "@/features/hubs/api";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { useMyProfile } from "@/features/profiles/api";
 import { AUSTRALIAN_STATES } from "@/lib/constants";
 
 export default function HomeScreen() {
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+  const { data: profile } = useMyProfile();
   const [search, setSearch] = useState("");
   const { data: hubs, isLoading, isError } = useHubs(search ? { search } : {});
 
@@ -27,11 +30,20 @@ export default function HomeScreen() {
           CulturePass Australia
         </Text>
         {isAuthenticated ? (
-          <Pressable onPress={() => router.push("/create")} hitSlop={8}>
-            <Text variant="label" tone="muted">
-              Create
-            </Text>
-          </Pressable>
+          <View className="flex-row items-center gap-4">
+            <Pressable onPress={() => router.push("/create")} hitSlop={8}>
+              <Text variant="label" tone="muted">
+                Create
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/settings")}
+              hitSlop={8}
+              accessibilityLabel="Account and settings"
+            >
+              <Avatar name={profile?.full_name} uri={profile?.avatar_url} size={32} />
+            </Pressable>
+          </View>
         ) : (
           <Pressable onPress={() => router.push("/sign-in")} hitSlop={8}>
             <Text variant="label" tone="ochre">

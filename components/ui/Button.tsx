@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, View, type PressableProps } from "react-n
 import { cn } from "@/lib/utils/cn";
 import { Text } from "./Text";
 
-type Variant = "primary" | "secondary" | "outline" | "ghost";
+type Variant = "primary" | "secondary" | "outline" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const CONTAINER: Record<Variant, string> = {
@@ -11,6 +11,7 @@ const CONTAINER: Record<Variant, string> = {
   secondary: "bg-ochre-500 active:bg-ochre-600",
   outline: "bg-transparent border border-linen active:bg-sand",
   ghost: "bg-transparent active:bg-sand",
+  danger: "bg-danger active:bg-danger/90",
 };
 
 const LABEL: Record<Variant, string> = {
@@ -18,6 +19,7 @@ const LABEL: Record<Variant, string> = {
   secondary: "text-paper",
   outline: "text-ink",
   ghost: "text-ink",
+  danger: "text-paper",
 };
 
 const SIZE: Record<Size, string> = {
@@ -72,7 +74,7 @@ export function Button({
       {...rest}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={variant === "outline" || variant === "ghost" ? "#1C1815" : "#FAF6EF"} />
+        <ActivityIndicator size="small" color={variant === "outline" || variant === "ghost" || variant === "danger" ? "#FAF6EF" : "#1C1815"} />
       ) : (
         <>
           {leftIcon ? <View>{leftIcon}</View> : null}

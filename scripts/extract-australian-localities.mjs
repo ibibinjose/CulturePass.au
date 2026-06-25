@@ -1,0 +1,175 @@
+#!/usr/bin/env node
+
+// Generates supabase/seed_localities.sql (the australian_localities seed) from
+// Elkfox/Australian-Postcode-Data. A source copy is cached in
+// supabase/seed_sources/au_postcodes.csv for reproducible, offline regeneration.
+//
+//   node scripts/extract-australian-localities.mjs            # print counts only
+//   node scripts/extract-australian-localities.mjs --write    # (re)write seed_localities.sql
+//   node scripts/extract-australian-localities.mjs --write --refresh   # force re-download
+
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+const SOURCE_URL =
+  "https://raw.githubusercontent.com/Elkfox/Australian-Postcode-Data/master/au_postcodes.csv";
+
+const ROOT = path.resolve(import.meta.dirname, "..");
+const SEED_SOURCES_DIR = path.join(ROOT, "supabase", "seed_sources");
+const SOURCE_CSV = path.join(SEED_SOURCES_DIR, "au_postcodes.csv");
+const OUTPUT_SEED_SQL = path.join(ROOT, "supabase", "seed_localities.sql");
+
+const VALID_STATES = new Set(["ACT", "NSW", "NT", "QLD", "SA", "TAS", "VIC", "WA"]);
+const BATCH_SIZE = 1000;
+
+const args = new Set(process.argv.slice(2));
+const shouldWrite = args.has("--write");
+const refresh = args.has("--refresh");
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (quoted) {
+      if (char === '"' && next === '"') {
+        field += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(field);
+      field = "";
+    } else if (char === "\n") {
+      row.push(field.replace(/\r$/, ""));
+      rows.push(row);
+      row = [];
+      field = "";
+    } else {
+      field += char;
+    }
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field.replace(/\r$/, ""));
+    rows.push(row);
+  }
+  const [header, ...rest] = rows.filter((items) => items.some((item) => item.trim().length > 0));
+  return rest
+    .filter((items) => items.some((item) => item.trim().length > 0))
+    .map((items) => Object.fromEntries(header.map((key, index) => [key.trim(), items[index] ?? ""])));
+}
+
+async function loadSourceCsv() {
+  if (!refresh) {
+    try {
+      return await readFile(SOURCE_CSV, "utf8");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+  console.log(`Downloading ${SOURCE_URL} ...`);
+  const response = await fetch(SOURCE_URL, {
+    headers: { "user-agent": "CulturePass Australia reference-data extractor/1.0" },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch postcode data: ${response.status} ${response.statusText}`);
+  }
+  const csv = await response.text();
+  await mkdir(SEED_SOURCES_DIR, { recursive: true });
+  await writeFile(SOURCE_CSV, csv);
+  return csv;
+}
+
+function buildLocalities(records) {
+  const unique = new Map();
+  for (const record of records) {
+    const state = record.state_code?.trim().toUpperCase();
+    const suburb = record.place_name?.trim();
+    const postcode = record.postcode?.trim().padStart(4, "0");
+    const latitude = Number(record.latitude);
+    const longitude = Number(record.longitude);
+    if (!VALID_STATES.has(state) || !suburb || !/^\d{4}$/.test(postcode)) continue;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) continue;
+    const key = `${postcode}|${suburb.toLowerCase()}|${state}`;
+    if (!unique.has(key)) unique.set(key, { postcode, suburb, state, latitude, longitude });
+  }
+  return [...unique.values()].sort(
+    (a, b) =>
+      a.state.localeCompare(b.state) ||
+      a.postcode.localeCompare(b.postcode) ||
+      a.suburb.localeCompare(b.suburb),
+  );
+}
+
+function sqlLiteral(value) {
+  if (value === null || value === undefined || value === "") return "null";
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+function sqlGeographyPoint(longitude, latitude) {
+  return `'SRID=4326;POINT(${longitude} ${latitude})'::extensions.geography`;
+}
+
+function buildSeedSql(localities) {
+  const batches = [];
+  for (let i = 0; i < localities.length; i += BATCH_SIZE) {
+    const values = localities
+      .slice(i, i + BATCH_SIZE)
+      .map(
+        (loc) =>
+          `  (${sqlLiteral(loc.postcode)}, ${sqlLiteral(loc.suburb)}, ${sqlLiteral(loc.state)}, ` +
+          `${loc.latitude}, ${loc.longitude}, ${sqlGeographyPoint(loc.longitude, loc.latitude)})`,
+      )
+      .join(",\n");
+    batches.push(
+      `insert into public.australian_localities\n` +
+        `  (postcode, suburb, state_code, latitude, longitude, coordinates)\n` +
+        `values\n${values}\n` +
+        `on conflict (postcode, suburb, state_code) do nothing;`,
+    );
+  }
+
+  return `-- =============================================================================
+-- CulturePass Australia - localities seed (suburbs + postcodes)
+-- Generated by scripts/extract-australian-localities.mjs; do not edit by hand.
+--
+-- Source: Elkfox/Australian-Postcode-Data (au_postcodes.csv), derived from
+-- GeoNames. Postcodes are zero-padded to 4 digits; one row per (postcode,
+-- suburb, state). Loaded after seed.sql (which seeds australian_states).
+-- =============================================================================
+
+${batches.join("\n\n")}
+`;
+}
+
+async function main() {
+  const csv = await loadSourceCsv();
+  const records = parseCsv(csv);
+  console.log(`Parsed ${records.length} source rows.`);
+
+  const localities = buildLocalities(records);
+  const counts = localities.reduce((acc, loc) => {
+    acc[loc.state] = (acc[loc.state] ?? 0) + 1;
+    return acc;
+  }, {});
+  console.log(`Localities after dedupe: ${localities.length}`);
+  console.log("By state:", counts);
+
+  if (!shouldWrite) return;
+
+  await writeFile(OUTPUT_SEED_SQL, buildSeedSql(localities));
+  console.log(`Wrote ${path.relative(ROOT, OUTPUT_SEED_SQL)} (${localities.length} rows).`);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

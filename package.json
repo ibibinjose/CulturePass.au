@@ -13,7 +13,8 @@
     "db:types": "supabase gen types typescript --local > lib/supabase/database.types.ts",
     "db:reset": "supabase db reset",
     "db:start": "supabase start",
-    "db:diff": "supabase db diff"
+    "db:diff": "supabase db diff",
+    "data:lgas": "node scripts/extract-australian-lgas.mjs --write"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "0.2.3",
@@ -23,8 +24,10 @@
     "expo": "~53.0.0",
     "expo-asset": "~11.1.7",
     "expo-constants": "~17.1.8",
+    "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",
     "expo-image": "~2.4.1",
+    "expo-image-picker": "~16.1.4",
     "expo-linking": "~7.1.7",
     "expo-router": "~5.1.11",
     "expo-secure-store": "~14.2.4",
@@ -34,6 +37,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.6",
+    "react-native-date-picker": "^5.0.13",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",

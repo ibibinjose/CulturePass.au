@@ -54,8 +54,26 @@ export default function RootLayout() {
               <Stack.Screen name="index" />
               <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
               <Stack.Screen name="create" />
+              <Stack.Screen name="profile" />
+              <Stack.Screen name="settings" />
               <Stack.Screen
                 name="hub/[slug]"
+                options={{ animation: "slide_from_bottom" }}
+              />
+              <Stack.Screen
+                name="create/event"
+                options={{ animation: "slide_from_bottom" }}
+              />
+              <Stack.Screen
+                name="hub/edit/[slug]"
+                options={{ animation: "slide_from_bottom" }}
+              />
+              <Stack.Screen
+                name="event/[id]"
+                options={{ animation: "slide_from_bottom" }}
+              />
+              <Stack.Screen
+                name="my-hubs/index"
                 options={{ animation: "slide_from_bottom" }}
               />
             </Stack>

@@ -105,6 +105,7 @@ export interface Database {
           professional_title: string | null;
           public_bio: string | null;
           public_links: Json;
+          preferences: Json;
           created_at: string;
           updated_at: string;
         };
@@ -125,6 +126,7 @@ export interface Database {
           professional_title?: string | null;
           public_bio?: string | null;
           public_links?: Json;
+          preferences?: Json;
           created_at?: string;
           updated_at?: string;
         };
@@ -321,7 +323,12 @@ export interface Database {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      delete_my_account: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
+    };
     Enums: {
       professional_category:
         | "artist"
