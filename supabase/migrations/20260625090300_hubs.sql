@@ -44,7 +44,7 @@ create table public.hubs (
   location_council_id     uuid references public.australian_councils (id),
   location_postcode       text,
   location_city           text,
-  coordinates             geography(point, 4326),
+  coordinates             extensions.geography(point, 4326),
   address                 text,
 
   -- Contact

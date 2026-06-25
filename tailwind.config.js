@@ -86,11 +86,13 @@ module.exports = {
       },
       fontFamily: {
         // Inter as the Neue-Haas-Grotesk-adjacent Swiss workhorse.
-        sans: ["Inter_400Regular", "system-ui", "sans-serif"],
-        medium: ["Inter_500Medium", "system-ui", "sans-serif"],
-        semibold: ["Inter_600SemiBold", "system-ui", "sans-serif"],
-        // Display weight for large headings only.
-        display: ["Inter_700Bold", "system-ui", "sans-serif"],
+        // Keys are collision-free with Tailwind's font-weight utilities
+        // (font-medium / font-semibold / font-bold), so each maps cleanly to a
+        // specific static Inter face in NativeWind.
+        sans: ["Inter_400Regular", "system-ui", "sans-serif"], // font-sans
+        ui: ["Inter_500Medium", "system-ui", "sans-serif"], // font-ui (500)
+        heading: ["Inter_600SemiBold", "system-ui", "sans-serif"], // font-heading (600)
+        display: ["Inter_700Bold", "system-ui", "sans-serif"], // font-display (700)
       },
       spacing: {
         // 4pt base grid; generous large steps for airy layouts.

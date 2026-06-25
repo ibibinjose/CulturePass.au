@@ -34,7 +34,7 @@ create table public.events (
   location_city       text,
   location_state      text references public.australian_states (code),
   location_council_id uuid references public.australian_councils (id),
-  coordinates         geography(point, 4326),
+  coordinates         extensions.geography(point, 4326),
 
   capacity            integer,
   rsvp_count          integer not null default 0,  -- maintained by trigger

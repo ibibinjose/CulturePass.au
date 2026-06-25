@@ -9,11 +9,20 @@
     color-scheme: light;
   }
 
+  /* Give the root chain a real height so React Native Web's `flex: 1`
+     containers don't collapse to 0 (the classic white-screen on web). */
   html,
   body,
   #root {
+    height: 100%;
+    margin: 0;
     background-color: #faf6ef; /* paper */
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    display: flex;
+    flex-direction: column;
   }
 }

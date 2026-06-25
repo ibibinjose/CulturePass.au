@@ -25,7 +25,7 @@ create table public.profiles (
   avatar_url              text,
   bio                     text,
   location                text,
-  coordinates             geography(point, 4326),
+  coordinates             extensions.geography(point, 4326),
   interests               text[] not null default '{}',
   cultural_background     text,
   indigenous_connection   text,

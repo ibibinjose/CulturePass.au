@@ -43,7 +43,7 @@ create table public.australian_councils (
   area_sqkm               numeric,
   website                 text,
   is_metro                boolean not null default false,
-  coordinates             geography(point, 4326),
+  coordinates             extensions.geography(point, 4326),
   metadata                jsonb not null default '{}'::jsonb,
   created_at              timestamptz not null default now(),
 

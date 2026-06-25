@@ -7,12 +7,6 @@
     "scheme": "culturepass",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FAF6EF"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "au.com.culturepass.app"
@@ -20,14 +14,12 @@
     "android": {
       "package": "au.com.culturepass.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FAF6EF"
       }
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/favicon.png"
+      "output": "static"
     },
     "plugins": [
       "expo-router",
@@ -39,7 +31,8 @@
           "backgroundColor": "#FAF6EF",
           "resizeMode": "contain"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true
