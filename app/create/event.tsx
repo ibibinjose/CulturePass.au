@@ -20,14 +20,11 @@ import {
   AUSTRALIAN_STATES,
 } from "@/lib/constants";
 import { eventDraftSchema, eventPublishSchema } from "@/lib/validation/event";
-import { useCouncils } from "@/features/reference/api";
 import { useCreateEvent } from "@/features/events/api";
-import { useHub } from "@/features/hubs/api";
 
 export default function CreateEventScreen() {
   const router = useRouter();
   const { hubId } = useLocalSearchParams<{ hubId: string }>();
-  const { data: hub } = useHub(hubId || '');
   const createEvent = useCreateEvent();
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -191,7 +188,7 @@ export default function CreateEventScreen() {
 
         <Field label="Images" optional>
           <ImagePickerComponent
-            currentImageUrl={form.images && form.images.length > 0 ? form.images[0].url : null}
+            currentImageUrl={form.images[0]?.url ?? null}
             onImageChange={(url) => {
               if (url) {
                 set({ images: [{ url, alt: "Event image" }] });

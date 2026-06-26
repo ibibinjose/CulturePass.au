@@ -8,7 +8,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Divider } from "@/components/ui/Divider";
 import { useEvent } from "@/features/events/api";
-import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
+import {
+  EVENT_TYPE_LABELS,
+  type EventType,
+  HUB_TYPE_LABELS,
+  type HubType,
+} from "@/lib/constants";
 
 export default function EventScreen() {
   const router = useRouter();
@@ -33,7 +38,7 @@ export default function EventScreen() {
           Event not found
         </Text>
         <Text variant="body" tone="muted" className="mt-2">
-          It may be unpublished, or your Supabase project isn't connected yet.
+          It may be unpublished, or your Supabase project isn’t connected yet.
         </Text>
       </Screen>
     );
@@ -124,20 +129,22 @@ export default function EventScreen() {
       </View>
 
       {/* Hosted by */}
-      <View className="mt-10">
-        <Text variant="overline" tone="faint">
-          Hosted by
-        </Text>
-        <Card 
-          className="mt-3 p-4"
-          onPress={() => router.push(`/hub/${event.hub.slug}`)}
-        >
-          <Text variant="subheading">{event.hub.name}</Text>
-          <Text variant="caption" tone="muted" className="mt-1">
-            {EVENT_TYPE_LABELS[event.hub.type as EventType]}
+      {event.hub ? (
+        <View className="mt-10">
+          <Text variant="overline" tone="faint">
+            Hosted by
           </Text>
-        </Card>
-      </View>
+          <Card
+            className="mt-3 p-4"
+            onPress={() => event.hub && router.push(`/hub/${event.hub.slug}`)}
+          >
+            <Text variant="subheading">{event.hub.name}</Text>
+            <Text variant="caption" tone="muted" className="mt-1">
+              {HUB_TYPE_LABELS[event.hub.type as HubType]}
+            </Text>
+          </Card>
+        </View>
+      ) : null}
 
       {/* Cultural Focus */}
       {event.cultural_focus && event.cultural_focus.length > 0 ? (

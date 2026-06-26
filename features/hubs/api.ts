@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { qk } from "@/lib/query";
+import { getCurrentProfileId } from "@/features/auth/api";
 import type { Database } from "@/lib/supabase/database.types";
 
 export interface HubFilters {
@@ -129,19 +130,18 @@ export function useMyHubs() {
   return useQuery({
     queryKey: qk.myHubs,
     queryFn: async () => {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .single();
-      
-      if (!profile) {
+      // Scope to the signed-in user. RLS lets authenticated users read every
+      // profile, so an unfiltered `.single()` on `profiles` would error — we
+      // must resolve the caller's own profile id explicitly.
+      const profileId = await getCurrentProfileId();
+      if (!profileId) {
         throw new Error("User not authenticated");
       }
 
       const { data, error } = await supabase
         .from("hubs")
         .select(HUB_CARD_COLUMNS)
-        .eq("owner_id", profile.id)
+        .eq("owner_id", profileId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;

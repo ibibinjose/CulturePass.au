@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -13,71 +13,127 @@ import { ImagePickerComponent } from "@/components/ui/ImagePicker";
 import { Toggle } from "@/components/ui/Toggle";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { profileSchema } from "@/lib/validation/profile";
-import { PROFESSIONAL_CATEGORIES, PROFESSIONAL_CATEGORY_LABELS } from "@/lib/constants";
+import {
+  PROFESSIONAL_CATEGORIES,
+  PROFESSIONAL_CATEGORY_LABELS,
+  type ProfessionalCategory,
+} from "@/lib/constants";
+
+type ProfileForm = {
+  full_name: string;
+  avatar_url: string | null;
+  bio: string;
+  location: string;
+  interests: string[];
+  cultural_background: string;
+  indigenous_connection: string;
+  preferred_languages: string[];
+  is_public_professional: boolean;
+  professional_category: ProfessionalCategory | null;
+  professional_title: string;
+  public_bio: string;
+  website: string;
+  instagram: string;
+  linkedin: string;
+};
+
+const EMPTY_FORM: ProfileForm = {
+  full_name: "",
+  avatar_url: null,
+  bio: "",
+  location: "",
+  interests: [],
+  cultural_background: "",
+  indigenous_connection: "",
+  preferred_languages: [],
+  is_public_professional: false,
+  professional_category: null,
+  professional_title: "",
+  public_bio: "",
+  website: "",
+  instagram: "",
+  linkedin: "",
+};
 
 export default function EditProfileScreen() {
   const router = useRouter();
-  const { data: profile } = useMyProfile();
+  const { data: profile, isLoading } = useMyProfile();
   const updateMyProfile = useUpdateMyProfile();
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const [form, setForm] = useState({
-    full_name: profile?.full_name || "",
-    avatar_url: profile?.avatar_url || null,
-    bio: profile?.bio || "",
-    location: profile?.location || "",
-    coordinates: profile?.coordinates || "",
-    interests: profile?.interests || [],
-    cultural_background: profile?.cultural_background || "",
-    indigenous_connection: profile?.indigenous_connection || "",
-    preferred_languages: profile?.preferred_languages || [],
-    is_public_professional: profile?.is_public_professional || false,
-    professional_category: profile?.professional_category || null,
-    professional_title: profile?.professional_title || "",
-    public_bio: profile?.public_bio || "",
-    public_links: profile?.public_links || [],
-    email: "", // This would come from auth context
-    phone: "",
-  });
+  const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
 
-  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+  // Sync the form once the profile loads (useState only seeds on first mount).
+  useEffect(() => {
+    if (!profile) return;
+    const links = (profile.public_links ?? {}) as Record<string, string>;
+    setForm({
+      full_name: profile.full_name || "",
+      avatar_url: profile.avatar_url ?? null,
+      bio: profile.bio || "",
+      location: profile.location || "",
+      interests: profile.interests ?? [],
+      cultural_background: profile.cultural_background || "",
+      indigenous_connection: profile.indigenous_connection || "",
+      preferred_languages: profile.preferred_languages ?? [],
+      is_public_professional: profile.is_public_professional ?? false,
+      professional_category: profile.professional_category ?? null,
+      professional_title: profile.professional_title || "",
+      public_bio: profile.public_bio || "",
+      website: links.website || "",
+      instagram: links.instagram || "",
+      linkedin: links.linkedin || "",
+    });
+  }, [profile]);
+
+  const set = (patch: Partial<ProfileForm>) => setForm((f) => ({ ...f, ...patch }));
 
   async function submit() {
     setBanner(null);
-    const parsed = profileSchema.safeParse({ 
+    const parsed = profileSchema.safeParse({
       full_name: form.full_name,
-      avatar_url: form.avatar_url,
-      bio: form.bio,
-      location: form.location,
+      avatar_url: form.avatar_url ?? undefined,
+      bio: form.bio || undefined,
+      location: form.location || undefined,
       interests: form.interests,
-      cultural_background: form.cultural_background,
-      indigenous_connection: form.indigenous_connection,
+      cultural_background: form.cultural_background || undefined,
+      indigenous_connection: form.indigenous_connection || undefined,
       preferred_languages: form.preferred_languages,
     });
-    
+
     if (!parsed.success) {
       setBanner(parsed.error.issues[0]?.message ?? "Please check your details.");
       return;
     }
 
+    // A public professional must declare a category (mirrors the DB CHECK).
+    if (form.is_public_professional && !form.professional_category) {
+      setBanner("Choose a professional category to make your profile public.");
+      return;
+    }
+
+    const publicLinks: Record<string, string> = {};
+    if (form.website.trim()) publicLinks.website = form.website.trim();
+    if (form.instagram.trim()) publicLinks.instagram = form.instagram.trim();
+    if (form.linkedin.trim()) publicLinks.linkedin = form.linkedin.trim();
+
     setSubmitting(true);
     try {
       await updateMyProfile.mutateAsync({
-        full_name: form.full_name,
+        full_name: form.full_name.trim(),
         avatar_url: form.avatar_url,
-        bio: form.bio,
-        location: form.location,
-        coordinates: form.coordinates,
+        bio: form.bio.trim() || null,
+        location: form.location.trim() || null,
         interests: form.interests,
-        cultural_background: form.cultural_background,
-        indigenous_connection: form.indigenous_connection,
+        cultural_background: form.cultural_background.trim() || null,
+        indigenous_connection: form.indigenous_connection.trim() || null,
         preferred_languages: form.preferred_languages,
         is_public_professional: form.is_public_professional,
-        professional_category: form.professional_category as "artist" | "politician" | "founder" | "creative" | "community_leader" | "cultural_leader" | "wellness_practitioner" | "educator" | "other" | null,
-        professional_title: form.professional_title,
-        public_bio: form.public_bio,
-        public_links: form.public_links,
+        professional_category: form.professional_category,
+        professional_title: form.professional_title.trim() || null,
+        public_bio: form.public_bio.trim() || null,
+        public_links: publicLinks,
       });
       router.back();
     } catch (err) {
@@ -87,10 +143,12 @@ export default function EditProfileScreen() {
     }
   }
 
-  if (updateMyProfile.isPending) {
+  if (isLoading) {
     return (
-      <Screen>
-        <Text>Loading...</Text>
+      <Screen maxWidth="form" contentClassName="pt-10">
+        <Text variant="caption" tone="faint">
+          Loading…
+        </Text>
       </Screen>
     );
   }
@@ -143,7 +201,7 @@ export default function EditProfileScreen() {
       <View className="mt-8 gap-6">
         <Field label="Avatar">
           <ImagePickerComponent
-            currentImageUrl={form.avatar_url || null}
+            currentImageUrl={form.avatar_url}
             onImageChange={(url) => set({ avatar_url: url })}
             imageType="avatar"
             folderPath="avatars"
@@ -152,22 +210,13 @@ export default function EditProfileScreen() {
           />
         </Field>
 
-        <View className="flex-row gap-3">
-          <Field label="First name" className="flex-1">
-            <Input
-              value={form.first_name}
-              onChangeText={(first_name) => set({ first_name })}
-              placeholder="Given name"
-            />
-          </Field>
-          <Field label="Last name" className="flex-1">
-            <Input
-              value={form.last_name}
-              onChangeText={(last_name) => set({ last_name })}
-              placeholder="Family name"
-            />
-          </Field>
-        </View>
+        <Field label="Full name">
+          <Input
+            value={form.full_name}
+            onChangeText={(full_name) => set({ full_name })}
+            placeholder="Your name"
+          />
+        </Field>
 
         <Field label="Bio" optional>
           <Input
@@ -175,6 +224,46 @@ export default function EditProfileScreen() {
             onChangeText={(bio) => set({ bio })}
             placeholder="Tell others about yourself…"
             multiline
+          />
+        </Field>
+
+        <Field label="Location" optional>
+          <Input
+            value={form.location}
+            onChangeText={(location) => set({ location })}
+            placeholder="e.g. Naarm / Melbourne"
+          />
+        </Field>
+
+        <Field label="Interests" optional>
+          <TagInput
+            value={form.interests}
+            onChange={(interests) => set({ interests })}
+            placeholder="Add an interest"
+          />
+        </Field>
+
+        <Field label="Cultural background" optional>
+          <Input
+            value={form.cultural_background}
+            onChangeText={(cultural_background) => set({ cultural_background })}
+            placeholder="Share your cultural background…"
+          />
+        </Field>
+
+        <Field label="Connection to Country / community" optional>
+          <Input
+            value={form.indigenous_connection}
+            onChangeText={(indigenous_connection) => set({ indigenous_connection })}
+            placeholder="e.g. Wiradjuri, or a community connection…"
+          />
+        </Field>
+
+        <Field label="Languages spoken" optional>
+          <TagInput
+            value={form.preferred_languages}
+            onChange={(preferred_languages) => set({ preferred_languages })}
+            placeholder="Add a language"
           />
         </Field>
 
@@ -186,51 +275,70 @@ export default function EditProfileScreen() {
                 label={PROFESSIONAL_CATEGORY_LABELS[category]}
                 enabled={form.professional_category === category}
                 onToggle={(enabled) =>
-                  set({ professional_category: enabled ? category : "" })
+                  set({
+                    professional_category: enabled ? category : null,
+                    // Dropping the category also unpublishes the public profile.
+                    is_public_professional: enabled ? form.is_public_professional : false,
+                  })
                 }
               />
             ))}
           </View>
         </Field>
 
-        <Field label="Public profile URL" optional>
-          <Input
-            value={form.public_url}
-            onChangeText={(public_url) => set({ public_url })}
-            placeholder="your-custom-url"
-            autoCapitalize="none"
-          />
-        </Field>
-
-        {form.professional_category && (
+        {form.professional_category ? (
           <>
-            <Field label="Professional Title" optional>
+            <Field label="Professional title" optional>
               <Input
                 value={form.professional_title}
                 onChangeText={(professional_title) => set({ professional_title })}
-                placeholder="Your professional title"
+                placeholder='e.g. "Wiradjuri Artist" or "Founder of …"'
               />
             </Field>
 
-            <Field label="Public Bio" optional>
+            <Field label="Public bio" optional>
               <Input
                 value={form.public_bio}
                 onChangeText={(public_bio) => set({ public_bio })}
-                placeholder="Public-facing bio..."
+                placeholder="Public-facing bio…"
                 multiline
               />
             </Field>
 
-            <Field label="Public Links" optional>
-              <TagInput
-                value={Array.isArray(form.public_links) ? form.public_links : []}
-                onChange={(public_links) => set({ public_links })}
-                placeholder="Add links to your work"
+            <View className="flex-row gap-3">
+              <Field label="Website" optional className="flex-1">
+                <Input
+                  value={form.website}
+                  onChangeText={(website) => set({ website })}
+                  placeholder="https://"
+                  autoCapitalize="none"
+                />
+              </Field>
+              <Field label="Instagram" optional className="flex-1">
+                <Input
+                  value={form.instagram}
+                  onChangeText={(instagram) => set({ instagram })}
+                  placeholder="@handle"
+                  autoCapitalize="none"
+                />
+              </Field>
+            </View>
+
+            <Field label="LinkedIn" optional>
+              <Input
+                value={form.linkedin}
+                onChangeText={(linkedin) => set({ linkedin })}
+                placeholder="linkedin.com/in/…"
+                autoCapitalize="none"
               />
             </Field>
 
-            <Card className="p-4 gap-4">
-              <Text variant="subheading">Professional Visibility</Text>
+            <Card className="gap-4 p-4">
+              <Text variant="subheading">Professional visibility</Text>
+              <Text variant="caption" tone="muted">
+                Public profiles are discoverable by everyone, including signed-out
+                visitors.
+              </Text>
               <Toggle
                 label="Make profile public"
                 enabled={form.is_public_professional}
@@ -238,21 +346,17 @@ export default function EditProfileScreen() {
               />
             </Card>
           </>
-        )}
+        ) : null}
 
         {banner ? (
-          <Card className="mt-6 border-danger/30 bg-terracotta-50">
+          <Card className="border-danger/30 bg-terracotta-50">
             <Text variant="caption" className="text-terracotta-600">
               {banner}
             </Text>
           </Card>
         ) : null}
 
-        <Button
-          label="Save changes"
-          loading={submitting}
-          onPress={submit}
-        />
+        <Button label="Save changes" loading={submitting} onPress={submit} />
       </View>
     </Screen>
   );

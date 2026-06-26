@@ -22,10 +22,8 @@ import {
 } from "@/lib/constants";
 import { hubDraftSchema, hubPublishSchema } from "@/lib/validation/hub";
 import { useCouncils } from "@/features/reference/api";
-import { useHub } from "@/features/hubs/api";
-import { useUpdateHub, useDeleteHub } from "@/features/hubs/api";
+import { useHub, useUpdateHub, useDeleteHub } from "@/features/hubs/api";
 import { useMyProfile } from "@/features/profiles/api";
-import { getCurrentProfileId } from "@/features/auth/api";
 
 export default function EditHubScreen() {
   const router = useRouter();
@@ -110,7 +108,7 @@ export default function EditHubScreen() {
         <Card>
           <Text variant="subheading">Access Denied</Text>
           <Text variant="caption" tone="muted" className="mt-1">
-            You don't have permission to edit this hub.
+            You don’t have permission to edit this hub.
           </Text>
           <Button
             label="Go back"
@@ -139,15 +137,9 @@ export default function EditHubScreen() {
 
     setSubmitting(true);
     try {
-      // Convert images array to JSON format for Supabase
-      const formData = {
-        ...buildUpdate(form, publish),
-        images: JSON.stringify(parsed.data.images),
-      };
-
       await updateHub.mutateAsync({
         id: hub.id,
-        patch: formData,
+        patch: buildUpdate(form, publish),
       });
       router.replace(`/hub/${hub.slug}`);
     } catch (err) {
@@ -201,7 +193,9 @@ export default function EditHubScreen() {
     }
   };
 
-  const canContinue = useMemo(() => stepIsValid(step, form), [step, form]);
+  // Plain computed value (not useMemo) — `stepIsValid` is cheap, and this sits
+  // after an early return, so it must not be a hook.
+  const canContinue = stepIsValid(step, form);
 
   return (
     <Screen maxWidth="form" contentClassName="pt-10">
@@ -276,7 +270,7 @@ export default function EditHubScreen() {
 
           <Field label="Images" optional>
             <ImagePickerComponent
-              currentImageUrl={form.images.length > 0 ? form.images[0].url : null}
+              currentImageUrl={form.images[0]?.url ?? null}
               onImageChange={(url) => {
                 if (url) {
                   set({ images: [{ url, alt: "Hub image" }] });

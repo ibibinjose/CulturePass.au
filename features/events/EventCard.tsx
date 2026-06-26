@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { Text } from "@/components/ui/Text";
 import { Badge } from "@/components/ui/Badge";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
+import type { HubImage } from "@/lib/supabase/database.types";
 
 export interface EventCardData {
   id: string;
@@ -17,14 +18,14 @@ export interface EventCardData {
   price: number | null;
   location_city: string | null;
   location_state: string | null;
-  images: any[]; // Array of image objects
+  images: HubImage[];
   cultural_focus: string[];
   hub: {
     name: string;
     slug: string;
     indigenous_led: boolean;
     traditional_custodians: string[];
-  };
+  } | null;
 }
 
 export function EventCard({ event }: { event: EventCardData }) {
@@ -92,11 +93,13 @@ export function EventCard({ event }: { event: EventCardData }) {
         ) : null}
       </View>
 
-      <View className="mt-2">
-        <Text variant="caption" tone="muted">
-          By {event.hub.name}
-        </Text>
-      </View>
+      {event.hub ? (
+        <View className="mt-2">
+          <Text variant="caption" tone="muted">
+            By {event.hub.name}
+          </Text>
+        </View>
+      ) : null}
     </Card>
   );
 }

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Screen, Text, Button, Card, ListRow, Toggle, Divider } from "@/components/ui";

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { View, Alert, Image as RNImage } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
@@ -35,7 +35,7 @@ export function ImagePickerComponent({
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.7,
@@ -76,15 +76,28 @@ export function ImagePickerComponent({
   const uploadImage = async (uri: string) => {
     setUploading(true);
     try {
+      // Storage RLS requires the first path segment to be the user's id, so
+      // uploads must live under `<uid>/…`. Resolve it before uploading.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Sign in to upload images.");
+
       const response = await fetch(uri);
       const blob = await response.blob();
 
-      // Generate unique filename
-      const filename = `${folderPath}/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.jpg`;
-      
+      // Generate unique, per-user filename: <uid>/<folder>/<timestamp>-<rand>.jpg
+      const filename = `${user.id}/${folderPath}/${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 8)}.jpg`;
+
       const { data, error } = await supabase.storage
         .from("media")
-        .upload(filename, blob, { cacheControl: "3600", upsert: true });
+        .upload(filename, blob, {
+          cacheControl: "3600",
+          upsert: true,
+          contentType: "image/jpeg",
+        });
 
       if (error) throw error;
 

@@ -1,4 +1,4 @@
-import { Switch, type SwitchProps, View, TouchableOpacity } from "react-native";
+import { Switch, type SwitchProps, View } from "react-native";
 import { colors } from "@/lib/theme";
 import { Text } from "./Text";
 

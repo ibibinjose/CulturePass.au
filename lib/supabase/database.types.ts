@@ -15,6 +15,10 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+// The `images` jsonb columns on `hubs` and `events` always hold an array of
+// these objects. They're typed as `HubImage[]` (not the raw `Json`) so the app
+// can index `.url` safely. If you regenerate this file with `npm run db:types`,
+// re-apply that typing — the generator emits `Json` for jsonb columns.
 export interface HubImage {
   url: string;
   alt?: string;
@@ -155,7 +159,7 @@ export interface Database {
           website: string | null;
           contact_email: string | null;
           phone: string | null;
-          images: Json;
+          images: HubImage[];
           categories: string[];
           tags: string[];
           verification_status: Database["public"]["Enums"]["verification_status"];
@@ -185,7 +189,7 @@ export interface Database {
           website?: string | null;
           contact_email?: string | null;
           phone?: string | null;
-          images?: Json;
+          images?: HubImage[];
           categories?: string[];
           tags?: string[];
           verification_status?: Database["public"]["Enums"]["verification_status"];
@@ -253,7 +257,7 @@ export interface Database {
           coordinates: string | null;
           capacity: number | null;
           rsvp_count: number;
-          images: Json;
+          images: HubImage[];
           tags: string[];
           cultural_focus: string[];
           status: Database["public"]["Enums"]["event_status"];
@@ -277,7 +281,7 @@ export interface Database {
           coordinates?: string | null;
           capacity?: number | null;
           rsvp_count?: number;
-          images?: Json;
+          images?: HubImage[];
           tags?: string[];
           cultural_focus?: string[];
           status?: Database["public"]["Enums"]["event_status"];

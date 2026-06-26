@@ -1,4 +1,3 @@
-import { View } from "react-native";
 import { useRouter } from "expo-router";
 import { Button } from "@/components/ui/Button";
 import { useMyProfile } from "@/features/profiles/api";

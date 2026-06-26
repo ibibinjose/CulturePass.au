@@ -36,7 +36,11 @@ export const hubDraftSchema = z.object({
 
   location_state: z.string().trim().length(2).or(z.string().trim().length(3)).optional(),
   location_council_id: z.string().uuid().optional(),
-  location_postcode: z.string().trim().regex(/^\d{4}$/, "4-digit postcode").optional(),
+  // Treat a blank postcode as "no value" so an empty field doesn't fail the
+  // 4-digit regex when saving a draft.
+  location_postcode: optionalText.pipe(
+    z.string().regex(/^\d{4}$/, "4-digit postcode").optional(),
+  ),
   location_city: optionalText,
   address: optionalText,
 

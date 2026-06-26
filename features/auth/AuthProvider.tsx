@@ -42,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Keep query-driven consumers (session + profile-scoped data) fresh.
       queryClient.invalidateQueries({ queryKey: qk.session });
+      queryClient.invalidateQueries({ queryKey: qk.myProfile });
       queryClient.invalidateQueries({ queryKey: qk.myHubs });
     });
 

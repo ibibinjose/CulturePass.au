@@ -7,6 +7,24 @@ const optionalText = z
   .optional()
   .transform((v) => (v && v.length > 0 ? v : undefined));
 
+// Form date fields start as "" — treat empty/blank as "no value" so an
+// unset date doesn't fail `.datetime()` validation.
+const optionalIsoDateTime = z
+  .string()
+  .optional()
+  .transform((v) => (v && v.trim().length > 0 ? v : undefined))
+  .pipe(z.string().datetime({ offset: true }).optional());
+
+const requiredIsoDateTime = z
+  .string()
+  .optional()
+  .transform((v) => (v && v.trim().length > 0 ? v : undefined))
+  .pipe(
+    z
+      .string({ required_error: "Add a start time" })
+      .datetime({ offset: true, message: "Add a valid start time" }),
+  );
+
 export const eventDraftSchema = z
   .object({
     hub_id: z.string().uuid(),
@@ -14,8 +32,8 @@ export const eventDraftSchema = z
     title: z.string().trim().max(140).optional(),
     description: z.string().trim().max(5000).optional(),
 
-    start_time: z.string().datetime({ offset: true }).optional(),
-    end_time: z.string().datetime({ offset: true }).optional(),
+    start_time: optionalIsoDateTime,
+    end_time: optionalIsoDateTime,
 
     is_free: z.boolean().default(true),
     price: z.number().nonnegative().optional(),
@@ -51,8 +69,8 @@ export const eventPublishSchema = z
     type: z.enum(EVENT_TYPES),
     title: z.string().trim().min(3, "Give the event a title").max(140),
     description: z.string().trim().max(5000).optional(),
-    start_time: z.string().datetime({ offset: true }),
-    end_time: z.string().datetime({ offset: true }).optional(),
+    start_time: requiredIsoDateTime,
+    end_time: optionalIsoDateTime,
     is_free: z.boolean(),
     price: z.number().nonnegative().optional(),
     ticket_url: optionalText.pipe(z.string().url().optional()),

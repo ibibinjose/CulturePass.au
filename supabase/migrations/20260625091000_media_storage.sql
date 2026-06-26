@@ -5,9 +5,12 @@
 -- event images) with appropriate security policies.
 -- =============================================================================
 
--- Create the media storage bucket
+-- Create the media storage bucket.
+-- NOTE: this was originally created private; a later migration
+-- (20260626120000_media_bucket_public.sql) flips it to public, since the client
+-- serves avatars/hub/event images via getPublicUrl() to signed-out visitors.
 INSERT INTO storage.buckets (id, name, public, created_at, updated_at)
-VALUES 
+VALUES
   ('media', 'media', false, now(), now())
 ON CONFLICT (id) DO NOTHING;
 

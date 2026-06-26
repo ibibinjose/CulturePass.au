@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -49,18 +49,6 @@ export default function CreateHubWizard() {
     if (!parsed.success) {
       setBanner(parsed.error.issues[0]?.message ?? "Please check your details.");
       return;
-    }
-    
-    // Validate images array
-    if (parsed.data.images && !Array.isArray(parsed.data.images)) {
-      try {
-        // Try to parse images if it's a JSON string
-        parsed.data.images = JSON.parse(parsed.data.images);
-      } catch (error) {
-        console.error("Failed to parse images JSON", error);
-        setBanner("Invalid images format. Please try re-uploading the image.");
-        return;
-      }
     }
 
     setSubmitting(true);
@@ -207,7 +195,7 @@ function StepIdentity({ draft, update }: StepProps) {
       </Field>
       <Field label="Hub Images" optional>
         <ImagePickerComponent
-          currentImageUrl={Array.isArray(draft.images) && draft.images.length > 0 ? draft.images[0].url : null}
+          currentImageUrl={draft.images?.[0]?.url ?? null}
           onImageChange={(url) => {
             if (url) {
               update({ images: [{ url, type: "cover", alt: "Hub cover image" }] });
@@ -463,18 +451,7 @@ function StepHeading({ title, subtitle }: { title: string; subtitle?: string }) 
 
 function buildInsert(draft: HubDraft, ownerId: string, publish: boolean) {
   const orNull = (v: string) => (v.trim().length > 0 ? v.trim() : null);
-  
-  // Convert images array to JSON string for Supabase
-  let imagesJson = null;
-  try {
-    imagesJson = draft.images && draft.images.length > 0 
-      ? JSON.stringify(draft.images) 
-      : null;
-  } catch (error) {
-    console.error("Failed to stringify images array", error);
-    imagesJson = null;
-  }
-  
+
   return {
     owner_id: ownerId,
     type: draft.type!,
@@ -493,7 +470,7 @@ function buildInsert(draft: HubDraft, ownerId: string, publish: boolean) {
     website: orNull(draft.website),
     contact_email: orNull(draft.contact_email),
     phone: orNull(draft.phone),
-    images: imagesJson, // Store images as JSON string
+    images: draft.images ?? [],
     tags: draft.tags,
     status: publish ? ("published" as const) : ("draft" as const),
   };
