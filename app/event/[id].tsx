@@ -11,6 +11,7 @@ import { Divider } from "@/components/ui/Divider";
 import { ShareButton } from "@/components/ui/ShareButton";
 import { useEvent } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
+import { useBuyTicket } from "@/features/tickets/api";
 import {
   EVENT_TYPE_LABELS,
   HUB_TYPE_LABELS,
@@ -45,6 +46,7 @@ export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: event, isLoading, isError } = useEvent(id ?? "");
   const { data: profile } = useMyProfile();
+  const buyTicket = useBuyTicket();
 
   if (isLoading) return <EventSkeleton />;
 
@@ -84,6 +86,15 @@ export default function EventScreen() {
     event.status === "published" ? "Published" : event.status === "draft" ? "Draft" : "Cancelled";
   const ownerId = (event.hub as { owner_id?: string } | null)?.owner_id;
   const isOwner = !!profile && ownerId === profile.id;
+  const isPaidTicketed = !event.is_free && !!event.price && Number(event.price) > 0;
+
+  const handleBuy = () => {
+    if (!profile) {
+      router.push("/sign-in");
+      return;
+    }
+    buyTicket.mutate({ eventId: event.id, quantity: 1 });
+  };
 
   const openTicketUrl = () => {
     if (!event.ticket_url) return;
@@ -151,6 +162,16 @@ export default function EventScreen() {
             <View className="gap-3 md:flex-row">
               {event.ticket_url ? (
                 <Button label="Get tickets" variant="primary" className="md:flex-1" onPress={openTicketUrl} />
+              ) : isPaidTicketed ? (
+                <Button
+                  label={`Buy ticket · ${price}`}
+                  variant="whatsapp"
+                  className="md:flex-1"
+                  loading={buyTicket.isPending}
+                  onPress={handleBuy}
+                />
+              ) : event.is_free ? (
+                <Button label="Free event" variant="outline" disabled className="md:flex-1" />
               ) : (
                 <Button label="Tickets TBA" variant="outline" disabled className="md:flex-1" />
               )}
@@ -158,6 +179,12 @@ export default function EventScreen() {
                 <Button label="Directions" variant="outline" className="md:flex-1" onPress={openDirections} />
               ) : null}
             </View>
+
+            {buyTicket.isError ? (
+              <Text variant="caption" className="text-terracotta-600">
+                {(buyTicket.error as Error)?.message ?? "Couldn’t start checkout."}
+              </Text>
+            ) : null}
 
             <View className="flex-row flex-wrap gap-3">
               <ShareButton

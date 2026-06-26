@@ -212,6 +212,7 @@ export function TopBar() {
                         onPress={() => go(`/profile/${profile.id}`)}
                       />
                     ) : null}
+                    <MenuRow label="My tickets" onPress={() => go("/tickets")} />
                     <MenuRow label="Settings" onPress={() => go("/settings")} />
                     <View className="h-px bg-linen" />
                     <MenuRow label="Sign out" danger onPress={handleSignOut} />

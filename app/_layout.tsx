@@ -83,6 +83,7 @@ export default function RootLayout() {
                   />
                   <Stack.Screen name="l" options={{ animation: "fade" }} />
                   <Stack.Screen name="card" options={{ animation: "fade" }} />
+                  <Stack.Screen name="tickets" options={{ animation: "slide_from_right" }} />
                 </Stack>
               </View>
             </View>

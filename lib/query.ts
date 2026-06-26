@@ -26,4 +26,5 @@ export const qk = {
   profile: (id: string) => ["profile", id] as const,
   myProfile: ["my-profile"] as const,
   session: ["session"] as const,
+  myTickets: ["my-tickets"] as const,
 };

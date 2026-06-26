@@ -69,3 +69,18 @@ entrypoint = "./functions/hello-world/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/hello-world/*.html" ]
+
+# Creates a Stripe Checkout Session — requires a signed-in buyer (JWT verified).
+[functions.tickets-checkout]
+enabled = true
+verify_jwt = true
+import_map = "./functions/tickets-checkout/deno.json"
+entrypoint = "./functions/tickets-checkout/index.ts"
+
+# Stripe calls this directly, so JWT verification MUST be off — the Stripe
+# signature is verified inside the function instead.
+[functions.stripe-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/stripe-webhook/deno.json"
+entrypoint = "./functions/stripe-webhook/index.ts"

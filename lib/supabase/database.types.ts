@@ -325,6 +325,53 @@ export interface Database {
           },
         ];
       };
+      ticket_orders: {
+        Row: {
+          id: string;
+          event_id: string | null;
+          hub_id: string | null;
+          buyer_id: string | null;
+          event_title: string;
+          quantity: number;
+          unit_amount: number;
+          amount_total: number | null;
+          currency: string;
+          status: Database["public"]["Enums"]["ticket_order_status"];
+          customer_email: string | null;
+          stripe_checkout_session_id: string | null;
+          stripe_payment_intent_id: string | null;
+          created_at: string;
+          updated_at: string;
+          paid_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          event_id?: string | null;
+          hub_id?: string | null;
+          buyer_id?: string | null;
+          event_title?: string;
+          quantity?: number;
+          unit_amount: number;
+          amount_total?: number | null;
+          currency?: string;
+          status?: Database["public"]["Enums"]["ticket_order_status"];
+          customer_email?: string | null;
+          stripe_checkout_session_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          paid_at?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["ticket_orders"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "ticket_orders_event_id_fkey";
+            columns: ["event_id"];
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -369,6 +416,7 @@ export interface Database {
         | "other";
       event_status: "draft" | "published" | "cancelled";
       rsvp_status: "going" | "interested" | "waitlist" | "cancelled";
+      ticket_order_status: "pending" | "paid" | "failed" | "refunded" | "cancelled";
     };
     CompositeTypes: Record<string, never>;
   };
