@@ -7,148 +7,204 @@ import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
+import { Chip } from "@/components/ui/Chip";
 import { AcknowledgementBar } from "@/components/cultural/AcknowledgementBar";
 import { HubCard } from "@/features/hubs/HubCard";
-import { useHubs } from "@/features/hubs/api";
-import { useAuth } from "@/features/auth/AuthProvider";
-import { useMyProfile } from "@/features/profiles/api";
+import { useHubs, useHubStateCounts } from "@/features/hubs/api";
+import { EventCard } from "@/features/events/EventCard";
+import { useEvents, useEventStateCounts } from "@/features/events/api";
 import { AUSTRALIAN_STATES } from "@/lib/constants";
+
+type ResultMode = "all" | "hubs" | "events";
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
-  const { data: profile } = useMyProfile();
   const [search, setSearch] = useState("");
-  const { data: hubs, isLoading, isError } = useHubs(search ? { search } : {});
+  const [mode, setMode] = useState<ResultMode>("all");
+  const query = search.trim();
+
+  const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(
+    query ? { search: query } : {},
+  );
+  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(
+    query ? { search: query } : {},
+  );
+  const { data: hubCounts } = useHubStateCounts();
+  const { data: eventCounts } = useEventStateCounts();
+
+  const featuredHubs = hubs?.slice(0, query ? 6 : 4) ?? [];
+  const featuredEvents = events?.slice(0, query ? 6 : 4) ?? [];
+
+  const showEvents = mode === "all" || mode === "events";
+  const showHubs = mode === "all" || mode === "hubs";
 
   return (
-    <Screen contentClassName="pt-10">
-      {/* Brand + tagline */}
-      <View className="mb-2 flex-row items-center justify-between">
-        <Text variant="overline" tone="ochre">
+    <Screen contentClassName="pt-8">
+      {/* Hero */}
+      <View className="overflow-hidden rounded-2xl border border-linen bg-ink p-6 lg:p-8">
+        <Text variant="overline" tone="inverse">
           CulturePass Australia
         </Text>
-        {isAuthenticated ? (
-          <View className="flex-row items-center gap-4">
-            <Pressable onPress={() => router.push("/create")} hitSlop={8}>
-              <Text variant="label" tone="muted">
-                Create
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => router.push("/settings")}
-              hitSlop={8}
-              accessibilityLabel="Account and settings"
-            >
-              <Avatar name={profile?.full_name} uri={profile?.avatar_url} size={32} />
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable onPress={() => router.push("/sign-in")} hitSlop={8}>
-            <Text variant="label" tone="ochre">
-              Sign in
-            </Text>
-          </Pressable>
-        )}
-      </View>
-
-      {/* Hero */}
-      <View className="mb-8 mt-6">
-        <Text variant="display" className="max-w-prose">
-          Discover culture, close to home.
+        <Text variant="display" tone="inverse" className="mt-3 max-w-[640px]">
+          Culture, nearby.
         </Text>
-        <Text variant="bodyLarge" tone="muted" className="mt-4 max-w-prose">
-          Find communities, events and cultural experiences across Australia —
-          grounded in respect for First Nations peoples. Unity in diversity.
+        <Text variant="body" tone="inverse" className="mt-3 max-w-[460px] opacity-75">
+          Discover events, hubs and community across Australia.
         </Text>
+        <View className="mt-6 flex-row flex-wrap gap-3">
+          <Button label="Find events" variant="secondary" onPress={() => router.push("/explore")} />
+          <Button label="Add a hub" variant="whatsapp" onPress={() => router.push("/create/hub")} />
+        </View>
       </View>
 
       {/* Search */}
-      <View className="mb-12 flex-row gap-3">
-        <View className="flex-1">
-          <Input
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search hubs, communities, places…"
-            returnKeyType="search"
-            autoCorrect={false}
+      <Card className="mt-6 gap-4">
+        <View className="gap-2 md:flex-row md:items-center">
+          <View className="flex-1">
+            <Input
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search events, hubs or places"
+              returnKeyType="search"
+              autoCorrect={false}
+            />
+          </View>
+          <Button
+            label="Browse"
+            className="md:w-[160px]"
+            onPress={() => router.push("/explore")}
           />
         </View>
-        <Button label="Explore" onPress={() => router.push("/explore")} />
-      </View>
+        <View className="flex-row flex-wrap gap-2">
+          <Chip label="All" selected={mode === "all"} onPress={() => setMode("all")} />
+          <Chip label="Communities" selected={mode === "hubs"} onPress={() => setMode("hubs")} />
+          <Chip label="Events" selected={mode === "events"} onPress={() => setMode("events")} />
+        </View>
+      </Card>
 
-      {/* Explore by State */}
-      <SectionHeader title="Explore by state" subtitle="Eight states & territories" />
-      <View className="mb-12 flex-row flex-wrap gap-3">
-        {AUSTRALIAN_STATES.map((state) => (
-          <Pressable
-            key={state.code}
-            onPress={() => router.push(`/state/${state.code}`)}
-            className="min-w-[150px] flex-1 grow basis-[150px]"
-          >
-            <Card padded className="active:bg-sand">
-              <Text variant="overline" tone="faint">
-                {state.code}
-              </Text>
-              <Text variant="subheading" className="mt-1">
-                {state.name}
-              </Text>
-            </Card>
-          </Pressable>
-        ))}
-      </View>
+      {/* Discovery */}
+      <View className="mt-10 gap-8 lg:flex-row lg:items-start">
+        <View className="flex-1 gap-10">
+          {showEvents ? (
+            <DiscoverySection
+              title={query ? "Matching events" : "Coming up"}
+              loading={eventsLoading}
+              error={eventsError}
+              emptyTitle={query ? "No events match that yet" : "No upcoming events yet"}
+              emptyBody="Events appear here as organisers publish them."
+              actionLabel="Add an event"
+              onAction={() => router.push("/create/event")}
+            >
+              {featuredEvents.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+            </DiscoverySection>
+          ) : null}
 
-      {/* Featured hubs */}
-      <SectionHeader
-        title={search ? "Results" : "Recently added"}
-        subtitle={search ? undefined : "Hubs from across the country"}
-      />
-      <View className="mb-12 gap-4">
-        {isLoading ? (
-          <Text variant="caption" tone="faint">
-            Loading…
-          </Text>
-        ) : isError ? (
-          <Card>
-            <Text variant="caption" tone="muted">
-              Couldn’t load hubs right now. Pull to refresh once your Supabase
-              project is connected.
-            </Text>
+          {showHubs ? (
+            <DiscoverySection
+              title={query ? "Matching communities" : "Recently added"}
+              loading={hubsLoading}
+              error={hubsError}
+              emptyTitle={query ? "No communities match that yet" : "No communities yet"}
+              emptyBody="Be the first to create a hub for your community."
+              actionLabel="Create a hub"
+              onAction={() => router.push("/create/hub")}
+            >
+              {featuredHubs.map((hub) => (
+                <HubCard key={hub.slug} hub={hub} />
+              ))}
+            </DiscoverySection>
+          ) : null}
+        </View>
+
+        {/* Explore by state */}
+        <View className="lg:w-[320px]">
+          <Card className="gap-4 bg-sand">
+            <Text variant="subheading">Explore by state</Text>
+            <View className="gap-2">
+              {AUSTRALIAN_STATES.map((state) => {
+                const hubCount = hubCounts?.[state.code] ?? 0;
+                const eventCount = eventCounts?.[state.code] ?? 0;
+                const hasContent = hubCount + eventCount > 0;
+                return (
+                  <Pressable
+                    key={state.code}
+                    onPress={() => router.push(`/state/${state.code}`)}
+                    className="flex-row items-center justify-between gap-3 rounded-lg border border-linen bg-card p-4 active:bg-paper"
+                  >
+                    <Text variant="label" className="text-base">
+                      {state.name}
+                    </Text>
+                    <Text variant="caption" tone={hasContent ? "eucalyptus" : "faint"}>
+                      {hubCount} · {eventCount}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </Card>
-        ) : hubs && hubs.length > 0 ? (
-          hubs.map((hub) => <HubCard key={hub.slug} hub={hub} />)
-        ) : (
-          <Card>
-            <Text variant="subheading">No hubs yet</Text>
-            <Text variant="caption" tone="muted" className="mt-1">
-              Be the first to create a hub for your community.
-            </Text>
-            <Button
-              label="Create a hub"
-              variant="secondary"
-              className="mt-4 self-start"
-              onPress={() => router.push("/create/hub")}
-            />
-          </Card>
-        )}
+        </View>
       </View>
 
-      {/* Acknowledgement of Country */}
-      <AcknowledgementBar className="mb-6" />
+      <AcknowledgementBar className="mb-6 mt-12" />
     </Screen>
   );
 }
 
-function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+function DiscoverySection({
+  title,
+  loading,
+  error,
+  emptyTitle,
+  emptyBody,
+  actionLabel,
+  onAction,
+  children,
+}: {
+  title: string;
+  loading: boolean;
+  error: boolean;
+  emptyTitle: string;
+  emptyBody: string;
+  actionLabel: string;
+  onAction: () => void;
+  children: React.ReactNode;
+}) {
+  const hasChildren = Array.isArray(children) ? children.length > 0 : !!children;
+
   return (
-    <View className="mb-5">
+    <View className="gap-4">
       <Text variant="heading">{title}</Text>
-      {subtitle ? (
-        <Text variant="caption" tone="faint" className="mt-1">
-          {subtitle}
-        </Text>
-      ) : null}
+      {loading ? (
+        <Card>
+          <Text variant="caption" tone="faint">
+            Loading…
+          </Text>
+        </Card>
+      ) : error ? (
+        <Card>
+          <Text variant="caption" tone="muted">
+            Could not load this section. Check your connection and try again.
+          </Text>
+        </Card>
+      ) : hasChildren ? (
+        <View className="gap-4">{children}</View>
+      ) : (
+        <Card className="gap-3">
+          <Text variant="subheading">{emptyTitle}</Text>
+          <Text variant="caption" tone="muted">
+            {emptyBody}
+          </Text>
+          <Button
+            label={actionLabel}
+            variant="whatsapp"
+            size="sm"
+            className="self-start"
+            onPress={onAction}
+          />
+        </Card>
+      )}
     </View>
   );
 }

@@ -39,6 +39,29 @@ export function useHubs(filters: HubFilters = {}) {
   });
 }
 
+export function useHubStateCounts() {
+  return useQuery({
+    queryKey: qk.hubStateCounts,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("hubs")
+        .select("location_state")
+        .eq("status", "published")
+        .not("location_state", "is", null)
+        .limit(1000);
+
+      if (error) throw error;
+
+      return (data ?? []).reduce<Record<string, number>>((counts, row) => {
+        if (row.location_state) {
+          counts[row.location_state] = (counts[row.location_state] ?? 0) + 1;
+        }
+        return counts;
+      }, {});
+    },
+  });
+}
+
 export function useHub(slug: string) {
   return useQuery({
     queryKey: qk.hub(slug),

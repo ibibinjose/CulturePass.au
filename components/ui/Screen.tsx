@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
-import { ScrollView, View, type ScrollViewProps } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  View,
+  type ScrollViewProps,
+} from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 import { cn } from "@/lib/utils/cn";
 
@@ -28,7 +34,9 @@ const MAX: Record<NonNullable<ScreenProps["maxWidth"]>, string> = {
 export function Screen({
   scroll = true,
   maxWidth = "content",
-  edges = ["top", "bottom"],
+  // The global TopBar owns the top safe-area inset, so screens only guard the
+  // bottom edge by default. Pass `edges` to override per screen.
+  edges = ["bottom"],
   className,
   contentClassName,
   children,
@@ -42,18 +50,25 @@ export function Screen({
 
   return (
     <SafeAreaView edges={edges} className={cn("flex-1 bg-paper", className)}>
-      {scroll ? (
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          contentContainerClassName="grow pb-16"
-          {...rest}
-        >
-          {inner}
-        </ScrollView>
-      ) : (
-        <View className="flex-1">{inner}</View>
-      )}
+      {/* Keep inputs visible above the keyboard on iOS; Android uses adjustResize. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
+        {scroll ? (
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            showsVerticalScrollIndicator={false}
+            contentContainerClassName="grow pb-16"
+            {...rest}
+          >
+            {inner}
+          </ScrollView>
+        ) : (
+          <View className="flex-1">{inner}</View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

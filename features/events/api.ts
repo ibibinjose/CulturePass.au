@@ -9,6 +9,10 @@ export interface EventFilters {
   councilId?: string;
   type?: Database["public"]["Enums"]["event_type"];
   search?: string;
+  /** Inclusive lower bound on start_time (ISO). */
+  from?: string;
+  /** Inclusive upper bound on start_time (ISO). */
+  to?: string;
 }
 
 export function useEvents(filters: EventFilters = {}) {
@@ -29,10 +33,35 @@ export function useEvents(filters: EventFilters = {}) {
       if (filters.councilId) query = query.eq("location_council_id", filters.councilId);
       if (filters.type) query = query.eq("type", filters.type);
       if (filters.search) query = query.ilike("title", `%${filters.search}%`);
+      if (filters.from) query = query.gte("start_time", filters.from);
+      if (filters.to) query = query.lte("start_time", filters.to);
 
       const { data, error } = await query;
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export function useEventStateCounts() {
+  return useQuery({
+    queryKey: qk.eventStateCounts,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select("location_state")
+        .eq("status", "published")
+        .not("location_state", "is", null)
+        .limit(1000);
+
+      if (error) throw error;
+
+      return (data ?? []).reduce<Record<string, number>>((counts, row) => {
+        if (row.location_state) {
+          counts[row.location_state] = (counts[row.location_state] ?? 0) + 1;
+        }
+        return counts;
+      }, {});
     },
   });
 }
@@ -65,7 +94,7 @@ export function useEvent(id: string) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id)
         `)
         .eq("id", id)
         .maybeSingle();
@@ -123,14 +152,15 @@ export function useUpdateEvent() {
 export function useDeleteEvent() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id }: { id: string; hubId?: string }) => {
       const { error } = await supabase.from("events").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: (_, id) => {
-      // We'll get the event data to find the hub_id before deletion
-      // For now, invalidate all events queries
-      qc.invalidateQueries({ queryKey: qk.events({}) });
+    onSuccess: (_, { id, hubId }) => {
+      qc.removeQueries({ queryKey: qk.event(id) });
+      if (hubId) qc.invalidateQueries({ queryKey: qk.hubEvents(hubId) });
+      // Prefix-match invalidates every ["events", …] filtered list.
+      qc.invalidateQueries({ queryKey: ["events"] });
     },
   });
 }

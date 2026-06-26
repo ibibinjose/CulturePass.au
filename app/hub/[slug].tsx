@@ -12,6 +12,7 @@ import {
   Divider,
   ListRow,
   Avatar,
+  ShareButton,
 } from "@/components/ui";
 import { WelcomeToCountry } from "@/components/cultural/WelcomeToCountry";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
@@ -232,6 +233,27 @@ export default function HubScreen() {
           {partners.length > 0 ? (
             <Stat value={partners.length} label="Partners" onPress={() => setTab("about")} />
           ) : null}
+        </View>
+
+        {/* Share & shareable surfaces */}
+        <View className="mt-1 flex-row flex-wrap gap-3">
+          <ShareButton
+            path={`/hub/${hub.slug}`}
+            title={hub.name}
+            message={hub.short_description ?? undefined}
+          />
+          <Button
+            label="Link in bio"
+            variant="outline"
+            size="sm"
+            onPress={() => router.push(`/l/hub/${hub.slug}`)}
+          />
+          <Button
+            label="Business card"
+            variant="outline"
+            size="sm"
+            onPress={() => router.push(`/card/hub/${hub.slug}`)}
+          />
         </View>
       </View>
 

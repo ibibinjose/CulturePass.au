@@ -20,12 +20,12 @@ module.exports = {
       sm: ["14px", { lineHeight: "20px" }],
       base: ["16px", { lineHeight: "24px" }],
       lg: ["18px", { lineHeight: "26px" }],
-      xl: ["20px", { lineHeight: "28px", letterSpacing: "-0.2px" }],
-      "2xl": ["24px", { lineHeight: "30px", letterSpacing: "-0.4px" }],
-      "3xl": ["30px", { lineHeight: "36px", letterSpacing: "-0.6px" }],
-      "4xl": ["38px", { lineHeight: "42px", letterSpacing: "-0.8px" }],
-      "5xl": ["52px", { lineHeight: "54px", letterSpacing: "-1.2px" }],
-      "6xl": ["68px", { lineHeight: "68px", letterSpacing: "-1.8px" }],
+      xl: ["20px", { lineHeight: "28px", letterSpacing: "0px" }],
+      "2xl": ["24px", { lineHeight: "30px", letterSpacing: "0px" }],
+      "3xl": ["30px", { lineHeight: "36px", letterSpacing: "0px" }],
+      "4xl": ["38px", { lineHeight: "42px", letterSpacing: "0px" }],
+      "5xl": ["52px", { lineHeight: "56px", letterSpacing: "0px" }],
+      "6xl": ["68px", { lineHeight: "72px", letterSpacing: "0px" }],
     },
     extend: {
       colors: {
@@ -74,6 +74,12 @@ module.exports = {
         success: "#4F7A52",
         warning: "#C8902E",
         danger: "#B23A2E",
+
+        // WhatsApp brand green — reserved for "create / get started" actions.
+        whatsapp: {
+          DEFAULT: "#25D366",
+          dark: "#1DA851",
+        },
 
         // First Nations acknowledgement accents.
         // Reserved strictly for Welcome to Country / Acknowledgement surfaces.

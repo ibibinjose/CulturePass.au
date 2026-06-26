@@ -10,9 +10,11 @@ import { Field } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { TagInput } from "@/components/ui/TagInput";
 import { ImagePickerComponent } from "@/components/ui/ImagePicker";
+import { SocialLinksField } from "@/components/ui/SocialLinksField";
 import { Toggle } from "@/components/ui/Toggle";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { profileSchema } from "@/lib/validation/profile";
+import { pruneLinks } from "@/lib/social";
 import {
   PROFESSIONAL_CATEGORIES,
   PROFESSIONAL_CATEGORY_LABELS,
@@ -32,9 +34,7 @@ type ProfileForm = {
   professional_category: ProfessionalCategory | null;
   professional_title: string;
   public_bio: string;
-  website: string;
-  instagram: string;
-  linkedin: string;
+  links: Record<string, string>;
 };
 
 const EMPTY_FORM: ProfileForm = {
@@ -50,9 +50,7 @@ const EMPTY_FORM: ProfileForm = {
   professional_category: null,
   professional_title: "",
   public_bio: "",
-  website: "",
-  instagram: "",
-  linkedin: "",
+  links: {},
 };
 
 export default function EditProfileScreen() {
@@ -81,9 +79,7 @@ export default function EditProfileScreen() {
       professional_category: profile.professional_category ?? null,
       professional_title: profile.professional_title || "",
       public_bio: profile.public_bio || "",
-      website: links.website || "",
-      instagram: links.instagram || "",
-      linkedin: links.linkedin || "",
+      links: { ...links },
     });
   }, [profile]);
 
@@ -113,10 +109,7 @@ export default function EditProfileScreen() {
       return;
     }
 
-    const publicLinks: Record<string, string> = {};
-    if (form.website.trim()) publicLinks.website = form.website.trim();
-    if (form.instagram.trim()) publicLinks.instagram = form.instagram.trim();
-    if (form.linkedin.trim()) publicLinks.linkedin = form.linkedin.trim();
+    const publicLinks = pruneLinks(form.links);
 
     setSubmitting(true);
     try {
@@ -305,31 +298,10 @@ export default function EditProfileScreen() {
               />
             </Field>
 
-            <View className="flex-row gap-3">
-              <Field label="Website" optional className="flex-1">
-                <Input
-                  value={form.website}
-                  onChangeText={(website) => set({ website })}
-                  placeholder="https://"
-                  autoCapitalize="none"
-                />
-              </Field>
-              <Field label="Instagram" optional className="flex-1">
-                <Input
-                  value={form.instagram}
-                  onChangeText={(instagram) => set({ instagram })}
-                  placeholder="@handle"
-                  autoCapitalize="none"
-                />
-              </Field>
-            </View>
-
-            <Field label="LinkedIn" optional>
-              <Input
-                value={form.linkedin}
-                onChangeText={(linkedin) => set({ linkedin })}
-                placeholder="linkedin.com/in/…"
-                autoCapitalize="none"
+            <Field label="Links & social" optional>
+              <SocialLinksField
+                value={form.links}
+                onChange={(links) => set({ links })}
               />
             </Field>
 

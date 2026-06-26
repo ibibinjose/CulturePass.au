@@ -1,6 +1,7 @@
 import "../global.css";
 
 import { useEffect } from "react";
+import { View } from "react-native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -18,6 +19,7 @@ import {
 import { queryClient } from "@/lib/query";
 import { colors } from "@/lib/theme";
 import { AuthProvider } from "@/features/auth/AuthProvider";
+import { TopBar } from "@/components/ui/TopBar";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -43,39 +45,47 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <StatusBar style="dark" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: colors.paper },
-                animation: "slide_from_right",
-              }}
-            >
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
-              <Stack.Screen name="create" />
-              <Stack.Screen name="profile" />
-              <Stack.Screen name="settings" />
-              <Stack.Screen
-                name="hub/[slug]"
-                options={{ animation: "slide_from_bottom" }}
-              />
-              <Stack.Screen
-                name="create/event"
-                options={{ animation: "slide_from_bottom" }}
-              />
-              <Stack.Screen
-                name="hub/edit/[slug]"
-                options={{ animation: "slide_from_bottom" }}
-              />
-              <Stack.Screen
-                name="event/[id]"
-                options={{ animation: "slide_from_bottom" }}
-              />
-              <Stack.Screen
-                name="my-hubs/index"
-                options={{ animation: "slide_from_bottom" }}
-              />
-            </Stack>
+            <View style={{ flex: 1, backgroundColor: colors.paper }}>
+              <TopBar />
+              <View style={{ flex: 1 }}>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: colors.paper },
+                    animation: "slide_from_right",
+                  }}
+                >
+                  <Stack.Screen name="index" />
+                  <Stack.Screen name="calendar/index" />
+                  <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
+                  <Stack.Screen name="create" />
+                  <Stack.Screen name="profile" />
+                  <Stack.Screen name="settings" />
+                  <Stack.Screen
+                    name="hub/[slug]"
+                    options={{ animation: "slide_from_bottom" }}
+                  />
+                  <Stack.Screen
+                    name="create/event"
+                    options={{ animation: "slide_from_bottom" }}
+                  />
+                  <Stack.Screen
+                    name="hub/edit/[slug]"
+                    options={{ animation: "slide_from_bottom" }}
+                  />
+                  <Stack.Screen
+                    name="event/[id]"
+                    options={{ animation: "slide_from_bottom" }}
+                  />
+                  <Stack.Screen
+                    name="my-hubs/index"
+                    options={{ animation: "slide_from_bottom" }}
+                  />
+                  <Stack.Screen name="l" options={{ animation: "fade" }} />
+                  <Stack.Screen name="card" options={{ animation: "fade" }} />
+                </Stack>
+              </View>
+            </View>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

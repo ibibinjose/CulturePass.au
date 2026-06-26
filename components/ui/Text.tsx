@@ -15,7 +15,7 @@ type Variant =
 type Tone = "default" | "muted" | "faint" | "ochre" | "eucalyptus" | "inverse";
 
 const VARIANTS: Record<Variant, string> = {
-  display: "font-display text-5xl text-ink",
+  display: "font-display text-4xl md:text-5xl text-ink",
   title: "font-display text-3xl text-ink",
   heading: "font-heading text-2xl text-ink",
   subheading: "font-heading text-lg text-ink",

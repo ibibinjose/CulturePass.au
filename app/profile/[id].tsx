@@ -11,39 +11,12 @@ import {
   Chip,
   Divider,
   ListRow,
+  ShareButton,
 } from "@/components/ui";
 import { useMyProfile, useProfile } from "@/features/profiles/api";
 import { PROFESSIONAL_CATEGORY_LABELS, type ProfessionalCategory } from "@/lib/constants";
 import { parsePreferences } from "@/lib/validation/profile";
-
-const LINK_LABELS: Record<string, string> = {
-  website: "Website",
-  instagram: "Instagram",
-  linkedin: "LinkedIn",
-  facebook: "Facebook",
-  x: "X",
-};
-
-function linkHref(kind: string, value: string): string | null {
-  const v = value.trim();
-  if (!v) return null;
-  if (/^https?:\/\//i.test(v)) return v;
-  const handle = v.replace(/^@/, "");
-  switch (kind) {
-    case "website":
-      return `https://${v.replace(/^\/+/, "")}`;
-    case "instagram":
-      return `https://instagram.com/${handle}`;
-    case "linkedin":
-      return v.includes("/") ? `https://${v}` : `https://linkedin.com/in/${handle}`;
-    case "facebook":
-      return `https://facebook.com/${handle}`;
-    case "x":
-      return `https://x.com/${handle}`;
-    default:
-      return `https://${v}`;
-  }
-}
+import { resolveLinks } from "@/lib/social";
 
 export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -83,9 +56,7 @@ export default function PublicProfileScreen() {
 
   const prefs = parsePreferences(profile.preferences);
   const links = (profile.public_links ?? {}) as Record<string, string>;
-  const linkEntries = Object.entries(links)
-    .map(([kind, value]) => ({ kind, value, href: value ? linkHref(kind, value) : null }))
-    .filter((l) => l.href);
+  const linkEntries = resolveLinks(links);
   const showLocation = prefs.privacy.show_location && profile.location;
   const showInterests = prefs.privacy.show_interests && profile.interests.length > 0;
 
@@ -143,6 +114,30 @@ export default function PublicProfileScreen() {
             />
           </View>
         ) : null}
+
+        <View className="flex-row flex-wrap justify-center gap-3">
+          <ShareButton
+            path={`/profile/${profile.id}`}
+            title={profile.full_name || "Profile"}
+            message={profile.professional_title ?? undefined}
+          />
+          {profile.is_public_professional ? (
+            <>
+              <Button
+                label="Link in bio"
+                variant="outline"
+                size="sm"
+                onPress={() => router.push(`/l/profile/${profile.id}`)}
+              />
+              <Button
+                label="Business card"
+                variant="outline"
+                size="sm"
+                onPress={() => router.push(`/card/profile/${profile.id}`)}
+              />
+            </>
+          ) : null}
+        </View>
       </View>
 
       {profile.public_bio || profile.bio ? (
@@ -176,12 +171,12 @@ export default function PublicProfileScreen() {
           </Text>
           <Card className="mt-3 px-5 py-1">
             {linkEntries.map((link, i) => (
-              <View key={link.kind}>
+              <View key={link.key}>
                 {i > 0 ? <Divider /> : null}
                 <ListRow
-                  title={LINK_LABELS[link.kind] ?? link.kind}
+                  title={link.label}
                   value={link.value}
-                  onPress={() => link.href && Linking.openURL(link.href)}
+                  onPress={() => Linking.openURL(link.href)}
                 />
               </View>
             ))}

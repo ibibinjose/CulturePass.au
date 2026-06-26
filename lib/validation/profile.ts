@@ -7,13 +7,17 @@ const optionalText = z
   .optional()
   .transform((v) => (v && v.length > 0 ? v : undefined));
 
+// Social handles are stored bare (e.g. "janedoe"); the full URL is derived on
+// render (lib/social.ts), so we keep these as free strings rather than URLs.
 const publicLinks = z
   .object({
-    website: z.string().url().optional(),
+    website: z.string().optional(),
     instagram: z.string().optional(),
-    linkedin: z.string().optional(),
-    facebook: z.string().optional(),
     x: z.string().optional(),
+    facebook: z.string().optional(),
+    linkedin: z.string().optional(),
+    tiktok: z.string().optional(),
+    youtube: z.string().optional(),
   })
   .partial()
   .default({});

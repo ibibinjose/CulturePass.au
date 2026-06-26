@@ -37,7 +37,7 @@ export function ImagePickerComponent({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [1, 1],
       quality: 0.7,
     });
 
@@ -60,7 +60,7 @@ export function ImagePickerComponent({
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [4, 3],
+      aspect: [1, 1],
       quality: 0.7,
     });
 
@@ -126,7 +126,11 @@ export function ImagePickerComponent({
 
       {previewUri ? (
         <View className="gap-3">
-          <RNImage source={{ uri: previewUri }} className="w-full h-48 rounded-xl" resizeMode="cover" />
+          <RNImage
+            source={{ uri: previewUri }}
+            className="aspect-square w-full max-w-[280px] self-center rounded-xl"
+            resizeMode="cover"
+          />
           <View className="flex-row gap-2">
             <Button
               label="Change"

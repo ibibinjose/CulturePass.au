@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
@@ -9,18 +9,22 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { OptionCard } from "@/components/ui/OptionCard";
+import { SocialLinksField } from "@/components/ui/SocialLinksField";
 import {
   PROFESSIONAL_CATEGORIES,
   PROFESSIONAL_CATEGORY_LABELS,
   type ProfessionalCategory,
 } from "@/lib/constants";
 import { professionalProfileSchema } from "@/lib/validation/profile";
-import { useUpdateMyProfile } from "@/features/profiles/api";
+import { pruneLinks } from "@/lib/social";
+import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 
 export default function CreateProfessionalProfile() {
   const router = useRouter();
+  const { data: profile } = useMyProfile();
   const updateProfile = useUpdateMyProfile();
   const [banner, setBanner] = useState<string | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
 
   const [form, setForm] = useState({
     full_name: "",
@@ -28,10 +32,26 @@ export default function CreateProfessionalProfile() {
     professional_title: "",
     public_bio: "",
     location: "",
-    website: "",
-    instagram: "",
+    links: {} as Record<string, string>,
   });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+
+  // Pre-generate the public profile from the member's existing profile so they
+  // only have to confirm/extend it. Seeds once, after the profile loads.
+  useEffect(() => {
+    if (!profile || prefilled) return;
+    const links = (profile.public_links ?? {}) as Record<string, string>;
+    setForm({
+      full_name: profile.full_name ?? "",
+      professional_category:
+        (profile.professional_category as ProfessionalCategory | null) ?? undefined,
+      professional_title: profile.professional_title ?? "",
+      public_bio: profile.public_bio || profile.bio || "",
+      location: profile.location ?? "",
+      links: { ...links },
+    });
+    setPrefilled(true);
+  }, [profile, prefilled]);
 
   async function submit() {
     setBanner(null);
@@ -42,10 +62,7 @@ export default function CreateProfessionalProfile() {
       professional_title: form.professional_title,
       public_bio: form.public_bio || undefined,
       location: form.location || undefined,
-      public_links: {
-        website: form.website || undefined,
-        instagram: form.instagram || undefined,
-      },
+      public_links: pruneLinks(form.links),
     });
     if (!parsed.success) {
       setBanner(parsed.error.issues[0]?.message ?? "Please check your details.");
@@ -62,7 +79,8 @@ export default function CreateProfessionalProfile() {
         location: parsed.data.location ?? null,
         public_links: parsed.data.public_links,
       });
-      router.replace("/");
+      if (profile) router.replace(`/profile/${profile.id}`);
+      else router.replace("/");
     } catch (err) {
       setBanner(err instanceof Error ? err.message : "Something went wrong.");
     }
@@ -83,6 +101,10 @@ export default function CreateProfessionalProfile() {
       </Text>
       <Text variant="title" className="mt-2">
         Set up your public profile
+      </Text>
+      <Text variant="body" tone="muted" className="mt-2">
+        We’ve pre-filled this from your profile — review and add your social
+        handles below.
       </Text>
 
       <View className="mt-8 gap-6">
@@ -132,23 +154,14 @@ export default function CreateProfessionalProfile() {
           />
         </Field>
 
-        <View className="flex-row gap-3">
-          <Field label="Website" optional className="flex-1">
-            <Input
-              value={form.website}
-              onChangeText={(website) => set({ website })}
-              placeholder="https://"
-              autoCapitalize="none"
-            />
-          </Field>
-          <Field label="Instagram" optional className="flex-1">
-            <Input
-              value={form.instagram}
-              onChangeText={(instagram) => set({ instagram })}
-              placeholder="@handle"
-              autoCapitalize="none"
-            />
-          </Field>
+        <View>
+          <Text variant="overline" tone="faint" className="mb-3">
+            Links & social
+          </Text>
+          <SocialLinksField
+            value={form.links}
+            onChange={(links) => set({ links })}
+          />
         </View>
 
         {banner ? (
