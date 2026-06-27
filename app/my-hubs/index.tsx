@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 
@@ -11,6 +11,7 @@ import { useMyProfile } from "@/features/profiles/api";
 import { HUB_TYPE_LABELS, type HubType } from "@/lib/constants";
 import { colors } from "@/lib/theme";
 import { getHubImage } from "@/lib/hubImages";
+import { cn } from "@/lib/utils/cn";
 
 type MyHub = NonNullable<ReturnType<typeof useMyHubs>["data"]>[number];
 type MyHubEvent = NonNullable<ReturnType<typeof useMyHubEvents>["data"]>[number];
@@ -24,35 +25,50 @@ const eventDateFmt = new Intl.DateTimeFormat("en-AU", {
 
 export default function MyHubsScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { data: profile } = useMyProfile();
   const { data: hubs, isLoading, isError } = useMyHubs();
 
   if (!profile) {
     return (
       <Screen maxWidth="prose" contentClassName="pt-10">
-        <Text variant="title" className="mt-6">
-          Sign in required
-        </Text>
-        <Text variant="body" tone="muted" className="mt-2">
-          You need to sign in to view your hubs.
-        </Text>
-        <Button
-          label="Sign in"
-          className="mt-6 self-start"
-          onPress={() => router.push("/(auth)/sign-in")}
-        />
+        <Card className="p-8 border border-linen items-center gap-4">
+          <Icon name="lock" size={36} color={colors.inkMuted} />
+          <Text variant="title" className="font-display tracking-tight text-center">Sign in required</Text>
+          <Text variant="caption" tone="muted" className="text-center">
+            You need to sign in to access your hub manager dashboard.
+          </Text>
+          <Button
+            label="Sign in"
+            variant="primary"
+            className="mt-2"
+            onPress={() => router.push("/(auth)/sign-in")}
+          />
+        </Card>
       </Screen>
     );
   }
 
   const count = hubs?.length ?? 0;
+  const cols = width >= 768 ? 2 : 1;
 
   return (
-    <Screen contentClassName="pt-10">
-      <View className="mb-2 flex-row items-center justify-between">
-        <Text variant="overline" tone="pink">
-          My Hubs
-        </Text>
+    <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
+      {/* Header */}
+      <View className="mb-6 flex-row items-center justify-between border-b border-linen pb-5">
+        <View className="gap-1 flex-1">
+          <Text variant="overline" tone="pink">
+            Hub Manager
+          </Text>
+          <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight">
+            My Hubs
+          </Text>
+          <Text className="font-sans text-xs text-ink-faint mt-1">
+            {count > 0
+              ? `You own and manage ${count} ${count === 1 ? "hub" : "hubs"}. Update branding, locations, and publish local events.`
+              : "Register and manage public hubs, brand assets, and events from one place."}
+          </Text>
+        </View>
         <Button
           label="Create hub"
           variant="primary"
@@ -61,23 +77,16 @@ export default function MyHubsScreen() {
         />
       </View>
 
-      <Text variant="title">Hub manager</Text>
-      <Text variant="body" tone="muted" className="mt-2">
-        {count > 0
-          ? `${count} ${count === 1 ? "hub" : "hubs"} you own. Manage hub branding, profile details and every event from one place.`
-          : "Create and manage hubs, brand assets and events from one place."}
-      </Text>
-
-      <View className="mt-10 gap-4">
+      <View className="flex-row flex-wrap gap-4">
         {isLoading ? (
           <>
-            <HubManageSkeleton />
-            <HubManageSkeleton />
+            <HubManageSkeleton cols={cols} />
+            <HubManageSkeleton cols={cols} />
           </>
         ) : isError ? (
-          <Card>
+          <Card className="w-full p-6 border border-danger/25 bg-terracotta-50/50">
             <Text variant="caption" tone="muted">
-              Couldn’t load your hubs. Please try again.
+              Couldn’t load your hubs. Please pull down to refresh or try again later.
             </Text>
           </Card>
         ) : count > 0 ? (
@@ -85,21 +94,24 @@ export default function MyHubsScreen() {
             <HubManageCard
               key={hub.id}
               hub={hub}
+              cols={cols}
               onView={() => router.push(`/hub/${hub.slug}`)}
               onEdit={() => router.push(`/hub/edit/${hub.slug}`)}
               onAddEvent={() => router.push(`/create/event?hubId=${hub.id}`)}
             />
           ))
         ) : (
-          <Card className="items-start">
-            <Text variant="subheading">No hubs yet</Text>
-            <Text variant="caption" tone="muted" className="mt-1">
-              You haven’t created any hubs. Start by creating your first hub.
+          <Card className="w-full p-8 items-center gap-2 border border-dashed border-linen bg-sand/20">
+            <Icon name="grid" size={32} color={colors.inkFaint} />
+            <Text variant="subheading" className="font-display tracking-tight text-center">No hubs created yet</Text>
+            <Text variant="caption" tone="muted" className="text-center max-w-sm">
+              Publish a public hub for your gallery, local collective, creative business, or community sports club.
             </Text>
             <Button
               label="Create your first hub"
               variant="secondary"
-              className="mt-4 self-start"
+              size="sm"
+              className="mt-4"
               onPress={() => router.push("/create/hub")}
             />
           </Card>
@@ -111,109 +123,119 @@ export default function MyHubsScreen() {
 
 function HubManageCard({
   hub,
+  cols,
   onView,
   onEdit,
   onAddEvent,
 }: {
   hub: MyHub;
+  cols: number;
   onView: () => void;
   onEdit: () => void;
   onAddEvent: () => void;
 }) {
   const deleteHub = useDeleteHub();
   const [confirmingHubDelete, setConfirmingHubDelete] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
+
+  const { data: events } = useMyHubEvents(hub.id);
+  const eventsCount = events?.length ?? 0;
+
   const images = (hub.images ?? []).filter((i) => i && i.url);
   const logoUrl = getHubImage(images, "logo");
-  const coverUrl = getHubImage(images, "cover") ?? images.find((i) => i.type !== "logo")?.url ?? images[0]?.url ?? null;
   const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
 
   const verifyBadge =
     hub.verification_status === "verified" ? (
-      <Badge label="Verified" variant="eucalyptus" />
+      <Badge label="Verified" variant="success" />
     ) : hub.verification_status === "rejected" ? (
       <Badge label="Rejected" variant="danger" />
     ) : (
-      <Badge label="Pending" variant="neutral" />
+      <Badge label="Pending Approval" variant="warning" />
     );
 
   async function handleDeleteHub() {
     await deleteHub.mutateAsync(hub.id);
   }
 
+  const widthClass = cols === 2 ? "w-[calc(50%-8px)]" : "w-full";
+
   return (
-    <Card padded={false} className="overflow-hidden">
-      <Pressable onPress={onView} className="active:opacity-80">
-        {coverUrl ? (
+    <Card padded={false} className={cn("overflow-hidden border border-linen bg-card p-5 gap-4", widthClass)}>
+      {/* Top row: Brand & Info */}
+      <View className="flex-row items-start gap-4">
+        {logoUrl ? (
           <Image
-            source={{ uri: coverUrl }}
-            style={{ width: "100%", height: 150 }}
+            source={{ uri: logoUrl }}
+            style={{ width: 56, height: 56, borderRadius: 14 }}
             contentFit="cover"
             transition={150}
           />
         ) : (
-          <View className="h-[150px] justify-end bg-sand p-5">
-            <Text variant="overline" tone="faint">
-              No top image
+          <View className="h-14 w-14 items-center justify-center rounded-xl bg-sand">
+            <Text className="font-display text-lg text-ink-muted">
+              {hub.name.charAt(0).toUpperCase()}
             </Text>
           </View>
         )}
 
-        <View className="gap-4 p-5">
-          <View className="flex-row gap-4">
-            {logoUrl ? (
-              <Image
-                source={{ uri: logoUrl }}
-                style={{ width: 64, height: 64, borderRadius: 16 }}
-                contentFit="cover"
-                transition={150}
-              />
-            ) : (
-              <View className="h-16 w-16 items-center justify-center rounded-2xl bg-card">
-                <Text className="font-display text-xl text-ink-faint">
-                  {hub.name.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-
-            <View className="min-w-0 flex-1 gap-2">
-              <View className="flex-row flex-wrap items-center gap-2">
-                {verifyBadge}
-                <Badge
-                  label={hub.status === "published" ? "Published" : "Draft"}
-                  variant={hub.status === "published" ? "success" : "neutral"}
-                />
-                {hub.indigenous_led ? <IndigenousLedBadge /> : null}
-              </View>
-              <Text variant="subheading" numberOfLines={2}>
-                {hub.name}
-              </Text>
-              <Text variant="caption" tone="muted" numberOfLines={1}>
-                {HUB_TYPE_LABELS[hub.type as HubType]}
-                {place ? ` · ${place}` : ""}
-              </Text>
-            </View>
+        <View className="min-w-0 flex-1 gap-1">
+          <View className="flex-row flex-wrap items-center gap-1.5">
+            {verifyBadge}
+            <Badge
+              label={hub.status === "published" ? "Published" : "Draft"}
+              variant={hub.status === "published" ? "ink" : "neutral"}
+            />
+            {hub.indigenous_led ? <IndigenousLedBadge /> : null}
           </View>
+          
+          <Text className="font-display text-lg text-ink font-semibold tracking-tight" numberOfLines={2}>
+            {hub.name}
+          </Text>
+          <Text variant="caption" tone="muted" className="text-[11px]" numberOfLines={1}>
+            {HUB_TYPE_LABELS[hub.type as HubType]}
+            {place ? ` · ${place}` : ""}
+          </Text>
         </View>
-      </Pressable>
+      </View>
 
-      <Divider />
+      <Divider className="opacity-40" />
 
-      <View className="gap-4 p-5">
+      {/* Action Row */}
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
         <View className="flex-row flex-wrap gap-2">
-          <Button label="View hub" variant="outline" size="sm" onPress={onView} />
-          <Button label="Edit hub" variant="outline" size="sm" onPress={onEdit} />
-          <Button label="Add event" variant="whatsapp" size="sm" className="ml-auto" onPress={onAddEvent} />
+          <Button label="View Hub" variant="ghost" size="sm" onPress={onView} />
+          <Button label="Edit Profile" variant="outline" size="sm" onPress={onEdit} />
+          <Button
+            label={showEvents ? "Hide Events" : `Events (${eventsCount})`}
+            variant="outline"
+            size="sm"
+            leftIcon={<Icon name="calendar" size={13} color={colors.inkMuted} />}
+            onPress={() => setShowEvents(!showEvents)}
+          />
         </View>
 
+        <Button label="Add Event" variant="whatsapp" size="sm" onPress={onAddEvent} />
+      </View>
+
+      {/* Collapsible Events Section (Tree layout) */}
+      {showEvents && (
+        <View className="pl-5 ml-7 border-l-2 border-linen/30 gap-3 mt-2 mb-3">
+          <HubEventsManager hub={hub} events={events} eventsCount={eventsCount} />
+        </View>
+      )}
+
+      {/* Delete Hub Section */}
+      <View className="border-t border-linen/20 pt-3">
         {confirmingHubDelete ? (
-          <View className="gap-3 rounded-2xl border border-danger/30 bg-terracotta-50 p-4">
-            <Text variant="subheading">Delete hub?</Text>
-            <Text variant="caption" className="text-terracotta-600">
-              This permanently deletes the hub and its events.
+          <Card className="border border-danger/30 bg-terracotta-50 p-4 gap-3">
+            <Text variant="subheading" className="text-sm font-semibold">Delete hub?</Text>
+            <Text className="text-xs text-terracotta-600 leading-4">
+              This will permanently delete this hub and all of its associated events. This action is irreversible.
             </Text>
-            <View className="flex-row gap-2">
+            <View className="flex-row gap-2 mt-1">
               <Button
-                label="Delete hub"
+                label="Confirm Delete"
                 variant="danger"
                 size="sm"
                 loading={deleteHub.isPending}
@@ -227,80 +249,71 @@ function HubManageCard({
                 onPress={() => setConfirmingHubDelete(false)}
               />
             </View>
-          </View>
+          </Card>
         ) : (
-          <Button
-            label="Delete hub"
-            variant="ghost"
-            size="sm"
-            className="self-start"
+          <Pressable
             onPress={() => setConfirmingHubDelete(true)}
-          />
+            className="flex-row items-center gap-1.5 self-start active:opacity-70"
+          >
+            <Icon name="trash" size={13} color={colors.terracotta} />
+            <Text className="text-xs text-terracotta font-heading">Delete Hub</Text>
+          </Pressable>
         )}
-
-        <Divider />
-        <HubEventsManager hub={hub} />
       </View>
     </Card>
   );
 }
 
-function HubEventsManager({ hub }: { hub: MyHub }) {
+function HubEventsManager({
+  hub,
+  events,
+  eventsCount,
+}: {
+  hub: MyHub;
+  events?: MyHubEvent[];
+  eventsCount: number;
+}) {
   const router = useRouter();
-  const { data: events, isLoading, isError } = useMyHubEvents(hub.id);
-  const count = events?.length ?? 0;
 
   return (
     <View className="gap-3">
-      <View className="flex-row items-center justify-between gap-3">
-        <View className="gap-1">
-          <Text variant="overline" tone="pink">
-            Events
-          </Text>
-          <Text variant="caption" tone="muted">
-            {count ? `${count} total, including drafts` : "No events yet"}
-          </Text>
-        </View>
-        <Button
-          label="New event"
-          variant="ghost"
-          size="sm"
+      <View className="flex-row items-center justify-between pr-2">
+        <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
+          Associated Events
+        </Text>
+        <Pressable
           onPress={() => router.push(`/create/event?hubId=${hub.id}`)}
-        />
+          className="flex-row items-center gap-1 active:opacity-75"
+        >
+          <Icon name="plus" size={12} color={colors.pink} />
+          <Text className="text-xs text-pink font-heading">New Event</Text>
+        </Pressable>
       </View>
 
-      {isLoading ? (
-        <View className="rounded-2xl bg-sand p-4">
-          <Text variant="caption" tone="faint">
-            Loading events…
-          </Text>
-        </View>
-      ) : isError ? (
-        <View className="rounded-2xl bg-sand p-4">
-          <Text variant="caption" tone="muted">
-            Couldn’t load events for this hub.
-          </Text>
-        </View>
-      ) : count > 0 ? (
-        <View className="gap-2">
-          {events?.map((event) => (
-            <EventManageRow key={event.id} event={event} />
+      {eventsCount > 0 ? (
+        <View className="gap-1">
+          {events?.map((event, idx) => (
+            <EventManageRow
+              key={event.id}
+              event={event}
+              isLast={idx === eventsCount - 1}
+            />
           ))}
         </View>
       ) : (
         <Pressable
           onPress={() => router.push(`/create/event?hubId=${hub.id}`)}
-          className="flex-row items-center gap-3 rounded-2xl border border-dashed border-linen bg-sand/50 p-4 active:bg-sand"
+          className="flex-row items-center gap-3 rounded-xl border border-dashed border-linen bg-card p-3 active:bg-sand/30"
         >
-          <View className="h-9 w-9 items-center justify-center rounded-xl bg-card">
-            <Icon name="calendar" size={17} color={colors.inkMuted} />
+          <View className="h-8 w-8 items-center justify-center rounded-lg bg-sand">
+            <Icon name="calendar" size={14} color={colors.inkMuted} />
           </View>
           <View className="flex-1">
-            <Text variant="label" className="font-heading">
+            <Text className="text-xs font-heading text-ink">
               Add the first event
             </Text>
-            <Text variant="caption" tone="muted">
-              Events can be saved as drafts or published when ready.
+            <Text className="text-[10px] text-ink-faint">
+              Drafts and published listings will appear here.
             </Text>
           </View>
         </Pressable>
@@ -309,7 +322,7 @@ function HubEventsManager({ hub }: { hub: MyHub }) {
   );
 }
 
-function EventManageRow({ event }: { event: MyHubEvent }) {
+function EventManageRow({ event, isLast }: { event: MyHubEvent; isLast: boolean }) {
   const router = useRouter();
   const deleteEvent = useDeleteEvent();
   const [confirming, setConfirming] = useState(false);
@@ -321,29 +334,59 @@ function EventManageRow({ event }: { event: MyHubEvent }) {
   }
 
   return (
-    <View className="gap-3 rounded-2xl border border-linen bg-card p-4">
-      <View className="flex-row items-start gap-3">
-        <View className="h-10 w-10 items-center justify-center rounded-xl bg-sand">
-          <Icon name="calendar" size={18} color={colors.inkMuted} />
-        </View>
-        <View className="min-w-0 flex-1 gap-1">
-          <View className="flex-row flex-wrap items-center gap-2">
-            <Badge label={published ? "Published" : "Draft"} variant={published ? "success" : "neutral"} />
-            <Text variant="caption" tone="faint">
-              {when}
+    <View className="relative pl-5 py-1">
+      {/* Tree connector branch */}
+      <View
+        className={cn(
+          "absolute left-0 top-0 w-4 border-l-2 border-b-2 border-linen/35",
+          isLast ? "h-5.5" : "h-full"
+        )}
+      />
+
+      <View className="flex-row items-center justify-between gap-3 border border-linen bg-card p-3 rounded-xl">
+        <View className="flex-1 min-w-0 flex-row items-center gap-2.5">
+          <View className="h-8 w-8 items-center justify-center rounded-lg bg-sand">
+            <Icon name="calendar" size={15} color={colors.inkMuted} />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-xs font-heading text-ink truncate" numberOfLines={1}>
+              {event.title || "Untitled event"}
+            </Text>
+            <Text className="text-[10px] text-ink-faint mt-0.5" numberOfLines={1}>
+              {when} · {published ? "Published" : "Draft"}
             </Text>
           </View>
-          <Text variant="label" numberOfLines={2} className="font-heading">
-            {event.title || "Untitled event"}
-          </Text>
+        </View>
+
+        {/* Compact Actions */}
+        <View className="flex-row gap-1">
+          <Button
+            label="View"
+            variant="ghost"
+            size="sm"
+            className="px-2.5 h-8 rounded-lg"
+            onPress={() => router.push(`/event/${event.id}`)}
+          />
+          <Button
+            label="Edit"
+            variant="outline"
+            size="sm"
+            className="px-2.5 h-8 rounded-lg"
+            onPress={() => router.push(`/event/edit/${event.id}`)}
+          />
+          <Button
+            label="Delete"
+            variant="ghost"
+            size="sm"
+            className="px-2.5 h-8 rounded-lg"
+            onPress={() => setConfirming(true)}
+          />
         </View>
       </View>
 
-      {confirming ? (
-        <View className="gap-3 rounded-xl bg-terracotta-50 p-3">
-          <Text variant="caption" className="text-terracotta-600">
-            Delete this event permanently?
-          </Text>
+      {confirming && (
+        <Card className="border border-danger/30 bg-terracotta-50 p-3 mt-1.5 ml-6 gap-2">
+          <Text className="text-[11px] text-terracotta-600">Delete event permanently?</Text>
           <View className="flex-row gap-2">
             <Button
               label="Delete"
@@ -360,23 +403,18 @@ function EventManageRow({ event }: { event: MyHubEvent }) {
               onPress={() => setConfirming(false)}
             />
           </View>
-        </View>
-      ) : (
-        <View className="flex-row flex-wrap gap-2">
-          <Button label="View" variant="outline" size="sm" onPress={() => router.push(`/event/${event.id}`)} />
-          <Button label="Edit" variant="outline" size="sm" onPress={() => router.push(`/event/edit/${event.id}`)} />
-          <Button label="Delete" variant="ghost" size="sm" className="ml-auto" onPress={() => setConfirming(true)} />
-        </View>
+        </Card>
       )}
     </View>
   );
 }
 
-function HubManageSkeleton() {
+function HubManageSkeleton({ cols }: { cols: number }) {
+  const widthClass = cols === 2 ? "w-[calc(50%-8px)]" : "w-full";
   return (
-    <Card className="gap-4">
+    <Card className={cn("gap-4 p-5 border border-linen bg-card", widthClass)}>
       <View className="flex-row gap-4">
-        <View className="h-16 w-16 rounded-lg bg-sand" />
+        <View className="h-14 w-14 rounded-xl bg-sand" />
         <View className="flex-1 gap-2">
           <View className="h-5 w-2/3 rounded bg-sand" />
           <View className="h-4 w-1/2 rounded bg-sand" />

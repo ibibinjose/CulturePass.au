@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { qk } from "@/lib/query";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { getCurrentProfileId } from "@/features/auth/api";
+import { encryptBody, decryptBody } from "@/lib/utils/crypto";
 import type { HubImage, MessageRow } from "@/lib/supabase/database.types";
 
 export interface ChatProfile {
@@ -64,7 +65,10 @@ export function useConversations() {
       const latestByConversation = new Map<string, MessageRow>();
       for (const message of messages ?? []) {
         if (!latestByConversation.has(message.conversation_id)) {
-          latestByConversation.set(message.conversation_id, message);
+          latestByConversation.set(message.conversation_id, {
+            ...message,
+            body: decryptBody(message.body, message.conversation_id),
+          });
         }
       }
 
@@ -107,7 +111,11 @@ export function useMessages(conversationId: string) {
         .order("created_at", { ascending: true })
         .returns<MessageWithSender[]>();
       if (error) throw error;
-      return data ?? [];
+      const messagesList = data ?? [];
+      return messagesList.map((m) => ({
+        ...m,
+        body: decryptBody(m.body, conversationId),
+      }));
     },
   });
 }
@@ -120,9 +128,10 @@ export function useSendMessage(conversationId: string) {
       if (!me) throw new Error("Sign in to send messages.");
       const trimmed = body.trim();
       if (!trimmed) return;
+      const encrypted = encryptBody(trimmed, conversationId);
       const { error } = await supabase
         .from("messages")
-        .insert({ conversation_id: conversationId, sender_id: me, body: trimmed });
+        .insert({ conversation_id: conversationId, sender_id: me, body: encrypted });
       if (error) throw error;
     },
     onSuccess: () => {
