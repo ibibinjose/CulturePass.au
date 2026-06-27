@@ -23,16 +23,16 @@ export const PRIMARY_NAV: AppNavItem[] = [
   { key: "discover", label: "Discover", href: "/", match: "/", icon: "compass" },
   { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
   { key: "my-council", label: "My Council", href: "/my-council", match: "/my-council", icon: "map-pin" },
+  { key: "communities", label: "Communities", href: "/communities", match: "/communities", icon: "users" },
   { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
-  { key: "my-hubs", label: "My Hubs", href: "/my-hubs", match: "/my-hubs", icon: "grid", authOnly: true },
 ];
 
 export const MOBILE_TABS: (AppNavItem & { center?: boolean })[] = [
   { key: "discover", label: "Discover", href: "/", match: "/", icon: "compass" },
   { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
   { key: "create", label: "Create", href: "/create", match: "/create", icon: "plus", center: true },
+  { key: "communities", label: "Communities", href: "/communities", match: "/communities", icon: "users" },
   { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
-  { key: "my-hubs", label: "My Hubs", href: "/my-hubs", match: "/my-hubs", icon: "grid", authOnly: true },
 ];
 
 export const FOOTER_GROUPS: AppFooterGroup[] = [

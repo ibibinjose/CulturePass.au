@@ -246,3 +246,110 @@ export function useToggleEventSubscription() {
     },
   });
 }
+
+export function useEventLikes(eventId: string) {
+  return useQuery({
+    queryKey: qk.eventLikes(eventId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+
+      // Fetch total count.
+      const { count, error: countError } = await supabase
+        .from("event_likes")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId);
+
+      if (countError) throw countError;
+
+      let liked = false;
+      if (profileId) {
+        const { data, error: likeError } = await supabase
+          .from("event_likes")
+          .select("id")
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId)
+          .maybeSingle();
+        if (likeError) throw likeError;
+        liked = !!data;
+      }
+
+      return { count: count ?? 0, liked };
+    },
+    enabled: !!eventId,
+  });
+}
+
+export function useToggleEventLike() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, liked }: { eventId: string; liked: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to like an event");
+
+      if (liked) {
+        const { error } = await supabase
+          .from("event_likes")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("event_likes")
+          .insert({ event_id: eventId, profile_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      qc.invalidateQueries({ queryKey: qk.eventLikes(eventId) });
+    },
+  });
+}
+
+export function useEventSaveStatus(eventId: string) {
+  return useQuery({
+    queryKey: qk.eventSaves(eventId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+      if (!profileId) return { saved: false };
+
+      const { data, error } = await supabase
+        .from("event_saves")
+        .select("id")
+        .eq("event_id", eventId)
+        .eq("profile_id", profileId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return { saved: !!data };
+    },
+    enabled: !!eventId,
+  });
+}
+
+export function useToggleEventSave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, saved }: { eventId: string; saved: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to save an event");
+
+      if (saved) {
+        const { error } = await supabase
+          .from("event_saves")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("event_saves")
+          .insert({ event_id: eventId, profile_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      qc.invalidateQueries({ queryKey: qk.eventSaves(eventId) });
+    },
+  });
+}

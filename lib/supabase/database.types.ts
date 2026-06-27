@@ -63,6 +63,7 @@ export interface Database {
           is_metro: boolean;
           coordinates: string | null;
           metadata: Json;
+          logo_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -79,6 +80,7 @@ export interface Database {
           is_metro?: boolean;
           coordinates?: string | null;
           metadata?: Json;
+          logo_url?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["australian_councils"]["Insert"]>;
@@ -489,6 +491,36 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["messages"]["Insert"]>;
       };
+      event_likes: {
+        Row: {
+          id: string;
+          event_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_likes"]["Insert"]>;
+      };
+      event_saves: {
+        Row: {
+          id: string;
+          event_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_saves"]["Insert"]>;
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -552,3 +584,5 @@ export type HubFollowRow = Database["public"]["Tables"]["hub_follows"]["Row"];
 export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 export type ConversationRow = Database["public"]["Tables"]["conversations"]["Row"];
 export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+export type EventLikeRow = Database["public"]["Tables"]["event_likes"]["Row"];
+export type EventSaveRow = Database["public"]["Tables"]["event_saves"]["Row"];

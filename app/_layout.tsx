@@ -89,6 +89,10 @@ export default function RootLayout() {
                     options={{ animation: "slide_from_right" }}
                   />
                   <Stack.Screen
+                    name="communities/index"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
                     name="admin/index"
                     options={{ animation: "slide_from_right" }}
                   />

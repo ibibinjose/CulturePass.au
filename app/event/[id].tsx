@@ -19,6 +19,10 @@ import {
   useEvent,
   useEventSubscriptionStatus,
   useToggleEventSubscription,
+  useEventLikes,
+  useToggleEventLike,
+  useEventSaveStatus,
+  useToggleEventSave,
 } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
 import { useBuyTicket } from "@/features/tickets/api";
@@ -53,6 +57,12 @@ export default function EventScreen() {
   const { data: subStatus } = useEventSubscriptionStatus(event?.id || "");
   const toggleSub = useToggleEventSubscription();
 
+  const { data: likeData } = useEventLikes(event?.id || "");
+  const toggleLike = useToggleEventLike();
+
+  const { data: saveData } = useEventSaveStatus(event?.id || "");
+  const toggleSave = useToggleEventSave();
+
   const handleSubscribe = () => {
     if (!profile) {
       router.push("/sign-in");
@@ -60,6 +70,26 @@ export default function EventScreen() {
     }
     if (event) {
       toggleSub.mutate({ eventId: event.id, subscribed: !!subStatus?.subscribed });
+    }
+  };
+
+  const handleLike = () => {
+    if (!profile) {
+      router.push("/sign-in");
+      return;
+    }
+    if (event) {
+      toggleLike.mutate({ eventId: event.id, liked: !!likeData?.liked });
+    }
+  };
+
+  const handleSave = () => {
+    if (!profile) {
+      router.push("/sign-in");
+      return;
+    }
+    if (event) {
+      toggleSave.mutate({ eventId: event.id, saved: !!saveData?.saved });
     }
   };
 
@@ -309,6 +339,26 @@ export default function EventScreen() {
                 {(buyTicket.error as Error)?.message ?? "Couldn’t start checkout."}
               </Text>
             ) : null}
+
+            {/* Like and Save Actions */}
+            <View className="flex-row items-center gap-3 mt-2">
+              <Button
+                label={likeData?.liked ? `Liked (${likeData.count})` : `Like (${likeData?.count ?? 0})`}
+                variant={likeData?.liked ? "primary" : "outline"}
+                className="flex-1"
+                leftIcon={<Icon name="heart" size={15} color={likeData?.liked ? "#FFFFFF" : colors.inkMuted} filled={likeData?.liked} />}
+                onPress={handleLike}
+                loading={toggleLike.isPending}
+              />
+              <Button
+                label={saveData?.saved ? "Saved" : "Save"}
+                variant={saveData?.saved ? "primary" : "outline"}
+                className="flex-1"
+                leftIcon={<Icon name="star" size={15} color={saveData?.saved ? "#FFFFFF" : colors.inkMuted} filled={saveData?.saved} />}
+                onPress={handleSave}
+                loading={toggleSave.isPending}
+              />
+            </View>
 
             {/* Share action */}
             <View className="flex-row items-center gap-3 mt-2">

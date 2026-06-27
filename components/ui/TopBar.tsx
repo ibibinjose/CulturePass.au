@@ -223,7 +223,10 @@ export function TopBar() {
           <View className="h-px bg-linen" />
           <MenuRow label="Create" icon="plus" onPress={() => go("/create")} />
           {profile ? (
-            <MenuRow label="Profile" icon="user" onPress={() => go(`/profile/${profile.id}`)} />
+            <>
+              <MenuRow label="Profile" icon="user" onPress={() => go(`/profile/${profile.id}`)} />
+              <MenuRow label="My Hubs" icon="grid" onPress={() => go("/my-hubs")} />
+            </>
           ) : null}
           <MenuRow label="My tickets" icon="ticket" onPress={() => go("/tickets")} />
           {profile?.is_admin ? (
