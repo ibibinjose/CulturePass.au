@@ -61,6 +61,7 @@ function lowerSet(values: (string | null | undefined)[]): Set<string> {
 
 export default function DiscoverScreen() {
   const router = useRouter();
+  const [viewMode, setViewMode] = useState<"box" | "list">("box");
   const { width } = useWindowDimensions();
   const { data: profile } = useMyProfile();
 
@@ -416,16 +417,60 @@ export default function DiscoverScreen() {
       {/* Coming up */}
       {comingUp.length > 0 ? (
         <View className="mt-section gap-5">
-          <SectionHeader
-            eyebrow={hasForYou ? "More to explore" : "On the calendar"}
-            title="Coming up"
-            onSeeAll={() => router.push("/calendar")}
-            showSeeAll
-          />
-          <View className="gap-4 md:flex-row md:flex-wrap">
+          <View className="flex-row items-center justify-between gap-4">
+            <View className="flex-1">
+              <Text variant="overline" tone="pink">
+                {hasForYou ? "More to explore" : "On the calendar"}
+              </Text>
+              <Text variant="title">Coming up</Text>
+            </View>
+            <View className="flex-row items-center gap-4">
+              {/* View Layout Toggle */}
+              <View className="flex-row items-center gap-1 bg-sand/50 p-0.5 rounded-xl border border-linen/40">
+                <Pressable
+                  onPress={() => setViewMode("box")}
+                  className={cn(
+                    "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
+                    viewMode === "box" ? "bg-card shadow-subtle border border-linen/20" : ""
+                  )}
+                >
+                  <Icon name="grid" size={13} color={viewMode === "box" ? colors.ink : colors.inkMuted} />
+                  <Text variant="caption" className={cn("text-xs font-heading", viewMode === "box" ? "text-ink" : "text-ink-muted")}>
+                    Box
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setViewMode("list")}
+                  className={cn(
+                    "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
+                    viewMode === "list" ? "bg-card shadow-subtle border border-linen/20" : ""
+                  )}
+                >
+                  <Icon name="menu" size={13} color={viewMode === "list" ? colors.ink : colors.inkMuted} />
+                  <Text variant="caption" className={cn("text-xs font-heading", viewMode === "list" ? "text-ink" : "text-ink-muted")}>
+                    List
+                  </Text>
+                </Pressable>
+              </View>
+              <Button
+                label="See all"
+                variant="ghost"
+                size="sm"
+                onPress={() => router.push("/calendar")}
+              />
+            </View>
+          </View>
+          <View className={cn("gap-4", viewMode === "box" ? "md:flex-row md:flex-wrap" : "flex-column")}>
             {comingUp.map((event) => (
-              <View key={event.id} className="md:w-[calc(50%-8px)]">
-                <EventCard event={event} />
+              <View
+                key={event.id}
+                className={cn(
+                  viewMode === "box"
+                    ? "w-full md:w-[calc(50%-8px)]"
+                    : "w-full"
+                )}
+              >
+                <EventCard event={event} variant={viewMode} />
               </View>
             ))}
           </View>

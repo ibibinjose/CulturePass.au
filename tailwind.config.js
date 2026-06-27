@@ -49,7 +49,7 @@ module.exports = {
         ink: {
           DEFAULT: "#1A1510",
           muted: "#6B6258", // secondary text (~5.6:1 on white)
-          faint: "#857A6B", // tertiary / placeholders (darkened for legibility)
+          faint: "#706455", // tertiary / placeholders (darkened for legibility)
         },
 
         // — Night — rich warm-dark surfaces for editorial contrast sections
@@ -137,8 +137,8 @@ module.exports = {
         },
 
         // — Functional
-        success: "#4F7A52",
-        warning: "#C8902E",
+        success: "#3B623E",
+        warning: "#955B00",
         danger: "#B23A2E",
 
         // WhatsApp brand green — reserved for "create / get started" actions.

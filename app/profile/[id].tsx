@@ -1,4 +1,5 @@
-import { Linking, View } from "react-native";
+import { Linking, Pressable, View } from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import {
@@ -58,6 +59,8 @@ export default function PublicProfileScreen() {
   const linkEntries = resolveLinks(links);
   const showLocation = prefs.privacy.show_location && profile.location;
   const showInterests = prefs.privacy.show_interests && profile.interests.length > 0;
+  const hubs = profile.hubs ?? [];
+  const primaryHub = hubs[0];
 
   return (
     <Screen maxWidth="form" contentClassName="pt-6">
@@ -65,11 +68,40 @@ export default function PublicProfileScreen() {
 
       {/* Identity card */}
       <View className="items-center gap-4 rounded-3xl border border-linen bg-card p-7">
-        <Avatar name={profile.full_name} uri={profile.avatar_url} size={100} ring />
+        <Pressable
+          onPress={() => {
+            if (isMe) {
+              router.push("/profile/edit");
+            } else if (profile.avatar_url) {
+              Linking.openURL(profile.avatar_url).catch(() => {});
+            }
+          }}
+          className="active:opacity-90"
+          accessibilityRole="button"
+          accessibilityLabel={isMe ? "Edit profile picture" : "View profile picture"}
+        >
+          <Avatar name={profile.full_name} uri={profile.avatar_url} size={100} ring />
+        </Pressable>
         <View className="items-center gap-2">
-          <Text variant="title" className="text-center">
-            {profile.full_name || "Member"}
-          </Text>
+          <View className="flex-row items-center justify-center gap-2">
+            <Text variant="title" className="text-center">
+              {profile.full_name || "Member"}
+            </Text>
+            {primaryHub ? (
+              <Pressable
+                onPress={() => router.push(`/hub/${primaryHub.slug}`)}
+                className="h-6 w-6 overflow-hidden rounded bg-sand border border-linen/30 active:opacity-80 justify-center items-center"
+                accessibilityRole="link"
+                accessibilityLabel={`View affiliated hub ${primaryHub.name}`}
+              >
+                <Image
+                  source={{ uri: primaryHub.images?.find((img: any) => img?.type === "logo")?.url }}
+                  style={{ width: "100%", height: "100%" }}
+                  contentFit="cover"
+                />
+              </Pressable>
+            ) : null}
+          </View>
           {profile.is_public_professional && profile.professional_title ? (
             <Text variant="body" tone="muted" className="text-center">
               {profile.professional_title}

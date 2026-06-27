@@ -20,15 +20,14 @@ export type AppFooterGroup = {
 };
 
 export const PRIMARY_NAV: AppNavItem[] = [
-  { key: "home", label: "Home", href: "/", match: "/", icon: "home" },
-  { key: "explore", label: "Explore", href: "/explore", match: "/explore", icon: "compass" },
+  { key: "discover", label: "Discover", href: "/", match: "/", icon: "compass" },
   { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
   { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
   { key: "my-hubs", label: "My Hubs", href: "/my-hubs", match: "/my-hubs", icon: "grid", authOnly: true },
 ];
 
 export const MOBILE_TABS: (AppNavItem & { center?: boolean })[] = [
-  { key: "home", label: "Home", href: "/", match: "/", icon: "home" },
+  { key: "discover", label: "Discover", href: "/", match: "/", icon: "compass" },
   { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
   { key: "create", label: "Create", href: "/create", match: "/create", icon: "plus", center: true },
   { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
@@ -39,8 +38,7 @@ export const FOOTER_GROUPS: AppFooterGroup[] = [
   {
     title: "Discover",
     links: [
-      { label: "Home", href: "/" },
-      { label: "Explore", href: "/explore" },
+      { label: "Discover", href: "/" },
       { label: "Calendar", href: "/calendar" },
     ],
   },

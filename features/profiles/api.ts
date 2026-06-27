@@ -6,23 +6,43 @@ import type { Database } from "@/lib/supabase/database.types";
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
 
+export interface ProfileWithHubs extends Profile {
+  hubs?: {
+    id: string;
+    name: string;
+    slug: string;
+    images: any;
+  }[];
+}
+
 /** The signed-in user's own profile (null when signed out). */
 export function useMyProfile() {
   return useQuery({
     queryKey: qk.myProfile,
-    queryFn: async (): Promise<Profile | null> => {
+    queryFn: async (): Promise<ProfileWithHubs | null> => {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return null;
 
-      const { data, error } = await supabase
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      if (!profile) return null;
+
+      const { data: hubs } = await supabase
+        .from("hubs")
+        .select("id, name, slug, images")
+        .eq("owner_id", profile.id)
+        .eq("status", "active");
+
+      return {
+        ...profile,
+        hubs: hubs ?? [],
+      };
     },
     staleTime: 30_000,
   });
@@ -33,14 +53,25 @@ export function useProfile(id: string | undefined) {
   return useQuery({
     queryKey: qk.profile(id ?? "none"),
     enabled: !!id,
-    queryFn: async (): Promise<Profile | null> => {
-      const { data, error } = await supabase
+    queryFn: async (): Promise<ProfileWithHubs | null> => {
+      const { data: profile, error } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", id!)
         .maybeSingle();
       if (error) throw error;
-      return data;
+      if (!profile) return null;
+
+      const { data: hubs } = await supabase
+        .from("hubs")
+        .select("id, name, slug, images")
+        .eq("owner_id", profile.id)
+        .eq("status", "active");
+
+      return {
+        ...profile,
+        hubs: hubs ?? [],
+      };
     },
   });
 }

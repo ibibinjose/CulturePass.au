@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { qk } from "@/lib/query";
+import { getCurrentProfileId } from "@/features/auth/api";
 import type { Database } from "@/lib/supabase/database.types";
 
 export interface EventFilters {
@@ -13,6 +14,7 @@ export interface EventFilters {
   from?: string;
   /** Inclusive upper bound on start_time (ISO). */
   to?: string;
+  tag?: string;
 }
 
 export function useEvents(filters: EventFilters = {}) {
@@ -23,7 +25,7 @@ export function useEvents(filters: EventFilters = {}) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images)
         `)
         .eq("status", "published")
         .order("start_time", { ascending: true });
@@ -35,6 +37,7 @@ export function useEvents(filters: EventFilters = {}) {
       if (filters.search) query = query.ilike("title", `%${filters.search}%`);
       if (filters.from) query = query.gte("start_time", filters.from);
       if (filters.to) query = query.lte("start_time", filters.to);
+      if (filters.tag) query = query.contains("tags", [filters.tag]);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -74,7 +77,7 @@ export function useHubEvents(hubId: string) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images)
         `)
         .eq("hub_id", hubId)
         .eq("status", "published")
@@ -94,7 +97,7 @@ export function useMyHubEvents(hubId: string) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id, images)
         `)
         .eq("hub_id", hubId)
         .order("start_time", { ascending: true, nullsFirst: false })
@@ -114,7 +117,7 @@ export function useEvent(id: string) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id, images)
         `)
         .eq("id", id)
         .maybeSingle();
@@ -186,6 +189,58 @@ export function useDeleteEvent() {
       }
       // Prefix-match invalidates every ["events", …] filtered list.
       qc.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useEventSubscriptionStatus(eventId: string) {
+  return useQuery({
+    queryKey: qk.eventRsvps(eventId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+      if (!profileId) return { subscribed: false, status: null };
+
+      const { data, error } = await supabase
+        .from("event_rsvps")
+        .select("status")
+        .eq("event_id", eventId)
+        .eq("profile_id", profileId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return {
+        subscribed: !!data,
+        status: data?.status ?? null,
+      };
+    },
+    enabled: !!eventId,
+  });
+}
+
+export function useToggleEventSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, subscribed }: { eventId: string; subscribed: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to subscribe to an event");
+
+      if (subscribed) {
+        const { error } = await supabase
+          .from("event_rsvps")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("event_rsvps")
+          .insert({ event_id: eventId, profile_id: profileId, status: "going" });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      qc.invalidateQueries({ queryKey: qk.eventRsvps(eventId) });
+      qc.invalidateQueries({ queryKey: qk.event(eventId) });
     },
   });
 }

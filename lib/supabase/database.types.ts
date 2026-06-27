@@ -325,6 +325,64 @@ export interface Database {
           },
         ];
       };
+      hub_likes: {
+        Row: {
+          id: string;
+          hub_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          hub_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hub_likes"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "hub_likes_hub_id_fkey";
+            columns: ["hub_id"];
+            referencedRelation: "hubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "hub_likes_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      hub_follows: {
+        Row: {
+          id: string;
+          hub_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          hub_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hub_follows"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "hub_follows_hub_id_fkey";
+            columns: ["hub_id"];
+            referencedRelation: "hubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "hub_follows_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       ticket_orders: {
         Row: {
           id: string;
@@ -487,6 +545,8 @@ export type CouncilRow = Database["public"]["Tables"]["australian_councils"]["Ro
 export type StateRow = Database["public"]["Tables"]["australian_states"]["Row"];
 export type HubMemberRow = Database["public"]["Tables"]["hub_members"]["Row"];
 export type EventRsvpRow = Database["public"]["Tables"]["event_rsvps"]["Row"];
+export type HubLikeRow = Database["public"]["Tables"]["hub_likes"]["Row"];
+export type HubFollowRow = Database["public"]["Tables"]["hub_follows"]["Row"];
 export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
 export type ConversationRow = Database["public"]["Tables"]["conversations"]["Row"];
 export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];

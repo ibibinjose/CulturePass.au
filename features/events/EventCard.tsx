@@ -32,6 +32,7 @@ export interface EventCardData {
     slug: string;
     indigenous_led: boolean;
     traditional_custodians: string[];
+    images: HubImage[];
   } | null;
 }
 
@@ -46,7 +47,12 @@ const timeFormatter = new Intl.DateTimeFormat("en-AU", {
   hour12: true,
 });
 
-export function EventCard({ event }: { event: EventCardData }) {
+export interface EventCardProps {
+  event: EventCardData;
+  variant?: "box" | "list";
+}
+
+export function EventCard({ event, variant = "box" }: EventCardProps) {
   const router = useRouter();
   const saved = useSavedEvents((s) => s.ids.includes(event.id));
   const toggleSaved = useSavedEvents((s) => s.toggle);
@@ -57,6 +63,108 @@ export function EventCard({ event }: { event: EventCardData }) {
   const start = event.start_time ? new Date(event.start_time) : null;
   const priceLabel = event.is_free ? "Free" : event.price ? `$${event.price}` : null;
   const going = event.rsvp_count ?? 0;
+
+  if (variant === "list") {
+    return (
+      <Card onPress={() => router.push(`/event/${event.id}`)} padded={false} className="overflow-hidden p-3 flex-row gap-4">
+        {/* Left Side: Cover Image */}
+        <View className="relative h-24 w-24 rounded-2xl overflow-hidden bg-sand">
+          {coverUrl ? (
+            <Image
+              source={{ uri: coverUrl }}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              transition={150}
+            />
+          ) : (
+            <View className="flex-1 items-center justify-center bg-eucalyptus-50">
+              <Text className="font-display text-3xl text-eucalyptus-100">
+                {event.title.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          {priceLabel ? (
+            <View className="absolute bottom-1 right-1 rounded bg-ink/80 px-1.5 py-0.5">
+              <Text className="font-heading text-[10px] text-paper">{priceLabel}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Right Side: Info Stack */}
+        <View className="flex-1 justify-between py-0.5">
+          <View className="gap-1">
+            <View className="flex-row items-center justify-between gap-2">
+              <View className="flex-row items-center gap-1.5">
+                <Badge label={EVENT_TYPE_LABELS[event.type]} variant="neutral" className="px-2 py-0.5" />
+                {event.hub?.indigenous_led ? <IndigenousLedBadge /> : null}
+              </View>
+              <Pressable
+                onPress={() => toggleSaved(event.id)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={saved ? "Remove from saved" : "Save event"}
+                accessibilityState={{ selected: saved }}
+                className="h-7 w-7 items-center justify-center rounded-pill bg-sand active:bg-linen"
+              >
+                <Icon name="heart" size={13} color={saved ? colors.terracotta : colors.inkMuted} filled={saved} />
+              </Pressable>
+            </View>
+
+            <Text variant="label" className="text-base font-heading text-ink" numberOfLines={1}>
+              {event.title}
+            </Text>
+
+            {start ? (
+              <View className="flex-row items-center gap-1.5 mt-0.5">
+                <Icon name="calendar" size={12} color={colors.inkFaint} />
+                <Text variant="caption" tone="faint" numberOfLines={1} className="text-xs">
+                  {dateFormatter.format(start)} · {timeFormatter.format(start)}
+                </Text>
+              </View>
+            ) : null}
+
+            {place ? (
+              <View className="flex-row items-center gap-1.5">
+                <Icon name="map-pin" size={12} color={colors.inkFaint} />
+                <Text variant="caption" tone="faint" numberOfLines={1} className="text-xs">
+                  {place}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View className="flex-row items-center justify-between gap-2 border-t border-linen/30 pt-1.5 mt-1">
+            {event.hub ? (
+              <View className="flex-row items-center gap-1.5 flex-1">
+                {event.hub.images && event.hub.images.length > 0 ? (
+                  <View className="h-[16px] w-[16px] overflow-hidden rounded bg-sand border border-linen/20">
+                    <Image
+                      source={{ uri: event.hub.images.find((img: any) => img?.type === "logo")?.url }}
+                      style={{ width: "100%", height: "100%" }}
+                      contentFit="cover"
+                    />
+                  </View>
+                ) : null}
+                <Text variant="caption" tone="muted" numberOfLines={1} className="text-[11px] flex-1">
+                  By {event.hub.name}
+                </Text>
+              </View>
+            ) : (
+              <View className="flex-1" />
+            )}
+            {going > 0 ? (
+              <View className="flex-row items-center gap-1.5">
+                <Icon name="users" size={12} color={colors.inkMuted} />
+                <Text variant="caption" tone="muted" className="text-[11px]">
+                  {going} going
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </Card>
+    );
+  }
 
   return (
     <Card onPress={() => router.push(`/event/${event.id}`)} padded={false} className="overflow-hidden">
@@ -137,9 +245,20 @@ export function EventCard({ event }: { event: EventCardData }) {
         {/* Host + community interest */}
         <View className="mt-0.5 flex-row items-center justify-between gap-2">
           {event.hub ? (
-            <Text variant="caption" tone="muted" numberOfLines={1} className="flex-1">
-              By {event.hub.name}
-            </Text>
+            <View className="flex-row items-center gap-1.5 flex-1">
+              {event.hub.images && event.hub.images.length > 0 ? (
+                <View className="h-[18px] w-[18px] overflow-hidden rounded bg-sand border border-linen/20">
+                  <Image
+                    source={{ uri: event.hub.images.find((img: any) => img?.type === "logo")?.url }}
+                    style={{ width: "100%", height: "100%" }}
+                    contentFit="cover"
+                  />
+                </View>
+              ) : null}
+              <Text variant="caption" tone="muted" numberOfLines={1} className="flex-1">
+                By {event.hub.name}
+              </Text>
+            </View>
           ) : (
             <View className="flex-1" />
           )}

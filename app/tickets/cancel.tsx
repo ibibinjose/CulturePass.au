@@ -19,7 +19,7 @@ export default function TicketCancelScreen() {
           No payment was taken. You can try again whenever you’re ready.
         </Text>
         <View className="mt-2 w-full gap-3">
-          <Button label="Browse events" onPress={() => router.replace("/explore")} />
+          <Button label="Browse events" onPress={() => router.replace("/")} />
           <Button label="My tickets" variant="outline" onPress={() => router.replace("/tickets")} />
         </View>
       </Card>

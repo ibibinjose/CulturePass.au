@@ -2,24 +2,29 @@ import { Linking, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Button } from "@/components/ui/Button";
-import { BackButton } from "@/components/ui/BackButton";
-import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
-import { Divider } from "@/components/ui/Divider";
-import { ShareButton } from "@/components/ui/ShareButton";
-import { Icon, type IconName } from "@/components/ui/Icon";
+import {
+  Screen,
+  Text,
+  Button,
+  BackButton,
+  Badge,
+  Card,
+  Divider,
+  ShareButton,
+  Icon,
+  Avatar,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
-import { useEvent } from "@/features/events/api";
+import {
+  useEvent,
+  useEventSubscriptionStatus,
+  useToggleEventSubscription,
+} from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
 import { useBuyTicket } from "@/features/tickets/api";
 import {
   EVENT_TYPE_LABELS,
-  HUB_TYPE_LABELS,
   type EventType,
-  type HubType,
 } from "@/lib/constants";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-AU", {
@@ -38,12 +43,6 @@ const timeFormatter = new Intl.DateTimeFormat("en-AU", {
   hour12: true,
 });
 
-const shortDateFormatter = new Intl.DateTimeFormat("en-AU", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-});
-
 export default function EventScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -51,12 +50,25 @@ export default function EventScreen() {
   const { data: profile } = useMyProfile();
   const buyTicket = useBuyTicket();
 
+  const { data: subStatus } = useEventSubscriptionStatus(event?.id || "");
+  const toggleSub = useToggleEventSubscription();
+
+  const handleSubscribe = () => {
+    if (!profile) {
+      router.push("/sign-in");
+      return;
+    }
+    if (event) {
+      toggleSub.mutate({ eventId: event.id, subscribed: !!subStatus?.subscribed });
+    }
+  };
+
   if (isLoading) return <EventSkeleton />;
 
   if (isError || !event) {
     return (
       <Screen maxWidth="prose" contentClassName="pt-6">
-        <BackButton fallbackHref="/explore" />
+        <BackButton fallbackHref="/" />
         <Card className="mt-8 items-start gap-3">
           <Text variant="title">Event not found</Text>
           <Text variant="body" tone="muted">
@@ -66,7 +78,7 @@ export default function EventScreen() {
             label="Browse events"
             variant="secondary"
             className="mt-3"
-            onPress={() => router.replace("/explore")}
+            onPress={() => router.replace("/")}
           />
         </Card>
       </Screen>
@@ -78,7 +90,6 @@ export default function EventScreen() {
   const start = event.start_time ? new Date(event.start_time) : null;
   const end = event.end_time ? new Date(event.end_time) : null;
   const when = start ? dateTimeFormatter.format(start) : "Date to be announced";
-  const shortWhen = start ? shortDateFormatter.format(start) : "TBA";
   const timeRange = start
     ? `${timeFormatter.format(start)}${end ? ` - ${timeFormatter.format(end)}` : ""}`
     : "Time to be announced";
@@ -110,175 +121,212 @@ export default function EventScreen() {
     Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`).catch(() => {});
   };
 
+  const hostImages = (event.hub as any)?.images ?? [];
+  const hostLogoUrl = hostImages.find((img: any) => img?.type === "logo")?.url ?? null;
+
   return (
-    <Screen contentClassName="pt-0">
-      <View
-        className="relative overflow-hidden rounded-b-3xl bg-sand"
-        style={{ aspectRatio: 2.55, marginLeft: -20, marginRight: -20 }}
-      >
-        {coverUrl ? (
-          <Image
-            source={{ uri: coverUrl }}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-            transition={200}
-          />
-        ) : (
-          <View className="flex-1 justify-end bg-eucalyptus-50 p-8">
-            <Text className="font-display text-7xl text-eucalyptus-100">
-              {event.title.charAt(0).toUpperCase()}
-            </Text>
+    <Screen contentClassName="pt-6 px-gutter">
+      <BackButton fallbackHref="/" className="mb-4" />
+
+      <View className="gap-8 lg:flex-row lg:items-start lg:gap-10">
+        {/* Left Column: Media + Info */}
+        <View className="flex-1 gap-6">
+          {/* Cover Image */}
+          <View className="overflow-hidden rounded-3xl bg-sand shadow-subtle aspect-[2/1] w-full">
+            {coverUrl ? (
+              <Image
+                source={{ uri: coverUrl }}
+                style={{ width: "100%", height: "100%" }}
+                contentFit="cover"
+                transition={200}
+              />
+            ) : (
+              <View className="flex-1 items-center justify-center bg-eucalyptus-50 p-8">
+                <Text className="font-display text-8xl text-eucalyptus-100/50">
+                  {event.title.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
           </View>
-        )}
 
-        <View className="absolute left-3 top-3">
-          <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/explore"))}
-            accessibilityLabel="Go back"
-            hitSlop={6}
-            className="h-10 w-10 items-center justify-center rounded-pill bg-ink/50 active:bg-ink/70"
-          >
-            <Icon name="arrow-left" size={20} color={colors.paper} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View className="-mt-10 gap-6 lg:flex-row lg:items-start lg:gap-8">
-        <View className="flex-1 gap-8">
-          <Card elevated className="gap-5">
+          {/* Event Title */}
+          <View className="gap-3">
             <View className="flex-row flex-wrap items-center gap-2">
               <Badge label={EVENT_TYPE_LABELS[event.type as EventType]} variant="ochre" />
-              <Badge label={price} variant={event.is_free ? "success" : "ink"} />
               <Badge label={statusLabel} variant={statusTone} dot />
             </View>
+            <Text variant="display" className="text-3xl md:text-4xl font-display text-ink leading-tight">
+              {event.title}
+            </Text>
+          </View>
 
-            <View className="gap-3">
-              <Text variant="display">{event.title}</Text>
-              {event.description ? (
-                <Text variant="bodyLarge" tone="muted" className="max-w-[760px] leading-7">
-                  {event.description}
+          {/* Host Info */}
+          {event.hub ? (
+            <Pressable
+              onPress={() => event.hub && router.push(`/hub/${event.hub.slug}`)}
+              className="flex-row items-center gap-3 rounded-2xl border border-linen bg-card p-4 active:bg-sand/40"
+            >
+              <Avatar name={event.hub.name} uri={hostLogoUrl} size={44} />
+              <View className="flex-1">
+                <Text variant="caption" tone="faint">Hosted by</Text>
+                <Text variant="label" className="font-heading text-base text-ink">
+                  {event.hub.name}
                 </Text>
-              ) : null}
+              </View>
+              <Icon name="chevron-right" size={16} color={colors.inkMuted} />
+            </Pressable>
+          ) : null}
+
+          {/* Description */}
+          {event.description ? (
+            <View className="gap-3">
+              <Text variant="heading" className="text-xl font-heading text-ink">About this event</Text>
+              <Text variant="bodyLarge" tone="muted" className="leading-7">
+                {event.description}
+              </Text>
+            </View>
+          ) : null}
+
+          {/* Tags & Cultural Focus */}
+          {event.cultural_focus && event.cultural_focus.length > 0 ? (
+            <TagSection title="Cultural focus" items={event.cultural_focus} tone="eucalyptus" />
+          ) : null}
+
+          {event.tags && event.tags.length > 0 ? (
+            <TagSection title="Tags" items={event.tags} />
+          ) : null}
+        </View>
+
+        {/* Right Column: Luma Ticket / Logistics Card */}
+        <View className="gap-6 lg:w-[360px] w-full">
+          <Card className="gap-6 border border-linen bg-card rounded-3xl shadow-card p-6">
+            {/* Price Badge */}
+            <View className="flex-row items-center justify-between">
+              <Text variant="overline" tone="faint">Registration</Text>
+              <Badge label={price} variant={event.is_free ? "success" : "ink"} className="px-3 py-1 text-sm font-heading" />
             </View>
 
-            <View className="gap-3 md:flex-row">
+            {/* Date / Time */}
+            <View className="flex-row items-start gap-4">
+              <View className="h-11 w-11 items-center justify-center rounded-2xl bg-sand/60">
+                <Icon name="calendar" size={20} color={colors.ink} />
+              </View>
+              <View className="flex-1">
+                <Text variant="caption" tone="faint">Date & Time</Text>
+                <Text variant="label" className="text-base font-heading text-ink mt-0.5">
+                  {when}
+                </Text>
+                <Text variant="caption" tone="muted" className="mt-0.5">
+                  {timeRange}
+                </Text>
+              </View>
+            </View>
+
+            <Divider />
+
+            {/* Location */}
+            {place ? (
+              <View className="flex-row items-start gap-4">
+                <View className="h-11 w-11 items-center justify-center rounded-2xl bg-sand/60">
+                  <Icon name="map-pin" size={20} color={colors.ink} />
+                </View>
+                <View className="flex-1">
+                  <Text variant="caption" tone="faint">Location</Text>
+                  <Text variant="label" className="text-base font-heading text-ink mt-0.5">
+                    {place}
+                  </Text>
+                  <Pressable onPress={openDirections} className="mt-1">
+                    <Text variant="caption" className="text-ochre-600 font-heading underline">
+                      Open map
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {place ? <Divider /> : null}
+
+            {/* Event capacity & RSVPs */}
+            <View className="flex-row items-start gap-4">
+              <View className="h-11 w-11 items-center justify-center rounded-2xl bg-sand/60">
+                <Icon name="users" size={20} color={colors.ink} />
+              </View>
+              <View className="flex-1">
+                <Text variant="caption" tone="faint">Guest List</Text>
+                <Text variant="label" className="text-base font-heading text-ink mt-0.5">
+                  {event.rsvp_count ?? 0} attending
+                </Text>
+                {event.capacity ? (
+                  <Text variant="caption" tone="muted" className="mt-0.5">
+                    {event.capacity - (event.rsvp_count ?? 0)} spots remaining (Capacity: {event.capacity})
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
+            <Divider />
+
+            {/* Primary Action Button */}
+            <View className="gap-3">
               {event.ticket_url ? (
                 <Button
                   label="Get tickets"
                   variant="primary"
-                  className="md:flex-1"
+                  fullWidth
                   onPress={openTicketUrl}
-                  rightIcon={<Icon name="external" size={17} color={colors.paper} />}
+                  rightIcon={<Icon name="external" size={17} color={colors.ink} />}
                 />
               ) : isPaidTicketed ? (
                 <Button
                   label={`Buy ticket · ${price}`}
                   variant="whatsapp"
-                  className="md:flex-1"
+                  fullWidth
                   loading={buyTicket.isPending}
                   onPress={handleBuy}
                   leftIcon={<Icon name="ticket" size={18} color="#FFFFFF" />}
                 />
-              ) : event.is_free ? (
-                <Button label="Free event" variant="outline" disabled className="md:flex-1" />
-              ) : (
-                <Button label="Tickets TBA" variant="outline" disabled className="md:flex-1" />
-              )}
-              {place ? (
-                <Button label="Directions" variant="outline" className="md:flex-1" onPress={openDirections} />
               ) : null}
+
+              {/* Subscribe button (highly prominent RSVP option) */}
+              <Button
+                label={subStatus?.subscribed ? "Subscribed" : "Subscribe to Event"}
+                variant={subStatus?.subscribed ? "whatsapp" : "outline"}
+                fullWidth
+                leftIcon={
+                  <Icon
+                    name={subStatus?.subscribed ? "check" : "bell"}
+                    size={16}
+                    color={subStatus?.subscribed ? colors.ink : colors.ink}
+                  />
+                }
+                onPress={handleSubscribe}
+                loading={toggleSub.isPending}
+              />
             </View>
 
             {buyTicket.isError ? (
-              <Text variant="caption" className="text-terracotta-600">
+              <Text variant="caption" className="text-terracotta-600 text-center">
                 {(buyTicket.error as Error)?.message ?? "Couldn’t start checkout."}
               </Text>
             ) : null}
 
-            <View className="flex-row flex-wrap gap-3">
-              <ShareButton path={`/event/${event.id}`} title={event.title} message={event.description ?? undefined} />
-              <Button label="Link in bio" variant="outline" size="sm" onPress={() => router.push(`/l/event/${event.id}`)} />
-              {isOwner ? (
-                <Button label="Edit" variant="secondary" size="sm" onPress={() => router.push(`/event/edit/${event.id}`)} />
-              ) : null}
+            {/* Share action */}
+            <View className="flex-row items-center gap-3 mt-2">
+              <ShareButton path={`/event/${event.id}`} title={event.title} message={event.description ?? undefined} className="flex-1" />
+              <Button label="Link in bio" variant="outline" size="sm" className="flex-1" onPress={() => router.push(`/l/event/${event.id}`)} />
             </View>
-          </Card>
 
-          <View className="gap-4">
-            <SectionHeader eyebrow="Details" title="About this event" />
-            <Card padded={false} className="px-5">
-              <InfoRow icon="calendar" label="When" title={when} subtitle={end ? `Ends ${dateTimeFormatter.format(end)}` : undefined} />
-              <Divider />
-              <InfoRow icon="clock" label="Time" title={timeRange} />
-              {place ? (
-                <>
-                  <Divider />
-                  <InfoRow icon="map-pin" label="Where" title={place} action="Open map" onPress={openDirections} />
-                </>
-              ) : null}
-              <Divider />
-              <InfoRow
-                icon="ticket"
-                label="Tickets"
-                title={price}
-                subtitle={event.ticket_url ? "External ticket link available" : "Ticket details have not been added yet"}
-                action={event.ticket_url ? "Open" : undefined}
-                onPress={event.ticket_url ? openTicketUrl : undefined}
+            {isOwner ? (
+              <Button
+                label="Edit Event Settings"
+                variant="secondary"
+                size="sm"
+                fullWidth
+                className="mt-2"
+                onPress={() => router.push(`/event/edit/${event.id}`)}
               />
-              {event.capacity ? (
-                <>
-                  <Divider />
-                  <InfoRow icon="users" label="Capacity" title={`${event.capacity} places`} subtitle={`${event.rsvp_count ?? 0} RSVPs recorded`} />
-                </>
-              ) : null}
-            </Card>
-          </View>
-
-          {event.cultural_focus && event.cultural_focus.length > 0 ? (
-            <TagSection title="Cultural focus" items={event.cultural_focus} tone="eucalyptus" />
-          ) : null}
-
-          {event.tags && event.tags.length > 0 ? <TagSection title="Tags" items={event.tags} /> : null}
-        </View>
-
-        <View className="gap-5 lg:w-[340px]">
-          <Card tone="green" className="gap-4">
-            <Text variant="overline" className="text-gold-500">
-              Event snapshot
-            </Text>
-            <SnapshotItem icon="calendar" label="Date" value={shortWhen} />
-            <SnapshotItem icon="clock" label="Time" value={timeRange} />
-            <SnapshotItem icon="ticket" label="Cost" value={price} />
-            {place ? <SnapshotItem icon="map-pin" label="Place" value={place} /> : null}
-          </Card>
-
-          {event.hub ? (
-            <Card className="gap-3" onPress={() => event.hub && router.push(`/hub/${event.hub.slug}`)}>
-              <Text variant="overline" tone="pink">
-                Hosted by
-              </Text>
-              <Text variant="subheading">{event.hub.name}</Text>
-              <Text variant="caption" tone="muted">
-                {HUB_TYPE_LABELS[event.hub.type as HubType]}
-              </Text>
-              {event.hub.indigenous_led ? <Badge label="Indigenous-led" variant="eucalyptus" dot /> : null}
-              {event.hub.traditional_custodians?.length ? (
-                <Text variant="caption" tone="eucalyptus">
-                  {event.hub.traditional_custodians.join(" • ")} Country
-                </Text>
-              ) : null}
-            </Card>
-          ) : null}
-
-          <View className="gap-3 rounded-3xl border border-linen bg-sand p-5">
-            <Text variant="subheading">Plan your visit</Text>
-            <Text variant="caption" tone="muted">
-              Tickets, access and arrival notes.
-            </Text>
-            {event.ticket_url ? (
-              <Button label="Open ticket page" variant="secondary" size="sm" onPress={openTicketUrl} />
             ) : null}
-          </View>
+          </Card>
         </View>
       </View>
     </Screen>
@@ -316,70 +364,23 @@ function SectionHeader({ eyebrow, title }: { eyebrow?: string; title: string }) 
   );
 }
 
-function InfoRow({
-  icon,
-  label,
-  title,
-  subtitle,
-  action,
-  onPress,
-}: {
-  icon: IconName;
-  label: string;
-  title: string;
-  subtitle?: string;
-  action?: string;
-  onPress?: () => void;
-}) {
-  return (
-    <View className="flex-row items-center gap-3.5 py-4">
-      <View className="h-10 w-10 items-center justify-center rounded-xl bg-sand">
-        <Icon name={icon} size={18} color={colors.inkMuted} />
-      </View>
-      <View className="flex-1 gap-0.5">
-        <Text variant="overline" tone="faint">
-          {label}
-        </Text>
-        <Text variant="label" className="text-base">
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text variant="caption" tone="muted">
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
-      {action && onPress ? (
-        <Button label={action} variant="ghost" size="sm" onPress={onPress} />
-      ) : null}
-    </View>
-  );
-}
-
 function TagSection({ title, items, tone }: { title: string; items: string[]; tone?: "eucalyptus" }) {
+  const router = useRouter();
   return (
     <View className="gap-3">
       <SectionHeader title={title} />
       <View className="flex-row flex-wrap gap-2">
         {items.map((item) => (
-          <Badge key={item} label={item} variant={tone === "eucalyptus" ? "eucalyptus" : "outline"} />
+          <Pressable
+            key={item}
+            onPress={() => router.push(`/tag/${encodeURIComponent(item)}`)}
+            className="active:opacity-80"
+            accessibilityRole="link"
+            accessibilityLabel={`View events tagged with ${item}`}
+          >
+            <Badge label={item} variant={tone === "eucalyptus" ? "eucalyptus" : "outline"} />
+          </Pressable>
         ))}
-      </View>
-    </View>
-  );
-}
-
-function SnapshotItem({ icon, label, value }: { icon: IconName; label: string; value: string }) {
-  return (
-    <View className="flex-row items-center gap-3 border-t border-white/20 pt-3">
-      <Icon name={icon} size={17} color={colors.white} />
-      <View className="flex-1">
-        <Text variant="overline" className="text-white/70">
-          {label}
-        </Text>
-        <Text variant="label" tone="white" className="mt-0.5 text-base">
-          {value}
-        </Text>
       </View>
     </View>
   );

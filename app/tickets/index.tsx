@@ -78,7 +78,7 @@ export default function MyTicketsScreen() {
             variant="secondary"
             size="sm"
             className="self-start"
-            onPress={() => router.push("/explore")}
+            onPress={() => router.push("/")}
           />
         </Card>
       )}

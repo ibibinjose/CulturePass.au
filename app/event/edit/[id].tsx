@@ -40,7 +40,7 @@ export default function EditEventScreen() {
   if (!event || !canManage) {
     return (
       <Screen maxWidth="form" contentClassName="pt-6">
-        <BackButton fallbackHref="/explore" className="mb-4" />
+        <BackButton fallbackHref="/" className="mb-4" />
         <Text variant="title">Can’t edit this event</Text>
         <Text variant="body" tone="muted" className="mt-2">
           {event ? "You can only edit events for hubs you own." : "This event no longer exists."}
@@ -118,7 +118,7 @@ export default function EditEventScreen() {
 
   return (
     <Screen maxWidth="form" contentClassName="pt-6">
-      <BackButton fallbackHref="/explore" className="mb-5" />
+      <BackButton fallbackHref="/" className="mb-5" />
 
       <Text variant="overline" tone="pink">
         Edit event

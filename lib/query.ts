@@ -33,4 +33,7 @@ export const qk = {
   conversations: ["conversations"] as const,
   conversation: (id: string) => ["conversation", id] as const,
   messages: (conversationId: string) => ["messages", conversationId] as const,
+  hubLikes: (hubId: string) => ["hub-likes", hubId] as const,
+  hubFollows: (hubId: string) => ["hub-follows", hubId] as const,
+  eventRsvps: (eventId: string) => ["event-rsvps", eventId] as const,
 };

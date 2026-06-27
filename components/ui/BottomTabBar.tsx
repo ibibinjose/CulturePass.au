@@ -8,6 +8,7 @@ import { Icon } from "./Icon";
 import { colors } from "@/lib/theme";
 import { useMobileLayout } from "@/lib/useMobileLayout";
 import { MOBILE_TABS, isActivePath } from "@/lib/navigation";
+import { cn } from "@/lib/utils/cn";
 
 /**
  * Mobile bottom tab bar. Rendered globally (alongside the TopBar) and only on a
@@ -37,7 +38,7 @@ export function BottomTabBar() {
   const isActive = (match: string) => isActivePath(pathname, match);
 
   return (
-    <View style={{ paddingBottom: insets.bottom }} className="border-t border-linen bg-paper/98">
+    <View style={{ paddingBottom: insets.bottom }} className="border-t border-pink-600 bg-pink-500">
       <View className="h-16 flex-row items-stretch">
         {MOBILE_TABS.map((tab) => {
           if (tab.center) {
@@ -49,10 +50,10 @@ export function BottomTabBar() {
                   accessibilityLabel="Create"
                   className="-mt-7 items-center gap-1"
                 >
-                  <View className="h-14 w-14 items-center justify-center rounded-pill border-4 border-paper bg-green-500 shadow-card active:bg-green-600">
-                    <Icon name="plus" size={26} color={colors.ink} strokeWidth={2.4} />
+                  <View className="h-14 w-14 items-center justify-center rounded-pill border-4 border-pink-500 bg-white shadow-card active:bg-white/90">
+                    <Icon name="plus" size={26} color={colors.pink} strokeWidth={2.4} />
                   </View>
-                  <Text variant="overline" tone="faint" className="text-[10px]">
+                  <Text variant="overline" className="text-[10px] font-heading text-white/80">
                     {tab.label}
                   </Text>
                 </Pressable>
@@ -65,12 +66,23 @@ export function BottomTabBar() {
             <Pressable
               key={tab.key}
               onPress={() => router.navigate(tab.href)}
-              accessibilityRole="button"
+              accessibilityRole="tab"
               accessibilityState={{ selected: active }}
-              className="flex-1 items-center justify-center gap-1"
+              className={cn(
+                "flex-1 items-center justify-center gap-1",
+                active ? "opacity-100" : "opacity-60"
+              )}
             >
-              <Icon name={tab.icon!} size={23} color={active ? colors.pink : colors.inkFaint} strokeWidth={active ? 2 : 1.8} />
-              <Text variant="overline" className={active ? "text-pink-600" : "text-ink-faint"}>
+              <Icon
+                name={tab.icon!}
+                size={23}
+                color={colors.white}
+                strokeWidth={active ? 2.2 : 1.8}
+              />
+              <Text
+                variant="overline"
+                className="text-[10px] font-heading text-white"
+              >
                 {tab.label}
               </Text>
             </Pressable>

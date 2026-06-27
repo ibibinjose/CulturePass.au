@@ -22,7 +22,13 @@ import { WelcomeToCountry } from "@/components/cultural/WelcomeToCountry";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { EventCard } from "@/features/events/EventCard";
 import { CreateEventButton } from "@/features/events/CreateEventButton";
-import { useHub } from "@/features/hubs/api";
+import {
+  useHub,
+  useHubLikeStatus,
+  useToggleHubLike,
+  useHubFollowStatus,
+  useToggleHubFollow,
+} from "@/features/hubs/api";
 import { useHubEvents } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
 import { useStartConversation } from "@/features/chat/api";
@@ -40,12 +46,37 @@ export default function HubScreen() {
   const startConversation = useStartConversation();
   const [tab, setTab] = useState<TabKey>("events");
 
+  const { data: likeStatus } = useHubLikeStatus(hub?.id || "");
+  const { data: followStatus } = useHubFollowStatus(hub?.id || "");
+  const toggleLike = useToggleHubLike();
+  const toggleFollow = useToggleHubFollow();
+
+  const handleLike = () => {
+    if (!profile) {
+      router.push("/sign-in");
+      return;
+    }
+    if (hub) {
+      toggleLike.mutate({ hubId: hub.id, liked: !!likeStatus?.liked });
+    }
+  };
+
+  const handleFollow = () => {
+    if (!profile) {
+      router.push("/sign-in");
+      return;
+    }
+    if (hub) {
+      toggleFollow.mutate({ hubId: hub.id, followed: !!followStatus?.followed });
+    }
+  };
+
   if (isLoading) return <HubSkeleton />;
 
   if (isError || !hub) {
     return (
       <Screen maxWidth="prose" contentClassName="pt-6">
-        <BackButton fallbackHref="/explore" />
+        <BackButton fallbackHref="/" />
         <Card className="mt-8 items-start gap-2">
           <Text variant="title">Hub not found</Text>
           <Text variant="body" tone="muted">
@@ -55,7 +86,7 @@ export default function HubScreen() {
             label="Browse hubs"
             variant="secondary"
             className="mt-4"
-            onPress={() => router.replace("/explore")}
+            onPress={() => router.replace("/")}
           />
         </Card>
       </Screen>
@@ -179,7 +210,7 @@ export default function HubScreen() {
 
         <View className="absolute left-3 top-3">
           <Pressable
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/explore"))}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             accessibilityLabel="Go back"
             hitSlop={6}
             className="h-10 w-10 items-center justify-center rounded-pill bg-ink/45 active:bg-ink/60"
@@ -192,7 +223,20 @@ export default function HubScreen() {
       {/* Avatar (overlapping) + primary action */}
       <View className="flex-row items-end justify-between">
         <View className="-mt-12">
-          <Avatar name={hub.name} uri={logoUrl} size={88} ring />
+          <Pressable
+            onPress={() => {
+              if (isOwnerOrEditor) {
+                router.push(`/hub/edit/${hub.slug}`);
+              } else if (logoUrl) {
+                Linking.openURL(logoUrl).catch(() => {});
+              }
+            }}
+            className="active:opacity-90"
+            accessibilityRole="button"
+            accessibilityLabel={isOwnerOrEditor ? "Edit hub logo" : "View hub logo"}
+          >
+            <Avatar name={hub.name} uri={logoUrl} size={88} ring />
+          </Pressable>
         </View>
         <View className="pb-1">{primaryAction}</View>
       </View>
@@ -232,6 +276,8 @@ export default function HubScreen() {
         {/* Stats */}
         <View className="mt-1 flex-row flex-wrap gap-x-7 gap-y-2">
           <Stat value={eventCount} label="Events" onPress={() => setTab("events")} />
+          <Stat value={likeStatus?.count ?? 0} label="Likes" />
+          <Stat value={followStatus?.count ?? 0} label="Followers" />
           {topics.length > 0 ? <Stat value={topics.length} label="Topics" onPress={() => setTab("about")} /> : null}
           {partners.length > 0 ? <Stat value={partners.length} label="Partners" onPress={() => setTab("about")} /> : null}
         </View>
@@ -248,8 +294,38 @@ export default function HubScreen() {
           />
         ) : null}
 
-        {/* Share & shareable surfaces */}
+        {/* Actions, Share & shareable surfaces */}
         <View className="mt-1 flex-row flex-wrap gap-3">
+          <Button
+            label={likeStatus?.liked ? "Liked" : "Like"}
+            variant={likeStatus?.liked ? "pink" : "outline"}
+            size="sm"
+            leftIcon={
+              <Icon
+                name="heart"
+                size={16}
+                color={likeStatus?.liked ? colors.white : colors.pink}
+                filled={likeStatus?.liked}
+              />
+            }
+            onPress={handleLike}
+            loading={toggleLike.isPending}
+          />
+          <Button
+            label={followStatus?.followed ? "Following" : "Follow"}
+            variant={followStatus?.followed ? "primary" : "outline"}
+            size="sm"
+            leftIcon={
+              <Icon
+                name="star"
+                size={16}
+                color={followStatus?.followed ? colors.ink : colors.ochre}
+                filled={followStatus?.followed}
+              />
+            }
+            onPress={handleFollow}
+            loading={toggleFollow.isPending}
+          />
           <ShareButton path={`/hub/${hub.slug}`} title={hub.name} message={hub.short_description ?? undefined} />
           <Button label="Link in bio" variant="outline" size="sm" onPress={() => router.push(`/l/hub/${hub.slug}`)} />
           <Button label="Business card" variant="outline" size="sm" onPress={() => router.push(`/card/hub/${hub.slug}`)} />
@@ -317,6 +393,8 @@ function EventsTab({
   hubId: string;
   ownerId: string;
 }) {
+  const [viewMode, setViewMode] = useState<"box" | "list">("box");
+
   if (loading) {
     return (
       <Text variant="caption" tone="faint">
@@ -348,17 +426,64 @@ function EventsTab({
 
   return (
     <View className="gap-4">
-      {isOwner ? (
-        <CreateEventButton
-          hubId={hubId}
-          hubOwnerId={ownerId}
-          label="+ Add event"
-          variant="outline"
-          size="sm"
-          className="self-start"
-        />
-      ) : null}
-      {events?.map((event) => <EventCard key={event.id} event={event} />)}
+      <View className="flex-row items-center justify-between border-b border-linen/30 pb-3">
+        <View className="flex-row items-center gap-3">
+          {isOwner ? (
+            <CreateEventButton
+              hubId={hubId}
+              hubOwnerId={ownerId}
+              label="+ Add event"
+              variant="outline"
+              size="sm"
+            />
+          ) : (
+            <Text variant="overline" tone="muted">Events ({count})</Text>
+          )}
+        </View>
+
+        {/* View Layout Toggle */}
+        <View className="flex-row items-center gap-1 bg-sand/50 p-0.5 rounded-xl border border-linen/40">
+          <Pressable
+            onPress={() => setViewMode("box")}
+            className={cn(
+              "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
+              viewMode === "box" ? "bg-card shadow-subtle border border-linen/20" : ""
+            )}
+          >
+            <Icon name="grid" size={13} color={viewMode === "box" ? colors.ink : colors.inkMuted} />
+            <Text variant="caption" className={cn("text-xs font-heading", viewMode === "box" ? "text-ink" : "text-ink-muted")}>
+              Box
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setViewMode("list")}
+            className={cn(
+              "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
+              viewMode === "list" ? "bg-card shadow-subtle border border-linen/20" : ""
+            )}
+          >
+            <Icon name="menu" size={13} color={viewMode === "list" ? colors.ink : colors.inkMuted} />
+            <Text variant="caption" className={cn("text-xs font-heading", viewMode === "list" ? "text-ink" : "text-ink-muted")}>
+              List
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+
+      <View className={cn("gap-4", viewMode === "box" ? "md:flex-row md:flex-wrap" : "flex-column")}>
+        {events?.map((event) => (
+          <View
+            key={event.id}
+            className={cn(
+              viewMode === "box"
+                ? "w-full md:w-[calc(50%-8px)]"
+                : "w-full"
+            )}
+          >
+            <EventCard event={event} variant={viewMode} />
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -372,6 +497,8 @@ function AboutTab({
   topics: string[];
   partners: string[];
 }) {
+  const router = useRouter();
+
   if (!fullDescription && topics.length === 0 && partners.length === 0) {
     return (
       <Text variant="caption" tone="faint">
@@ -394,11 +521,17 @@ function AboutTab({
           </Text>
           <View className="flex-row flex-wrap gap-2">
             {topics.map((topic) => (
-              <View key={topic} className="rounded-pill bg-sand px-3.5 py-2">
+              <Pressable
+                key={topic}
+                onPress={() => router.push(`/tag/${encodeURIComponent(topic)}`)}
+                className="rounded-pill bg-sand px-3.5 py-2 active:bg-linen"
+                accessibilityRole="link"
+                accessibilityLabel={`View events tagged with ${topic}`}
+              >
                 <Text variant="label" className="text-sm text-ink-muted">
                   {topic}
                 </Text>
-              </View>
+              </Pressable>
             ))}
           </View>
         </View>

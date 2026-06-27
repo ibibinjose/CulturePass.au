@@ -10,6 +10,7 @@ export interface HubFilters {
   type?: Database["public"]["Enums"]["hub_type"];
   indigenousLed?: boolean;
   search?: string;
+  tag?: string;
 }
 
 const HUB_CARD_COLUMNS =
@@ -31,6 +32,7 @@ export function useHubs(filters: HubFilters = {}) {
       if (filters.type) query = query.eq("type", filters.type);
       if (filters.indigenousLed) query = query.eq("indigenous_led", true);
       if (filters.search) query = query.ilike("name", `%${filters.search}%`);
+      if (filters.tag) query = query.contains("tags", [filters.tag]);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -169,6 +171,124 @@ export function useMyHubs() {
 
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export function useHubLikeStatus(hubId: string) {
+  return useQuery({
+    queryKey: qk.hubLikes(hubId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+
+      // Fetch total count.
+      const { count, error: countError } = await supabase
+        .from("hub_likes")
+        .select("*", { count: "exact", head: true })
+        .eq("hub_id", hubId);
+
+      if (countError) throw countError;
+
+      let liked = false;
+      if (profileId) {
+        const { data, error: likeError } = await supabase
+          .from("hub_likes")
+          .select("id")
+          .eq("hub_id", hubId)
+          .eq("profile_id", profileId)
+          .maybeSingle();
+        if (likeError) throw likeError;
+        liked = !!data;
+      }
+
+      return { count: count ?? 0, liked };
+    },
+    enabled: !!hubId,
+  });
+}
+
+export function useToggleHubLike() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hubId, liked }: { hubId: string; liked: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to like a hub");
+
+      if (liked) {
+        const { error } = await supabase
+          .from("hub_likes")
+          .delete()
+          .eq("hub_id", hubId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("hub_likes")
+          .insert({ hub_id: hubId, profile_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { hubId }) => {
+      qc.invalidateQueries({ queryKey: qk.hubLikes(hubId) });
+    },
+  });
+}
+
+export function useHubFollowStatus(hubId: string) {
+  return useQuery({
+    queryKey: qk.hubFollows(hubId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+
+      // Fetch total count.
+      const { count, error: countError } = await supabase
+        .from("hub_follows")
+        .select("*", { count: "exact", head: true })
+        .eq("hub_id", hubId);
+
+      if (countError) throw countError;
+
+      let followed = false;
+      if (profileId) {
+        const { data, error: followError } = await supabase
+          .from("hub_follows")
+          .select("id")
+          .eq("hub_id", hubId)
+          .eq("profile_id", profileId)
+          .maybeSingle();
+        if (followError) throw followError;
+        followed = !!data;
+      }
+
+      return { count: count ?? 0, followed };
+    },
+    enabled: !!hubId,
+  });
+}
+
+export function useToggleHubFollow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ hubId, followed }: { hubId: string; followed: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to follow a hub");
+
+      if (followed) {
+        const { error } = await supabase
+          .from("hub_follows")
+          .delete()
+          .eq("hub_id", hubId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("hub_follows")
+          .insert({ hub_id: hubId, profile_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { hubId }) => {
+      qc.invalidateQueries({ queryKey: qk.hubFollows(hubId) });
     },
   });
 }

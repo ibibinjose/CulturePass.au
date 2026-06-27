@@ -13,7 +13,7 @@ export const colors = {
 
   ink: "#1A1510",
   inkMuted: "#6B6258",
-  inkFaint: "#857A6B",
+  inkFaint: "#706455",
 
   // Night — rich warm-dark editorial surfaces.
   night: "#1A1510",
@@ -46,8 +46,8 @@ export const colors = {
   greenSoft: "#E4F8EC",
   white: "#FFFFFF",
 
-  success: "#4F7A52",
-  warning: "#C8902E",
+  success: "#3B623E",
+  warning: "#955B00",
   danger: "#B23A2E",
 
   whatsapp: "#25D366",
