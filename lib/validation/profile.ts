@@ -73,6 +73,20 @@ export const profilePreferencesSchema = z
         weekly_digest: z.boolean().default(false),
       })
       .default({}),
+    onboarding: z
+      .object({
+        completed: z.boolean().default(false),
+      })
+      .default({}),
+    // The member's preferred location — seeds the Discover location filter so the
+    // feed is relevant by default rather than "Anywhere".
+    location: z
+      .object({
+        state: z.string().nullable().default(null),
+        councilId: z.string().nullable().default(null),
+        label: z.string().default("Anywhere"),
+      })
+      .default({}),
   })
   .default({});
 

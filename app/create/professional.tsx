@@ -6,6 +6,7 @@ import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
 import { Field } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { OptionCard } from "@/components/ui/OptionCard";
@@ -87,22 +88,16 @@ export default function CreateProfessionalProfile() {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Professional Public Profile
       </Text>
       <Text variant="title" className="mt-2">
         Set up your public profile
       </Text>
-      <Text variant="body" tone="muted" className="mt-2">
+      <Text variant="lead" className="mt-3">
         We’ve pre-filled this from your profile — review and add your social
         handles below.
       </Text>
@@ -155,13 +150,10 @@ export default function CreateProfessionalProfile() {
         </Field>
 
         <View>
-          <Text variant="overline" tone="faint" className="mb-3">
+          <Text variant="overline" tone="pink" className="mb-3">
             Links & social
           </Text>
-          <SocialLinksField
-            value={form.links}
-            onChange={(links) => set({ links })}
-          />
+          <SocialLinksField value={form.links} onChange={(links) => set({ links })} />
         </View>
 
         {banner ? (

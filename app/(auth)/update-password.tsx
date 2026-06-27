@@ -62,7 +62,7 @@ export default function UpdatePasswordScreen() {
         footer={
           <Link href="/reset-password" asChild>
             <Pressable hitSlop={8}>
-              <Text variant="label" tone="ochre">
+              <Text variant="label" tone="pink">
                 Request a new link
               </Text>
             </Pressable>

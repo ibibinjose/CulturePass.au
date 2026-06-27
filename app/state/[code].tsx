@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
 import { Card } from "@/components/ui/Card";
 import { HubCard } from "@/features/hubs/HubCard";
 import { useHubs } from "@/features/hubs/api";
@@ -24,45 +25,51 @@ export default function StateScreen() {
   const eventCount = events?.length ?? 0;
 
   return (
-    <Screen contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen contentClassName="pt-6 md:pt-8">
+      <BackButton className="mb-4" />
 
-      <Text variant="overline" tone="faint">
-        {stateCode}
-      </Text>
-      <Text variant="title" className="mt-2">
-        {state?.name ?? "Australia"}
-      </Text>
-      <Text variant="body" tone="muted" className="mt-2">
-        Hubs, communities and upcoming cultural events across {state?.name ?? "this state"}.
-      </Text>
-
-      <View className="mt-8 flex-row flex-wrap gap-3">
-        <Card className="min-w-[150px] flex-1 bg-sand">
-          <Text variant="title">{hubCount}</Text>
-          <Text variant="caption" tone="muted" className="mt-1">
-            Hubs
-          </Text>
-        </Card>
-        <Card className="min-w-[150px] flex-1 bg-sand">
-          <Text variant="title">{eventCount}</Text>
-          <Text variant="caption" tone="muted" className="mt-1">
-            Events
-          </Text>
-        </Card>
+      {/* Header */}
+      <View className="overflow-hidden rounded-3xl border-2 border-teal-500 bg-green-700 p-7 md:p-11">
+        <Text variant="overline" className="text-gold-500">
+          {stateCode}
+        </Text>
+        <Text variant="display" tone="white" className="mt-3">
+          {state?.name ?? "Australia"}
+        </Text>
+        <Text variant="lead" className="mt-3 max-w-[560px] text-white/85">
+          Hubs, communities and upcoming cultural events across {state?.name ?? "this state"}.
+        </Text>
+        <View className="mt-7 flex-row gap-8">
+          <View>
+            <Text variant="display" tone="white">
+              {hubCount}
+            </Text>
+            <Text variant="caption" className="text-white/75">
+              Hubs
+            </Text>
+          </View>
+          <View>
+            <Text variant="display" tone="white">
+              {eventCount}
+            </Text>
+            <Text variant="caption" className="text-white/75">
+              Events
+            </Text>
+          </View>
+        </View>
       </View>
 
-      <View className="mt-10 gap-4">
-        <Text variant="heading">Upcoming events</Text>
+      {/* Upcoming events */}
+      <View className="mt-section gap-5">
+        <View className="gap-1">
+          <Text variant="overline" tone="pink">
+            Soon
+          </Text>
+          <Text variant="title">Upcoming events</Text>
+        </View>
         {eventsLoading ? (
           <Text variant="caption" tone="faint">
-            Loading events...
+            Loading events…
           </Text>
         ) : eventsError ? (
           <Card>
@@ -71,28 +78,35 @@ export default function StateScreen() {
             </Text>
           </Card>
         ) : events && events.length > 0 ? (
-          events.slice(0, 6).map((event) => <EventCard key={event.id} event={event} />)
+          <View className="gap-4 md:flex-row md:flex-wrap">
+            {events.slice(0, 6).map((event) => (
+              <View key={event.id} className="md:w-[calc(50%-8px)]">
+                <EventCard event={event} />
+              </View>
+            ))}
+          </View>
         ) : (
-          <Card className="gap-3">
+          <Card className="items-start gap-3">
             <Text variant="subheading">No events in {stateCode} yet</Text>
             <Text variant="caption" tone="muted">
               Add the first event so people can see what is happening here.
             </Text>
-            <Button
-              label="Add an event"
-              variant="secondary"
-              className="self-start"
-              onPress={() => router.push("/create/event")}
-            />
+            <Button label="Add an event" variant="secondary" onPress={() => router.push("/create/event")} />
           </Card>
         )}
       </View>
 
-      <View className="mt-10 gap-4">
-        <Text variant="heading">Community hubs</Text>
+      {/* Community hubs */}
+      <View className="mt-section gap-5">
+        <View className="gap-1">
+          <Text variant="overline" tone="pink">
+            Communities
+          </Text>
+          <Text variant="title">Community hubs</Text>
+        </View>
         {isLoading ? (
           <Text variant="caption" tone="faint">
-            Loading hubs...
+            Loading hubs…
           </Text>
         ) : isError ? (
           <Card>
@@ -101,19 +115,20 @@ export default function StateScreen() {
             </Text>
           </Card>
         ) : hubs && hubs.length > 0 ? (
-          hubs.map((hub) => <HubCard key={hub.slug} hub={hub} />)
+          <View className="gap-4 md:flex-row md:flex-wrap">
+            {hubs.map((hub) => (
+              <View key={hub.slug} className="md:w-[calc(50%-8px)]">
+                <HubCard hub={hub} />
+              </View>
+            ))}
+          </View>
         ) : (
-          <Card className="gap-3">
+          <Card className="items-start gap-3">
             <Text variant="subheading">No hubs in {stateCode} yet</Text>
             <Text variant="caption" tone="muted">
               Create one to get your community started.
             </Text>
-            <Button
-              label="Create a hub"
-              variant="secondary"
-              className="self-start"
-              onPress={() => router.push("/create/hub")}
-            />
+            <Button label="Create a hub" variant="secondary" onPress={() => router.push("/create/hub")} />
           </Card>
         )}
       </View>

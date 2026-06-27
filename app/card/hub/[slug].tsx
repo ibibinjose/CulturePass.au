@@ -69,8 +69,8 @@ export default function HubBusinessCard() {
 
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
-      <Card className="items-center gap-4 p-6">
-        <Avatar name={hub.name} uri={logoUrl} size={96} />
+      <Card elevated className="items-center gap-4 p-7">
+        <Avatar name={hub.name} uri={logoUrl} size={100} ring />
         <View className="items-center gap-2">
           <Text variant="title" className="text-center">
             {hub.name}
@@ -88,7 +88,7 @@ export default function HubBusinessCard() {
           <View className="flex-row flex-wrap justify-center gap-x-4 gap-y-1">
             {contacts.map((c) => (
               <Pressable key={c.label} onPress={() => Linking.openURL(c.href)} hitSlop={6}>
-                <Text variant="label" tone="ochre">
+                <Text variant="label" tone="pink">
                   {c.label}
                 </Text>
               </Pressable>

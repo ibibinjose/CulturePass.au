@@ -2,6 +2,8 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Text } from "./Text";
 import { Button } from "./Button";
+import { Icon } from "./Icon";
+import { colors } from "@/lib/theme";
 import RNDatePicker from "react-native-date-picker";
 
 export interface DatePickerProps {
@@ -41,11 +43,14 @@ export function DatePicker({
 
   return (
     <View className="gap-2">
-      <Text variant="label">{label}</Text>
+      <Text variant="label" className="font-heading">
+        {label}
+      </Text>
       <Button
         label={formattedValue}
         variant="outline"
-        className="py-4"
+        className="h-12 justify-start"
+        leftIcon={<Icon name="calendar" size={18} color={colors.inkMuted} />}
         onPress={() => setOpen(true)}
       />
 

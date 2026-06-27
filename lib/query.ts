@@ -27,4 +27,9 @@ export const qk = {
   myProfile: ["my-profile"] as const,
   session: ["session"] as const,
   myTickets: ["my-tickets"] as const,
+  notifications: ["notifications"] as const,
+  unreadCount: ["notifications", "unread-count"] as const,
+  conversations: ["conversations"] as const,
+  conversation: (id: string) => ["conversation", id] as const,
+  messages: (conversationId: string) => ["messages", conversationId] as const,
 };

@@ -62,8 +62,8 @@ export default function ProfileBusinessCard() {
 
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
-      <Card className="items-center gap-4 p-6">
-        <Avatar name={profile.full_name} uri={profile.avatar_url} size={96} />
+      <Card elevated className="items-center gap-4 p-7">
+        <Avatar name={profile.full_name} uri={profile.avatar_url} size={100} ring />
         <View className="items-center gap-2">
           <Text variant="title" className="text-center">
             {profile.full_name || "Member"}
@@ -94,7 +94,7 @@ export default function ProfileBusinessCard() {
           <View className="flex-row flex-wrap justify-center gap-x-4 gap-y-1">
             {links.map((l) => (
               <Pressable key={l.key} onPress={() => Linking.openURL(l.href)} hitSlop={6}>
-                <Text variant="label" tone="ochre">
+                <Text variant="label" tone="pink">
                   {l.label}
                 </Text>
               </Pressable>

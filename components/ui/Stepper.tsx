@@ -11,16 +11,19 @@ interface StepperProps {
 /** Minimal step progress: a row of bars + "Step n of m — Label". */
 export function Stepper({ steps, current, className }: StepperProps) {
   return (
-    <View className={cn("gap-3", className)}>
+    <View className={cn("gap-2.5", className)}>
       <View className="flex-row gap-1.5">
         {steps.map((label, i) => (
           <View
             key={label}
-            className={cn("h-1 flex-1 rounded-pill", i <= current ? "bg-ink" : "bg-linen")}
+            className={cn(
+              "h-1.5 flex-1 rounded-pill",
+              i < current ? "bg-ink" : i === current ? "bg-ochre-500" : "bg-linen",
+            )}
           />
         ))}
       </View>
-      <Text variant="caption" tone="faint">
+      <Text variant="overline" tone="muted">
         Step {current + 1} of {steps.length} — {steps[current]}
       </Text>
     </View>

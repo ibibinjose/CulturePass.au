@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, View, useWindowDimensions } from "react-native";
+import { Modal, Pressable, View } from "react-native";
 import { useRouter, usePathname, type Href } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cn } from "@/lib/utils/cn";
+import { colors } from "@/lib/theme";
 import { Text } from "./Text";
 import { Avatar } from "./Avatar";
+import { Icon, type IconName } from "./Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useMyProfile } from "@/features/profiles/api";
 import { useSignOut } from "@/features/auth/api";
+import { useUnreadCount } from "@/features/notifications/api";
 import { useWeather, type Weather } from "@/features/weather/api";
+import { useMobileLayout } from "@/lib/useMobileLayout";
 
 /** Primary navigation links shown inline (wide) or in the menu (narrow). */
 const NAV: { label: string; href: Href; path: string; authOnly?: boolean }[] = [
@@ -19,8 +23,7 @@ const NAV: { label: string; href: Href; path: string; authOnly?: boolean }[] = [
   { label: "My Hubs", href: "/my-hubs", path: "/my-hubs", authOnly: true },
 ];
 
-const BAR_HEIGHT = 64;
-const WIDE = 768;
+const BAR_HEIGHT = 66;
 
 const dateFmt = new Intl.DateTimeFormat("en-AU", {
   weekday: "short",
@@ -46,21 +49,22 @@ function useClock() {
 /**
  * Global top app bar: brand, primary nav, a live date/time clock and an
  * auth-aware menu. Inline links on wide (web) layouts collapse into a dropdown
- * menu on narrow screens. Mounted once in the root layout so it persists across
- * navigation.
+ * on narrow screens (where primary nav lives in the BottomTabBar). Mounted once
+ * in the root layout so it persists across navigation.
  */
 export function TopBar() {
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const isWide = width >= WIDE;
+  const isWide = !useMobileLayout();
 
   const { isAuthenticated } = useAuth();
   const { data: profile } = useMyProfile();
   const signOut = useSignOut();
   const now = useClock();
   const { data: weather } = useWeather();
+  const { data: unread = 0 } = useUnreadCount();
+  const hasUnread = isAuthenticated && unread > 0;
 
   const [menu, setMenu] = useState<null | "nav" | "account">(null);
   const close = () => setMenu(null);
@@ -80,13 +84,11 @@ export function TopBar() {
     }
   }
 
-  const isActive = (path: string) =>
-    path === "/" ? pathname === "/" : pathname.startsWith(path);
-
+  const isActive = (path: string) => (path === "/" ? pathname === "/" : pathname.startsWith(path));
   const links = NAV.filter((n) => !n.authOnly || isAuthenticated);
 
   return (
-    <View style={{ paddingTop: insets.top }} className="border-b border-linen bg-card/95">
+    <View style={{ paddingTop: insets.top }} className="border-b border-linen bg-paper/95">
       <View
         style={{ height: BAR_HEIGHT }}
         className="mx-auto w-full max-w-content flex-row items-center gap-5 px-gutter"
@@ -98,17 +100,11 @@ export function TopBar() {
           className="flex-row items-center"
           accessibilityLabel="CulturePass Australia home"
         >
-          <View className="mr-2 h-7 w-7 items-center justify-center rounded-sm bg-ink">
-            <Text variant="label" tone="inverse" className="text-xs">
-              CP
-            </Text>
+          <View className="mr-2.5 h-8 w-8 items-center justify-center rounded-xl bg-ink">
+            <View className="h-2 w-2 rounded-pill bg-teal-500" />
           </View>
-          <Text variant="label" className="text-base">
-            CulturePass
-          </Text>
-          <Text variant="label" tone="faint" className="ml-1 text-base">
-            AU
-          </Text>
+          <Text className="font-display text-lg text-ink">CulturePass</Text>
+          <Text className="ml-1 font-display text-lg text-pink-500">AU</Text>
         </Pressable>
 
         {/* Inline nav (wide only) */}
@@ -134,29 +130,41 @@ export function TopBar() {
         {isWide && isAuthenticated ? (
           <View className="flex-row items-center gap-3">
             <Pressable
+              onPress={() => router.push("/notifications")}
+              hitSlop={8}
+              accessibilityLabel={hasUnread ? `Notifications, ${unread} unread` : "Notifications"}
+              className="relative h-10 w-10 items-center justify-center rounded-pill border border-linen bg-card active:bg-sand"
+            >
+              <Icon name="bell" size={19} color={colors.ink} />
+              {hasUnread ? (
+                <View className="absolute -right-0.5 -top-0.5 h-4 min-w-4 items-center justify-center rounded-pill border border-paper bg-gold-500 px-1">
+                  <Text className="font-heading text-[10px] leading-none text-ink">
+                    {unread > 9 ? "9+" : unread}
+                  </Text>
+                </View>
+              ) : null}
+            </Pressable>
+            <Pressable
               onPress={() => router.push("/create")}
               hitSlop={8}
-              className="h-9 items-center justify-center rounded-lg bg-whatsapp px-3 active:bg-whatsapp-dark"
+              className="h-9 flex-row items-center gap-1.5 rounded-pill border-2 border-ink bg-green-500 px-3.5 active:bg-green-600"
             >
-              <Text variant="label" className="text-white">
+              <Icon name="plus" size={16} color={colors.ink} strokeWidth={2.2} />
+              <Text variant="label" className="font-heading text-ink">
                 Create
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => setMenu("account")}
-              hitSlop={8}
-              accessibilityLabel="Account menu"
-            >
-              <Avatar name={profile?.full_name} uri={profile?.avatar_url} size={34} />
+            <Pressable onPress={() => setMenu("account")} hitSlop={8} accessibilityLabel="Account menu">
+              <Avatar name={profile?.full_name} uri={profile?.avatar_url} size={36} />
             </Pressable>
           </View>
         ) : isWide && !isAuthenticated ? (
           <Pressable
             onPress={() => router.push("/sign-in")}
             hitSlop={8}
-            className="h-9 items-center justify-center rounded-lg border border-linen px-3 active:bg-sand"
+            className="h-9 items-center justify-center rounded-pill border border-ink px-4 active:bg-sand"
           >
-            <Text variant="label">
+            <Text variant="label" className="font-heading">
               Sign in
             </Text>
           </Pressable>
@@ -164,10 +172,20 @@ export function TopBar() {
           <Pressable
             onPress={() => setMenu("nav")}
             hitSlop={8}
-            accessibilityLabel="Open menu"
-            className="h-9 w-9 items-center justify-center rounded-sm border border-linen active:bg-sand"
+            accessibilityLabel={hasUnread ? `Open menu, ${unread} unread notifications` : "Open menu"}
+            className={cn(
+              "relative h-10 w-10 items-center justify-center rounded-xl border active:opacity-80",
+              hasUnread ? "border-gold-500 bg-gold-100" : "border-linen bg-card active:bg-sand",
+            )}
           >
-            <Text className="font-heading text-xl leading-none text-ink">≡</Text>
+            <Icon name="menu" size={20} color={hasUnread ? colors.goldDeep : colors.ink} />
+            {hasUnread ? (
+              <View className="absolute -right-1 -top-1 h-4 min-w-4 items-center justify-center rounded-pill border border-paper bg-gold-500 px-1">
+                <Text className="font-heading text-[10px] leading-none text-ink">
+                  {unread > 9 ? "9+" : unread}
+                </Text>
+              </View>
+            ) : null}
           </Pressable>
         )}
       </View>
@@ -179,22 +197,16 @@ export function TopBar() {
             onPress={close}
             style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
           />
-          <View
-            pointerEvents="box-none"
-            style={{ paddingTop: insets.top + BAR_HEIGHT }}
-            className="flex-1"
-          >
-            <View
-              pointerEvents="box-none"
-              className="mx-auto w-full max-w-content items-end px-gutter"
-            >
-              <View className="w-64 overflow-hidden rounded-lg border border-linen bg-card shadow-card">
+          <View pointerEvents="box-none" style={{ paddingTop: insets.top + BAR_HEIGHT + 8 }} className="flex-1">
+            <View pointerEvents="box-none" className="mx-auto w-full max-w-content items-end px-gutter">
+              <View className="w-72 overflow-hidden rounded-2xl border border-linen bg-card shadow-raised">
                 {menu === "nav" ? (
                   <>
                     {links.map((n) => (
                       <MenuRow
                         key={n.label}
                         label={n.label}
+                        icon={navIcon(n.path)}
                         active={isActive(n.path)}
                         onPress={() => go(n.href)}
                       />
@@ -205,22 +217,27 @@ export function TopBar() {
 
                 {isAuthenticated ? (
                   <>
-                    <MenuRow label="Create" onPress={() => go("/create")} />
-                    {profile ? (
-                      <MenuRow
-                        label="Profile"
-                        onPress={() => go(`/profile/${profile.id}`)}
-                      />
-                    ) : null}
-                    <MenuRow label="My tickets" onPress={() => go("/tickets")} />
-                    <MenuRow label="Settings" onPress={() => go("/settings")} />
+                    <MenuRow
+                      label="Notifications"
+                      icon="bell"
+                      badge={hasUnread ? unread : undefined}
+                      onPress={() => go("/notifications")}
+                    />
+                    <MenuRow label="Messages" icon="chat" onPress={() => go("/messages")} />
                     <View className="h-px bg-linen" />
-                    <MenuRow label="Sign out" danger onPress={handleSignOut} />
+                    <MenuRow label="Create" icon="plus" onPress={() => go("/create")} />
+                    {profile ? (
+                      <MenuRow label="Profile" icon="user" onPress={() => go(`/profile/${profile.id}`)} />
+                    ) : null}
+                    <MenuRow label="My tickets" icon="ticket" onPress={() => go("/tickets")} />
+                    <MenuRow label="Settings" icon="settings" onPress={() => go("/settings")} />
+                    <View className="h-px bg-linen" />
+                    <MenuRow label="Sign out" icon="logout" danger onPress={handleSignOut} />
                   </>
                 ) : (
                   <>
-                    <MenuRow label="Sign in" onPress={() => go("/sign-in")} />
-                    <MenuRow label="Create account" onPress={() => go("/sign-up")} />
+                    <MenuRow label="Sign in" icon="user" onPress={() => go("/sign-in")} />
+                    <MenuRow label="Create account" icon="plus" onPress={() => go("/sign-up")} />
                   </>
                 )}
               </View>
@@ -232,65 +249,65 @@ export function TopBar() {
   );
 }
 
-function NavLink({
-  label,
-  active,
-  onPress,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-}) {
+function navIcon(path: string): IconName {
+  if (path === "/") return "home";
+  if (path.startsWith("/explore")) return "compass";
+  if (path.startsWith("/calendar")) return "calendar";
+  if (path.startsWith("/my-hubs")) return "grid";
+  return "chevron-right";
+}
+
+function NavLink({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
       hitSlop={6}
       accessibilityRole="link"
       accessibilityState={{ selected: active }}
-      className={cn(
-        "rounded-sm px-3 py-2 active:bg-sand",
-        active && "bg-ink",
-      )}
+      className="items-center gap-1.5 px-3 py-2"
     >
-      <Text variant="label" className={active ? "text-paper" : "text-ink-muted"}>
+      <Text variant="label" className={cn("font-heading", active ? "text-ink" : "text-ink-muted")}>
         {label}
       </Text>
+      <View className={cn("h-0.5 w-5 rounded-pill", active ? "bg-pink-500" : "bg-transparent")} />
     </Pressable>
   );
 }
 
 function MenuRow({
   label,
+  icon,
   active,
   danger,
+  badge,
   onPress,
 }: {
   label: string;
+  icon?: IconName;
   active?: boolean;
   danger?: boolean;
+  badge?: number;
   onPress: () => void;
 }) {
+  const color = danger ? colors.danger : colors.ink;
   return (
-    <Pressable onPress={onPress} className="px-4 py-3 active:bg-sand">
-      <Text
-        variant="label"
-        className={cn(danger ? "text-danger" : active ? "text-ink" : "text-ink")}
-      >
+    <Pressable onPress={onPress} className="flex-row items-center gap-3 px-4 py-3.5 active:bg-sand">
+      {icon ? <Icon name={icon} size={18} color={danger ? colors.danger : colors.inkMuted} /> : null}
+      <Text variant="label" className={cn("font-heading", danger ? "text-danger" : "text-ink")} style={{ color }}>
         {label}
       </Text>
+      {badge ? (
+        <View className="ml-auto h-5 min-w-5 items-center justify-center rounded-pill bg-gold-500 px-1.5">
+          <Text className="font-heading text-[11px] leading-none text-ink">{badge > 9 ? "9+" : badge}</Text>
+        </View>
+      ) : active ? (
+        <View className="ml-auto h-1.5 w-1.5 rounded-pill bg-pink-500" />
+      ) : null}
     </Pressable>
   );
 }
 
-function Clock({
-  now,
-  weather,
-  compact,
-}: {
-  now: Date;
-  weather?: Weather | null;
-  compact: boolean;
-}) {
+function Clock({ now, weather, compact }: { now: Date; weather?: Weather | null; compact: boolean }) {
   const time = timeFmt.format(now);
   if (compact) {
     return (

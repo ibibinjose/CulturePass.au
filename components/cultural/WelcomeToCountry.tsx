@@ -22,22 +22,25 @@ export function WelcomeToCountry({ statement, custodians, className }: WelcomeTo
   return (
     <View
       className={cn(
-        "rounded-xl border border-eucalyptus-100 bg-eucalyptus-50 px-6 py-6",
+        "overflow-hidden rounded-3xl border border-eucalyptus-100 bg-eucalyptus-50 px-6 py-7 md:px-8",
         className,
       )}
     >
-      <Text variant="overline" tone="eucalyptus">
-        {statement ? "Welcome to Country" : "Traditional Custodians"}
-      </Text>
+      <View className="flex-row items-center gap-2">
+        <View className="h-2.5 w-2.5 rounded-pill bg-eucalyptus-500" />
+        <Text variant="overline" tone="eucalyptus">
+          {statement ? "Welcome to Country" : "Traditional Custodians"}
+        </Text>
+      </View>
 
       {hasCustodians ? (
-        <Text variant="subheading" className="mt-2 text-eucalyptus-700">
+        <Text variant="heading" className="mt-2.5 text-eucalyptus-700">
           {custodians.join(" • ")}
         </Text>
       ) : null}
 
       {statement ? (
-        <Text variant="bodyLarge" className="mt-3 leading-7 text-ink">
+        <Text variant="bodyLarge" className="mt-3 max-w-[680px] leading-7 text-ink">
           {statement}
         </Text>
       ) : null}

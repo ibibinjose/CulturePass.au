@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { View, Alert, Image as RNImage } from "react-native";
+import { View, Alert, Image as RNImage, Pressable } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
 import { Button } from "./Button";
 import { Text } from "./Text";
+import { Icon } from "./Icon";
+import { colors } from "@/lib/theme";
 import { supabase } from "@/lib/supabase/client";
 
 interface ImagePickerProps {
@@ -118,67 +120,58 @@ export function ImagePickerComponent({
   };
 
   return (
-    <View className="gap-4">
-      <Text variant="label">{label}</Text>
-      <Text variant="caption" tone="muted">
-        {helperText}
-      </Text>
+    <View className="gap-3">
+      <View className="gap-1">
+        <Text variant="label" className="font-heading">
+          {label}
+        </Text>
+        <Text variant="caption" tone="muted">
+          {helperText}
+        </Text>
+      </View>
 
       {previewUri ? (
         <View className="gap-3">
           <RNImage
             source={{ uri: previewUri }}
-            className="aspect-square w-full max-w-[280px] self-center rounded-xl"
+            className="aspect-square w-full max-w-[280px] self-center rounded-2xl"
             resizeMode="cover"
           />
-          <View className="flex-row gap-2">
-            <Button
-              label="Change"
-              variant="outline"
-              size="sm"
-              onPress={pickImage}
-              disabled={uploading}
-            />
-            <Button
-              label="Take Photo"
-              variant="outline"
-              size="sm"
-              onPress={takePhoto}
-              disabled={uploading}
-            />
-            <Button
-              label="Remove"
-              variant="outline"
-              size="sm"
-              className="ml-auto"
-              onPress={removeImage}
-              disabled={uploading}
-            />
+          <View className="flex-row flex-wrap gap-2">
+            <Button label="Change" variant="outline" size="sm" onPress={pickImage} disabled={uploading} />
+            <Button label="Take photo" variant="outline" size="sm" onPress={takePhoto} disabled={uploading} />
+            <Button label="Remove" variant="ghost" size="sm" className="ml-auto" onPress={removeImage} disabled={uploading} />
           </View>
         </View>
       ) : (
-        <View className="flex-row gap-2">
-          <Button
-            label="Choose from Library"
-            variant="outline"
-            size="sm"
+        <View className="gap-3">
+          <Pressable
             onPress={pickImage}
             disabled={uploading}
-          />
-          <Button
-            label="Take Photo"
-            variant="outline"
-            size="sm"
-            onPress={takePhoto}
-            disabled={uploading}
-          />
+            accessibilityRole="button"
+            accessibilityLabel={`Add ${label}`}
+            className="items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-linen bg-sand/50 px-6 py-10 active:bg-sand"
+          >
+            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-card">
+              <Icon name="image" size={22} color={colors.inkMuted} />
+            </View>
+            <Text variant="label" className="font-heading">
+              Choose from library
+            </Text>
+            <Text variant="caption" tone="faint">
+              PNG or JPG · square works best
+            </Text>
+          </Pressable>
+          <Button label="Take photo" variant="outline" size="sm" onPress={takePhoto} disabled={uploading} className="self-start" />
         </View>
       )}
 
       {uploading && (
-        <Text variant="caption" tone="muted">
-          Uploading...
-        </Text>
+        <View className="flex-row items-center gap-2">
+          <Text variant="caption" tone="muted">
+            Uploading…
+          </Text>
+        </View>
       )}
     </View>
   );

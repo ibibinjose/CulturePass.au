@@ -6,6 +6,7 @@ import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
 import { Field } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
@@ -97,14 +98,8 @@ export default function EditHubScreen() {
 
   if (!canEdit && !hubLoading) {
     return (
-      <Screen maxWidth="form" contentClassName="pt-10">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          className="mb-6 self-start"
-          onPress={() => router.back()}
-        />
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton fallbackHref="/my-hubs" className="mb-4" />
         <Card>
           <Text variant="subheading">Access Denied</Text>
           <Text variant="caption" tone="muted" className="mt-1">
@@ -198,15 +193,13 @@ export default function EditHubScreen() {
   const canContinue = stepIsValid(step, form);
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
+    <Screen maxWidth="form" contentClassName="pt-6">
       <View className="mb-6 flex-row items-center justify-between">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          onPress={() => (step === 0 ? router.back() : setStep(step - 1))}
+        <BackButton
+          fallbackHref="/my-hubs"
+          onPress={() => (step === 0 ? (router.canGoBack() ? router.back() : router.replace("/my-hubs")) : setStep(step - 1))}
         />
-        <Text variant="overline" tone="ochre">
+        <Text variant="overline" tone="pink">
           Edit Hub
         </Text>
       </View>
@@ -382,7 +375,7 @@ function StepHeading({ title, subtitle }: { title: string; subtitle?: string }) 
     <View>
       <Text variant="title">{title}</Text>
       {subtitle ? (
-        <Text variant="body" tone="muted" className="mt-3">
+        <Text variant="lead" className="mt-3">
           {subtitle}
         </Text>
       ) : null}

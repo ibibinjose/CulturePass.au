@@ -1,47 +1,98 @@
-import { View } from "react-native";
-import { useRouter } from "expo-router";
+import { Pressable, View } from "react-native";
+import { useRouter, type Href } from "expo-router";
 
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
-import { OptionCard } from "@/components/ui/OptionCard";
-import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
+import { Icon, type IconName } from "@/components/ui/Icon";
+import { colors } from "@/lib/theme";
 
 export default function CreateChooser() {
-  const router = useRouter();
-
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Create
       </Text>
       <Text variant="title" className="mt-2">
         What would you like to create?
       </Text>
-      <Text variant="body" tone="muted" className="mt-3">
-        Start a Hub for a community, council, organisation or venue — or set up a
-        public professional profile.
+      <Text variant="lead" className="mt-3">
+        Events belong to a hub. Start by creating a hub, then publish events from it.
       </Text>
 
       <View className="mt-8 gap-4">
-        <OptionCard
-          title="A Hub"
-          description="An organiser page for a community, council, organisation, club, venue, business or wellness practice."
-          onPress={() => router.push("/create/hub")}
+        <CreateOption
+          icon="calendar"
+          tone="pink"
+          title="Host an event"
+          description="Publish an event from one of your hubs so people can discover, save and attend it."
+          href="/my-hubs"
         />
-        <OptionCard
-          title="A Professional Public Profile"
+        <CreateOption
+          icon="grid"
+          tone="eucalyptus"
+          title="Create a hub"
+          description="A page for a community, council, organisation, club, venue, business or wellness practice."
+          href="/create/hub"
+        />
+        <CreateOption
+          icon="user"
+          tone="neutral"
+          title="Professional public profile"
           description="A public page for an artist, leader, founder, educator or practitioner."
-          onPress={() => router.push("/create/professional")}
+          href="/create/professional"
         />
       </View>
     </Screen>
+  );
+}
+
+const TONES = {
+  pink: "bg-pink-50",
+  ochre: "bg-ochre-50",
+  eucalyptus: "bg-eucalyptus-50",
+  neutral: "bg-sand",
+} as const;
+
+const TONE_ICON = {
+  pink: colors.pinkDeep,
+  ochre: colors.ochre,
+  eucalyptus: colors.eucalyptus,
+  neutral: colors.inkMuted,
+} as const;
+
+function CreateOption({
+  icon,
+  tone,
+  title,
+  description,
+  href,
+}: {
+  icon: IconName;
+  tone: keyof typeof TONES;
+  title: string;
+  description: string;
+  href: Href;
+}) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push(href)}
+      accessibilityRole="button"
+      className="flex-row items-center gap-4 rounded-2xl border border-linen bg-card p-5 active:bg-sand"
+    >
+      <View className={`h-12 w-12 items-center justify-center rounded-2xl ${TONES[tone]}`}>
+        <Icon name={icon} size={22} color={TONE_ICON[tone]} />
+      </View>
+      <View className="flex-1 gap-1">
+        <Text variant="subheading">{title}</Text>
+        <Text variant="caption" tone="muted">
+          {description}
+        </Text>
+      </View>
+      <Icon name="chevron-right" size={20} color={colors.inkFaint} />
+    </Pressable>
   );
 }

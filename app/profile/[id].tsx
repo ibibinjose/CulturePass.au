@@ -5,6 +5,7 @@ import {
   Screen,
   Text,
   Button,
+  BackButton,
   Card,
   Avatar,
   Badge,
@@ -12,7 +13,9 @@ import {
   Divider,
   ListRow,
   ShareButton,
+  Icon,
 } from "@/components/ui";
+import { colors } from "@/lib/theme";
 import { useMyProfile, useProfile } from "@/features/profiles/api";
 import { PROFESSIONAL_CATEGORY_LABELS, type ProfessionalCategory } from "@/lib/constants";
 import { parsePreferences } from "@/lib/validation/profile";
@@ -38,15 +41,11 @@ export default function PublicProfileScreen() {
 
   if (!profile) {
     return (
-      <Screen maxWidth="form" contentClassName="pt-section">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          className="mb-6 self-start"
-          onPress={() => router.back()}
-        />
-        <Text variant="title">Profile unavailable</Text>
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton />
+        <Text variant="title" className="mt-6">
+          Profile unavailable
+        </Text>
         <Text variant="body" tone="muted" className="mt-3">
           This profile is private or doesn’t exist.
         </Text>
@@ -61,17 +60,12 @@ export default function PublicProfileScreen() {
   const showInterests = prefs.privacy.show_interests && profile.interests.length > 0;
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton className="mb-2" />
 
-      <View className="items-center gap-4">
-        <Avatar name={profile.full_name} uri={profile.avatar_url} size={96} />
+      {/* Identity card */}
+      <View className="items-center gap-4 rounded-3xl border border-linen bg-card p-7">
+        <Avatar name={profile.full_name} uri={profile.avatar_url} size={100} ring />
         <View className="items-center gap-2">
           <Text variant="title" className="text-center">
             {profile.full_name || "Member"}
@@ -84,34 +78,23 @@ export default function PublicProfileScreen() {
           {profile.is_public_professional && profile.professional_category ? (
             <Badge
               variant="ochre"
-              label={
-                PROFESSIONAL_CATEGORY_LABELS[
-                  profile.professional_category as ProfessionalCategory
-                ]
-              }
+              label={PROFESSIONAL_CATEGORY_LABELS[profile.professional_category as ProfessionalCategory]}
             />
           ) : null}
           {showLocation ? (
-            <Text variant="caption" tone="faint">
-              {profile.location}
-            </Text>
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="map-pin" size={14} color={colors.inkFaint} />
+              <Text variant="caption" tone="faint">
+                {profile.location}
+              </Text>
+            </View>
           ) : null}
         </View>
 
         {isMe ? (
           <View className="flex-row gap-3">
-            <Button
-              label="Edit profile"
-              variant="outline"
-              size="sm"
-              onPress={() => router.push("/profile/edit")}
-            />
-            <Button
-              label="Settings"
-              variant="ghost"
-              size="sm"
-              onPress={() => router.push("/settings")}
-            />
+            <Button label="Edit profile" variant="outline" size="sm" onPress={() => router.push("/profile/edit")} />
+            <Button label="Settings" variant="ghost" size="sm" onPress={() => router.push("/settings")} />
           </View>
         ) : null}
 
@@ -123,40 +106,30 @@ export default function PublicProfileScreen() {
           />
           {profile.is_public_professional ? (
             <>
-              <Button
-                label="Link in bio"
-                variant="outline"
-                size="sm"
-                onPress={() => router.push(`/l/profile/${profile.id}`)}
-              />
-              <Button
-                label="Business card"
-                variant="outline"
-                size="sm"
-                onPress={() => router.push(`/card/profile/${profile.id}`)}
-              />
+              <Button label="Link in bio" variant="outline" size="sm" onPress={() => router.push(`/l/profile/${profile.id}`)} />
+              <Button label="Business card" variant="outline" size="sm" onPress={() => router.push(`/card/profile/${profile.id}`)} />
             </>
           ) : null}
         </View>
       </View>
 
       {profile.public_bio || profile.bio ? (
-        <View className="mt-8">
-          <Text variant="overline" tone="faint">
+        <View className="mt-8 gap-2">
+          <Text variant="overline" tone="pink">
             About
           </Text>
-          <Text variant="body" className="mt-2">
+          <Text variant="bodyLarge" className="leading-7">
             {profile.is_public_professional ? profile.public_bio || profile.bio : profile.bio}
           </Text>
         </View>
       ) : null}
 
       {showInterests ? (
-        <View className="mt-8">
-          <Text variant="overline" tone="faint">
+        <View className="mt-8 gap-3">
+          <Text variant="overline" tone="pink">
             Interests
           </Text>
-          <View className="mt-3 flex-row flex-wrap gap-2">
+          <View className="flex-row flex-wrap gap-2">
             {profile.interests.map((interest) => (
               <Chip key={interest} label={interest} />
             ))}
@@ -165,11 +138,11 @@ export default function PublicProfileScreen() {
       ) : null}
 
       {linkEntries.length > 0 ? (
-        <View className="mt-8">
-          <Text variant="overline" tone="faint">
+        <View className="mt-8 gap-3">
+          <Text variant="overline" tone="pink">
             Links
           </Text>
-          <Card className="mt-3 px-5 py-1">
+          <Card padded={false} className="px-5">
             {linkEntries.map((link, i) => (
               <View key={link.key}>
                 {i > 0 ? <Divider /> : null}
@@ -177,6 +150,11 @@ export default function PublicProfileScreen() {
                   title={link.label}
                   value={link.value}
                   onPress={() => Linking.openURL(link.href)}
+                  left={
+                    <View className="h-9 w-9 items-center justify-center rounded-xl bg-sand">
+                      <Icon name="link" size={16} color={colors.inkMuted} />
+                    </View>
+                  }
                 />
               </View>
             ))}

@@ -1,17 +1,16 @@
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, Card } from "@/components/ui";
+import { Screen, Text, Button, Card, Icon } from "@/components/ui";
+import { colors } from "@/lib/theme";
 
 export default function TicketCancelScreen() {
   const router = useRouter();
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
-      <Card className="items-center gap-4 p-8">
+      <Card elevated className="items-center gap-4 p-8">
         <View className="h-16 w-16 items-center justify-center rounded-pill bg-sand">
-          <Text className="font-display text-3xl" tone="muted">
-            ×
-          </Text>
+          <Icon name="close" size={26} color={colors.inkMuted} strokeWidth={2} />
         </View>
         <Text variant="title" className="text-center">
           Checkout cancelled

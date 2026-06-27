@@ -55,7 +55,7 @@ export default function HubLinkInBio() {
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
       <View className="items-center gap-4">
-        <Avatar name={hub.name} uri={logoUrl} size={104} />
+        <Avatar name={hub.name} uri={logoUrl} size={108} ring />
         <View className="items-center gap-2">
           <Text variant="title" className="text-center">
             {hub.name}

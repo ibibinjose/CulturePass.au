@@ -2,7 +2,7 @@ import { View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, Card, Badge, Divider } from "@/components/ui";
+import { Screen, Text, Button, BackButton, Card, Badge, Divider } from "@/components/ui";
 import { useMyTickets, type TicketOrder } from "@/features/tickets/api";
 import { useAuth } from "@/features/auth/AuthProvider";
 
@@ -32,16 +32,10 @@ export default function MyTicketsScreen() {
   const { data: tickets, isLoading, isError } = useMyTickets();
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton fallbackHref="/" className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Tickets
       </Text>
       <Text variant="title" className="mt-2">
@@ -110,7 +104,7 @@ function TicketRow({ ticket, onOpen }: { ticket: TicketOrder; onOpen: () => void
       ) : null}
       <View className="gap-2 p-4">
         <View className="flex-row items-center justify-between gap-2">
-          <Badge label={status.label} variant={status.variant} />
+          <Badge label={status.label} variant={status.variant} dot />
           <Text variant="caption" tone="faint">
             {ticket.quantity} × · ${total}
           </Text>

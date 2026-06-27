@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
+import { Icon, type IconName } from "@/components/ui/Icon";
+import { colors } from "@/lib/theme";
 import { EventCard } from "@/features/events/EventCard";
 import { useEvents } from "@/features/events/api";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
@@ -121,13 +123,11 @@ export default function CalendarScreen() {
   return (
     <Screen contentClassName="pt-8">
       <View className="flex-row items-end justify-between gap-4">
-        <View>
-          <Text variant="overline" tone="faint">
+        <View className="gap-1">
+          <Text variant="overline" tone="pink">
             Calendar
           </Text>
-          <Text variant="title" className="mt-2">
-            What’s on
-          </Text>
+          <Text variant="title">What’s on</Text>
         </View>
         <View className="flex-row gap-2">
           <Button label="Today" variant="outline" size="sm" onPress={goToday} />
@@ -145,9 +145,9 @@ export default function CalendarScreen() {
         <View className="gap-4 lg:w-[340px]">
           <Card className="gap-4 p-4">
             <View className="flex-row items-center justify-between">
-              <NavButton label="‹" onPress={() => goMonth(-1)} accessibilityLabel="Previous month" />
+              <NavButton icon="chevron-left" onPress={() => goMonth(-1)} accessibilityLabel="Previous month" />
               <Text variant="subheading">{monthFormatter.format(cursor)}</Text>
-              <NavButton label="›" onPress={() => goMonth(1)} accessibilityLabel="Next month" />
+              <NavButton icon="chevron-right" onPress={() => goMonth(1)} accessibilityLabel="Next month" />
             </View>
 
             <View className="flex-row">
@@ -172,7 +172,7 @@ export default function CalendarScreen() {
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}
                       className={cn(
-                        "aspect-square items-center justify-center rounded-md border",
+                        "aspect-square items-center justify-center rounded-xl border",
                         active
                           ? "border-ink bg-ink"
                           : isToday
@@ -320,11 +320,11 @@ export default function CalendarScreen() {
 }
 
 function NavButton({
-  label,
+  icon,
   onPress,
   accessibilityLabel,
 }: {
-  label: string;
+  icon: IconName;
   onPress: () => void;
   accessibilityLabel: string;
 }) {
@@ -334,9 +334,9 @@ function NavButton({
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      className="h-9 w-9 items-center justify-center rounded-pill border border-linen active:bg-sand"
+      className="h-10 w-10 items-center justify-center rounded-pill border border-linen bg-card active:bg-sand"
     >
-      <Text className="font-heading text-lg leading-none text-ink">{label}</Text>
+      <Icon name={icon} size={18} color={colors.ink} />
     </Pressable>
   );
 }

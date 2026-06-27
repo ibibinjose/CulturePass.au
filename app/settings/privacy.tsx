@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, Card, ListRow, Toggle, Divider } from "@/components/ui";
+import { Screen, Text, BackButton, Card, ListRow, Toggle, Divider } from "@/components/ui";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { useMyProfile, useUpdateMyProfile, type Profile } from "@/features/profiles/api";
 import { parsePreferences, type ProfilePreferences } from "@/lib/validation/profile";
@@ -59,22 +59,16 @@ function Privacy({ profile }: { profile: Profile }) {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton fallbackHref="/settings" className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Privacy
       </Text>
       <Text variant="title" className="mt-2">
         Privacy
       </Text>
-      <Text variant="body" tone="muted" className="mt-3">
+      <Text variant="lead" className="mt-3">
         Control what you share and how people can find you.
       </Text>
 

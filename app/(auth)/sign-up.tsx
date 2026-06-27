@@ -67,7 +67,7 @@ export default function SignUpScreen() {
         <Link href="/sign-in" asChild>
           <Pressable hitSlop={8}>
             <Text variant="label">
-              Already have an account? <Text variant="label" tone="ochre">Sign in</Text>
+              Already have an account? <Text variant="label" tone="pink">Sign in</Text>
             </Text>
           </Pressable>
         </Link>

@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
-import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
 import { eventDraftSchema, eventPublishSchema } from "@/lib/validation/event";
 import { useCreateEvent } from "@/features/events/api";
 import { EventForm, emptyEventForm, type EventFormValues } from "@/features/events/EventForm";
@@ -39,22 +39,16 @@ export default function CreateEventScreen() {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         New event
       </Text>
       <Text variant="title" className="mt-2">
         Create your event
       </Text>
-      <Text variant="body" tone="muted" className="mb-8 mt-3">
+      <Text variant="lead" className="mb-8 mt-3">
         Share details about your event with the community.
       </Text>
 

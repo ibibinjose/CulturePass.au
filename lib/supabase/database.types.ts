@@ -372,6 +372,63 @@ export interface Database {
           },
         ];
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string | null;
+          data: Json;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type?: string;
+          title: string;
+          body?: string | null;
+          data?: Json;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Insert"]>;
+      };
+      conversations: {
+        Row: {
+          id: string;
+          hub_id: string;
+          member_id: string;
+          created_at: string;
+          last_message_at: string;
+        };
+        Insert: {
+          id?: string;
+          hub_id: string;
+          member_id: string;
+          created_at?: string;
+          last_message_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["conversations"]["Insert"]>;
+      };
+      messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          sender_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          sender_id: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["messages"]["Insert"]>;
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -430,3 +487,6 @@ export type CouncilRow = Database["public"]["Tables"]["australian_councils"]["Ro
 export type StateRow = Database["public"]["Tables"]["australian_states"]["Row"];
 export type HubMemberRow = Database["public"]["Tables"]["hub_members"]["Row"];
 export type EventRsvpRow = Database["public"]["Tables"]["event_rsvps"]["Row"];
+export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
+export type ConversationRow = Database["public"]["Tables"]["conversations"]["Row"];
+export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];

@@ -5,9 +5,12 @@ import { useRouter } from "expo-router";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
 import { Input } from "@/components/ui/Input";
 import { Chip } from "@/components/ui/Chip";
 import { Card } from "@/components/ui/Card";
+import { Icon } from "@/components/ui/Icon";
+import { colors } from "@/lib/theme";
 import { HubCard } from "@/features/hubs/HubCard";
 import { useHubs, type HubFilters } from "@/features/hubs/api";
 import { EventCard } from "@/features/events/EventCard";
@@ -39,8 +42,8 @@ export default function ExploreScreen() {
 
   const activeFilterCount =
     (search.trim() ? 1 : 0) + (state ? 1 : 0) + (type ? 1 : 0) + (indigenousLed ? 1 : 0);
-  const featuredHubs = hubs?.slice(0, 3) ?? [];
-  const upcomingEvents = events?.slice(0, 3) ?? [];
+  const featuredHubs = hubs?.slice(0, 6) ?? [];
+  const upcomingEvents = events?.slice(0, 4) ?? [];
 
   const clearFilters = () => {
     setSearch("");
@@ -50,59 +53,44 @@ export default function ExploreScreen() {
   };
 
   return (
-    <Screen contentClassName="pt-8">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-4 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen contentClassName="pt-5 md:pt-7">
+      <BackButton className="mb-3" />
 
-      <View className="overflow-hidden rounded-2xl border border-linen bg-ink">
-        <View className="gap-8 p-6 md:flex-row md:items-end md:justify-between md:p-8">
+      {/* Hero */}
+      <View className="overflow-hidden rounded-3xl border-2 border-teal-500 bg-green-700">
+        <View className="gap-8 p-7 md:flex-row md:items-end md:justify-between md:p-11">
           <View className="max-w-[680px] flex-1">
-            <Text variant="overline" tone="inverse">
-              Explore Hub
+            <Text variant="overline" className="text-gold-500">
+              Explore
             </Text>
-            <Text variant="display" tone="inverse" className="mt-3 max-w-[760px]">
+            <Text variant="display" tone="white" className="mt-3 max-w-[760px]">
               Find your next community.
             </Text>
-            <Text variant="body" tone="inverse" className="mt-4 max-w-[560px] opacity-75">
+            <Text variant="lead" className="mt-4 max-w-[560px] text-white/85">
               Hubs, organisers, spaces and events across Australia.
             </Text>
           </View>
 
-          <View className="w-full gap-3 md:max-w-[300px]">
-            <Button
-              label="Create hub"
-              variant="secondary"
-              onPress={() => router.push("/create/hub")}
-            />
-            <Button
-              label="Add event"
-              variant="ghost"
-              className="bg-paper active:bg-sand"
-              onPress={() => router.push("/create/event")}
-            />
+          <View className="w-full gap-3 md:max-w-[280px]">
+            <Button label="Create hub" variant="primary" onPress={() => router.push("/create/hub")} />
+            <Button label="Add event" variant="secondary" onPress={() => router.push("/create/event")} />
           </View>
         </View>
 
-        <View className="border-t border-paper/10 p-4 md:flex-row md:p-5">
-          <Metric label="Published hubs" value={isLoading ? "..." : String(hubs?.length ?? 0)} />
-          <Metric label="Upcoming events" value={eventsLoading ? "..." : String(events?.length ?? 0)} />
+        <View className="flex-row border-t border-white/20 px-4 py-3 md:px-6">
+          <Metric label="Published hubs" value={isLoading ? "…" : String(hubs?.length ?? 0)} />
+          <Metric label="Upcoming events" value={eventsLoading ? "…" : String(events?.length ?? 0)} />
           <Metric label="States & territories" value={String(AUSTRALIAN_STATES.length)} />
         </View>
       </View>
 
-      <View className="mt-8 gap-6 lg:flex-row lg:items-start">
+      <View className="mt-8 gap-6 lg:flex-row lg:items-start lg:gap-8">
+        {/* Finder */}
         <View className="gap-5 lg:w-[340px]">
           <Card className="gap-5">
-            <View>
+            <View className="flex-row items-center gap-2">
+              <Icon name="filter" size={18} color={colors.ink} />
               <Text variant="heading">Finder</Text>
-              <Text variant="caption" tone="muted" className="mt-1">
-                Place, purpose and leadership.
-              </Text>
             </View>
 
             <Input
@@ -111,6 +99,7 @@ export default function ExploreScreen() {
               placeholder="Search communities or places"
               returnKeyType="search"
               autoCorrect={false}
+              leftIcon={<Icon name="search" size={18} color={colors.inkFaint} />}
             />
 
             <FilterGroup title="Focus">
@@ -144,12 +133,17 @@ export default function ExploreScreen() {
             </FilterGroup>
 
             {activeFilterCount > 0 ? (
-              <Button label="Clear filters" variant="ghost" onPress={clearFilters} />
+              <Button
+                label={`Clear ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"}`}
+                variant="outline"
+                size="sm"
+                onPress={clearFilters}
+              />
             ) : null}
           </Card>
 
-          <Card className="gap-4 bg-sand">
-            <Text variant="subheading">Purpose</Text>
+          <View className="gap-4 rounded-3xl border border-linen bg-sand p-5">
+            <Text variant="subheading">Browse by purpose</Text>
             <View className="gap-3">
               {HUB_TYPES.slice(0, 4).map((item) => (
                 <PurposeRow
@@ -161,32 +155,28 @@ export default function ExploreScreen() {
                 />
               ))}
             </View>
-          </Card>
+          </View>
         </View>
 
-        <View className="flex-1 gap-8">
-          <View className="gap-4">
-            <View className="gap-2 md:flex-row md:items-end md:justify-between">
-              <View>
-                <Text variant="heading">{search.trim() ? "Matching hubs" : "Featured"}</Text>
-                <Text variant="caption" tone="faint" className="mt-1">
+        {/* Results */}
+        <View className="flex-1 gap-10">
+          <View className="gap-5">
+            <View className="flex-row items-end justify-between gap-3">
+              <View className="gap-1">
+                <Text variant="overline" tone="pink">
                   {activeFilterCount > 0
                     ? `${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"} active`
-                    : "Recently added hubs."}
+                    : "Recently added"}
                 </Text>
+                <Text variant="title">{search.trim() ? "Matching hubs" : "Featured hubs"}</Text>
               </View>
-              <Button
-                label="My hubs"
-                variant="outline"
-                size="sm"
-                onPress={() => router.push("/my-hubs")}
-              />
+              <Button label="My hubs" variant="outline" size="sm" onPress={() => router.push("/my-hubs")} />
             </View>
 
             {isLoading ? (
               <Card>
                 <Text variant="caption" tone="faint">
-                  Loading communities...
+                  Loading communities…
                 </Text>
               </Card>
             ) : isError ? (
@@ -196,9 +186,11 @@ export default function ExploreScreen() {
                 </Text>
               </Card>
             ) : featuredHubs.length > 0 ? (
-              <View className="gap-4">
+              <View className="gap-4 md:flex-row md:flex-wrap">
                 {featuredHubs.map((hub) => (
-                  <HubCard key={hub.slug} hub={hub} />
+                  <View key={hub.slug} className="md:w-[calc(50%-8px)]">
+                    <HubCard hub={hub} />
+                  </View>
                 ))}
               </View>
             ) : (
@@ -211,26 +203,26 @@ export default function ExploreScreen() {
             )}
           </View>
 
-          <View className="gap-4">
-            <View className="md:flex-row md:items-end md:justify-between">
-              <View>
-                <Text variant="heading">Soon</Text>
-                <Text variant="caption" tone="faint" className="mt-1">
-                  Upcoming events.
-                </Text>
-              </View>
+          <View className="gap-5">
+            <View className="gap-1">
+              <Text variant="overline" tone="pink">
+                Soon
+              </Text>
+              <Text variant="title">Upcoming events</Text>
             </View>
 
             {eventsLoading ? (
               <Card>
                 <Text variant="caption" tone="faint">
-                  Loading events...
+                  Loading events…
                 </Text>
               </Card>
             ) : upcomingEvents.length > 0 ? (
-              <View className="gap-4">
+              <View className="gap-4 md:flex-row md:flex-wrap">
                 {upcomingEvents.map((event) => (
-                  <EventCard key={event.id} event={event} />
+                  <View key={event.id} className="md:w-[calc(50%-8px)]">
+                    <EventCard event={event} />
+                  </View>
                 ))}
               </View>
             ) : (
@@ -250,11 +242,11 @@ export default function ExploreScreen() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <View className="min-w-[150px] flex-1 p-2">
-      <Text variant="title" tone="inverse">
+    <View className="min-w-[120px] flex-1 p-2">
+      <Text variant="title" tone="white">
         {value}
       </Text>
-      <Text variant="caption" tone="inverse" className="mt-1 opacity-70">
+      <Text variant="caption" className="mt-0.5 text-white/75">
         {label}
       </Text>
     </View>
@@ -264,7 +256,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function FilterGroup({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View className="gap-3">
-      <Text variant="overline" tone="faint">
+      <Text variant="overline" tone="muted">
         {title}
       </Text>
       <View className="flex-row flex-wrap gap-2">{children}</View>
@@ -286,7 +278,7 @@ function PurposeRow({
   return (
     <Pressable
       onPress={onPress}
-      className={`rounded-lg border p-4 active:bg-card ${
+      className={`rounded-2xl border p-4 active:bg-card ${
         selected ? "border-ink bg-card" : "border-linen bg-paper"
       }`}
     >
@@ -310,14 +302,14 @@ function EmptyState({
   onPress: () => void;
 }) {
   return (
-    <Card className="gap-4">
+    <Card className="items-start gap-4">
       <View>
         <Text variant="subheading">{title}</Text>
         <Text variant="caption" tone="muted" className="mt-1">
           {body}
         </Text>
       </View>
-      <Button label={action} variant="secondary" className="self-start" onPress={onPress} />
+      <Button label={action} variant="secondary" onPress={onPress} />
     </Card>
   );
 }

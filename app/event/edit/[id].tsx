@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
 import { Card } from "@/components/ui/Card";
 import { eventDraftSchema, eventPublishSchema } from "@/lib/validation/event";
 import { useEvent, useUpdateEvent, useDeleteEvent } from "@/features/events/api";
@@ -38,14 +39,8 @@ export default function EditEventScreen() {
 
   if (!event || !canManage) {
     return (
-      <Screen maxWidth="form" contentClassName="pt-10">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          className="mb-6 self-start"
-          onPress={() => router.back()}
-        />
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton fallbackHref="/explore" className="mb-4" />
         <Text variant="title">Can’t edit this event</Text>
         <Text variant="body" tone="muted" className="mt-2">
           {event ? "You can only edit events for hubs you own." : "This event no longer exists."}
@@ -122,22 +117,16 @@ export default function EditEventScreen() {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton fallbackHref="/explore" className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Edit event
       </Text>
       <Text variant="title" className="mt-2">
         {event.title || "Untitled event"}
       </Text>
-      <Text variant="body" tone="muted" className="mb-8 mt-3">
+      <Text variant="lead" className="mb-8 mt-3">
         Currently {isPublished ? "published and visible" : "a draft (only you can see it)"}.
       </Text>
 

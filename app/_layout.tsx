@@ -20,6 +20,9 @@ import { queryClient } from "@/lib/query";
 import { colors } from "@/lib/theme";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { TopBar } from "@/components/ui/TopBar";
+import { BottomTabBar } from "@/components/ui/BottomTabBar";
+import { OnboardingGate } from "@/features/onboarding/OnboardingGate";
+import { NotificationsRealtime } from "@/features/notifications/NotificationsRealtime";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -84,8 +87,15 @@ export default function RootLayout() {
                   <Stack.Screen name="l" options={{ animation: "fade" }} />
                   <Stack.Screen name="card" options={{ animation: "fade" }} />
                   <Stack.Screen name="tickets" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="legal" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="notifications" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="messages" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
                 </Stack>
               </View>
+              <BottomTabBar />
+              <OnboardingGate />
+              <NotificationsRealtime />
             </View>
           </AuthProvider>
         </QueryClientProvider>

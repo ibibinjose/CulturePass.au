@@ -43,7 +43,7 @@ export default function ProfileLinkInBio() {
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
       <View className="items-center gap-4">
-        <Avatar name={profile.full_name} uri={profile.avatar_url} size={104} />
+        <Avatar name={profile.full_name} uri={profile.avatar_url} size={108} ring />
         <View className="items-center gap-2">
           <Text variant="title" className="text-center">
             {profile.full_name || "Member"}

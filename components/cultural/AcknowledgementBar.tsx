@@ -14,16 +14,16 @@ import { cn } from "@/lib/utils/cn";
  */
 export function AcknowledgementBar({ className }: { className?: string }) {
   return (
-    <View className={cn("rounded-lg bg-country-black px-5 py-5", className)}>
-      <View className="mb-3 flex-row gap-1.5">
-        <View className="h-1.5 w-6 rounded-pill bg-country-red" />
-        <View className="h-1.5 w-6 rounded-pill bg-country-ochre" />
-        <View className="h-1.5 w-6 rounded-pill bg-paper/80" />
+    <View className={cn("rounded-3xl bg-country-black px-6 py-7 md:px-8", className)}>
+      <View className="mb-3.5 flex-row gap-1.5">
+        <View className="h-2 w-7 rounded-pill bg-country-red" />
+        <View className="h-2 w-7 rounded-pill bg-country-ochre" />
+        <View className="h-2 w-7 rounded-pill bg-paper/80" />
       </View>
       <Text variant="overline" className="text-paper/60">
         Acknowledgement of Country
       </Text>
-      <Text variant="body" className="mt-2 text-paper/90">
+      <Text variant="bodyLarge" className="mt-2.5 max-w-[680px] leading-7 text-paper/90">
         CulturePass Australia acknowledges the Traditional Custodians of the lands and waters
         across this continent, and pays respect to Elders past and present. Sovereignty was never
         ceded. Always was, always will be Aboriginal land.

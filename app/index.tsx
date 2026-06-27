@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Screen } from "@/components/ui/Screen";
@@ -7,204 +7,459 @@ import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Chip } from "@/components/ui/Chip";
-import { AcknowledgementBar } from "@/components/cultural/AcknowledgementBar";
+import { Footer } from "@/components/ui/Footer";
+import { Icon, type IconName } from "@/components/ui/Icon";
+import { LocationPicker, ANYWHERE, type LocationValue } from "@/components/ui/LocationPicker";
+import { MultiSelectFilter } from "@/components/ui/MultiSelectFilter";
+import { colors } from "@/lib/theme";
+import { cn } from "@/lib/utils/cn";
 import { HubCard } from "@/features/hubs/HubCard";
-import { useHubs, useHubStateCounts } from "@/features/hubs/api";
+import { useHubs } from "@/features/hubs/api";
 import { EventCard } from "@/features/events/EventCard";
-import { useEvents, useEventStateCounts } from "@/features/events/api";
-import { AUSTRALIAN_STATES } from "@/lib/constants";
+import { FeaturedEventCard } from "@/features/events/FeaturedEventCard";
+import { useEvents } from "@/features/events/api";
+import { useMyProfile } from "@/features/profiles/api";
+import { parsePreferences } from "@/lib/validation/profile";
+import {
+  EVENT_TYPES,
+  EVENT_TYPE_LABELS,
+  INTEREST_OPTIONS,
+  type EventType,
+  type StateCode,
+} from "@/lib/constants";
 
-type ResultMode = "all" | "hubs" | "events";
+const FN_FOCUS = new Set([
+  "indigenous",
+  "reconciliation",
+  "language",
+  "country & land",
+  "elders",
+  "storytelling",
+]);
 
-export default function HomeScreen() {
+const CATEGORY_META: Record<EventType, { icon: IconName; tone: string; fg: string }> = {
+  event: { icon: "calendar", tone: "bg-pink-50", fg: colors.pinkDeep },
+  activity: { icon: "sparkle", tone: "bg-teal-50", fg: colors.tealDeep },
+  workshop: { icon: "edit", tone: "bg-gold-50", fg: colors.goldDeep },
+  art: { icon: "palette", tone: "bg-pink-50", fg: colors.pinkDeep },
+  movie: { icon: "film", tone: "bg-teal-50", fg: colors.tealDeep },
+  dining: { icon: "food", tone: "bg-gold-50", fg: colors.goldDeep },
+  shopping: { icon: "bag", tone: "bg-pink-50", fg: colors.pinkDeep },
+  offer: { icon: "ticket", tone: "bg-teal-50", fg: colors.tealDeep },
+  classes_gym: { icon: "dumbbell", tone: "bg-eucalyptus-50", fg: colors.eucalyptus },
+  travel: { icon: "compass", tone: "bg-gold-50", fg: colors.goldDeep },
+  other: { icon: "grid", tone: "bg-sand", fg: colors.inkMuted },
+};
+
+function lowerSet(values: (string | null | undefined)[]): Set<string> {
+  return new Set(values.filter(Boolean).map((v) => (v as string).toLowerCase()));
+}
+
+export default function DiscoverScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const { data: profile } = useMyProfile();
+
   const [search, setSearch] = useState("");
-  const [mode, setMode] = useState<ResultMode>("all");
+  const [location, setLocation] = useState<LocationValue>(ANYWHERE);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [categories, setCategories] = useState<EventType[]>([]);
+  const [firstNations, setFirstNations] = useState(false);
   const query = search.trim();
 
-  const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(
-    query ? { search: query } : {},
-  );
-  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(
-    query ? { search: query } : {},
-  );
-  const { data: hubCounts } = useHubStateCounts();
-  const { data: eventCounts } = useEventStateCounts();
+  // Smart default: seed the location filter from the member's saved location once.
+  const seededLocation = useRef(false);
+  useEffect(() => {
+    if (seededLocation.current || !profile) return;
+    seededLocation.current = true;
+    const loc = parsePreferences(profile.preferences).location;
+    if (loc?.state) {
+      setLocation({ state: loc.state as StateCode, councilId: loc.councilId ?? undefined, label: loc.label });
+    }
+  }, [profile]);
 
-  const featuredHubs = hubs?.slice(0, query ? 6 : 4) ?? [];
-  const featuredEvents = events?.slice(0, query ? 6 : 4) ?? [];
+  const activeInterests = interests.length > 0 ? interests : profile?.interests ?? [];
 
-  const showEvents = mode === "all" || mode === "events";
-  const showHubs = mode === "all" || mode === "hubs";
+  const eventFilters = {
+    ...(query ? { search: query } : {}),
+    ...(location.state ? { state: location.state } : {}),
+    ...(location.councilId ? { councilId: location.councilId } : {}),
+  };
+  const hubFilters = {
+    ...(query ? { search: query } : {}),
+    ...(location.state ? { state: location.state } : {}),
+  };
+
+  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(eventFilters);
+  const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(hubFilters);
+
+  const categoryEvents = categories.length
+    ? (events ?? []).filter((e) => categories.includes(e.type))
+    : events ?? [];
+
+  const interestSet = lowerSet(activeInterests);
+  const matches = (haystack: (string | null | undefined)[]) =>
+    [...lowerSet(haystack)].some((v) => interestSet.has(v));
+
+  const eventIsFN = (e: (typeof categoryEvents)[number]) =>
+    !!e.hub?.indigenous_led || (e.cultural_focus ?? []).some((f) => FN_FOCUS.has(f.toLowerCase()));
+  const hubIsFN = (h: NonNullable<typeof hubs>[number]) => !!h.indigenous_led;
+
+  const fnEvents = categoryEvents.filter(eventIsFN);
+  const fnHubs = (hubs ?? []).filter(hubIsFN);
+
+  const baseEvents = firstNations ? fnEvents : categoryEvents;
+  const featured = baseEvents.slice(0, 5);
+  const comingUp = baseEvents.slice(5, 13);
+
+  const forYouEvents = activeInterests.length
+    ? categoryEvents.filter((e) => matches([...(e.cultural_focus ?? []), ...(e.tags ?? [])]))
+    : [];
+  const hasForYou = !firstNations && forYouEvents.length > 0;
+
+  const likedHubs = activeInterests.length
+    ? (hubs ?? []).filter((h) => matches([...(h.categories ?? []), ...(h.tags ?? [])]))
+    : [];
+  const hubsYouMightLike = (
+    firstNations ? fnHubs : likedHubs.length ? likedHubs : hubs ?? []
+  ).slice(0, 10);
+
+  const showFnSection = !firstNations && (fnEvents.length > 0 || fnHubs.length > 0);
+  const featuredWidth = Math.min(width - 56, 440);
+
+  const toggleCategory = (c: EventType) =>
+    setCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
 
   return (
-    <Screen contentClassName="pt-8">
-      {/* Hero */}
-      <View className="overflow-hidden rounded-2xl border border-linen bg-ink p-6 lg:p-8">
-        <Text variant="overline" tone="inverse">
-          CulturePass Australia
-        </Text>
-        <Text variant="display" tone="inverse" className="mt-3 max-w-[640px]">
-          Culture, nearby.
-        </Text>
-        <Text variant="body" tone="inverse" className="mt-3 max-w-[460px] opacity-75">
-          Discover events, hubs and community across Australia.
-        </Text>
-        <View className="mt-6 flex-row flex-wrap gap-3">
-          <Button label="Find events" variant="secondary" onPress={() => router.push("/explore")} />
-          <Button label="Add a hub" variant="whatsapp" onPress={() => router.push("/create/hub")} />
+    <Screen contentClassName="pt-6 md:pt-8">
+      {/* Hero — hot pink background, turquoise border detail, gold accents */}
+      <View className="overflow-hidden rounded-3xl border-2 border-teal-500 bg-pink-500 p-7 md:p-12">
+        <View className="flex-row items-center gap-2">
+          <Icon name="sparkle" size={15} color={colors.gold} filled />
+          <Text variant="overline" className="text-white/90">
+            CulturePass Australia · Unity in diversity
+          </Text>
         </View>
-      </View>
-
-      {/* Search */}
-      <Card className="mt-6 gap-4">
-        <View className="gap-2 md:flex-row md:items-center">
-          <View className="flex-1">
-            <Input
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search events, hubs or places"
-              returnKeyType="search"
-              autoCorrect={false}
-            />
-          </View>
+        <Text variant="displayLarge" tone="white" className="mt-4 max-w-[760px]">
+          {profile?.full_name ? `Welcome back, ${profile.full_name.split(" ")[0]}.` : "Culture, nearby."}
+        </Text>
+        <Text variant="lead" className="mt-4 max-w-[520px] text-white/90">
+          Discover events and communities tuned to what you love — with First Nations voices at the
+          centre.
+        </Text>
+        <View className="mt-7 flex-row flex-wrap gap-3">
           <Button
-            label="Browse"
-            className="md:w-[160px]"
-            onPress={() => router.push("/explore")}
+            label="Edit interests"
+            variant="ghost"
+            className="bg-gold-500 active:bg-gold-600"
+            leftIcon={<Icon name="sparkle" size={16} color={colors.ink} />}
+            onPress={() => router.push("/onboarding")}
           />
         </View>
+      </View>
+
+      {/* Search + a single compact row of filters */}
+      <View className="mt-6 gap-3">
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search events, hubs or places"
+          returnKeyType="search"
+          autoCorrect={false}
+          leftIcon={<Icon name="search" size={18} color={colors.inkFaint} />}
+        />
         <View className="flex-row flex-wrap gap-2">
-          <Chip label="All" selected={mode === "all"} onPress={() => setMode("all")} />
-          <Chip label="Communities" selected={mode === "hubs"} onPress={() => setMode("hubs")} />
-          <Chip label="Events" selected={mode === "events"} onPress={() => setMode("events")} />
-        </View>
-      </Card>
-
-      {/* Discovery */}
-      <View className="mt-10 gap-8 lg:flex-row lg:items-start">
-        <View className="flex-1 gap-10">
-          {showEvents ? (
-            <DiscoverySection
-              title={query ? "Matching events" : "Coming up"}
-              loading={eventsLoading}
-              error={eventsError}
-              emptyTitle={query ? "No events match that yet" : "No upcoming events yet"}
-              emptyBody="Events appear here as organisers publish them."
-              actionLabel="Add an event"
-              onAction={() => router.push("/create/event")}
-            >
-              {featuredEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </DiscoverySection>
-          ) : null}
-
-          {showHubs ? (
-            <DiscoverySection
-              title={query ? "Matching communities" : "Recently added"}
-              loading={hubsLoading}
-              error={hubsError}
-              emptyTitle={query ? "No communities match that yet" : "No communities yet"}
-              emptyBody="Be the first to create a hub for your community."
-              actionLabel="Create a hub"
-              onAction={() => router.push("/create/hub")}
-            >
-              {featuredHubs.map((hub) => (
-                <HubCard key={hub.slug} hub={hub} />
-              ))}
-            </DiscoverySection>
-          ) : null}
-        </View>
-
-        {/* Explore by state */}
-        <View className="lg:w-[320px]">
-          <Card className="gap-4 bg-sand">
-            <Text variant="subheading">Explore by state</Text>
-            <View className="gap-2">
-              {AUSTRALIAN_STATES.map((state) => {
-                const hubCount = hubCounts?.[state.code] ?? 0;
-                const eventCount = eventCounts?.[state.code] ?? 0;
-                const hasContent = hubCount + eventCount > 0;
-                return (
-                  <Pressable
-                    key={state.code}
-                    onPress={() => router.push(`/state/${state.code}`)}
-                    className="flex-row items-center justify-between gap-3 rounded-lg border border-linen bg-card p-4 active:bg-paper"
-                  >
-                    <Text variant="label" className="text-base">
-                      {state.name}
-                    </Text>
-                    <Text variant="caption" tone={hasContent ? "eucalyptus" : "faint"}>
-                      {hubCount} · {eventCount}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Card>
+          <LocationPicker value={location} onChange={setLocation} />
+          <MultiSelectFilter
+            label="Interests"
+            icon="sparkle"
+            options={INTEREST_OPTIONS as readonly string[]}
+            selected={interests}
+            onChange={setInterests}
+          />
+          <MultiSelectFilter
+            label="Category"
+            icon="filter"
+            options={EVENT_TYPES as readonly string[]}
+            labels={EVENT_TYPE_LABELS as Record<string, string>}
+            selected={categories as string[]}
+            onChange={(next) => setCategories(next as EventType[])}
+          />
+          <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
         </View>
       </View>
 
-      <AcknowledgementBar className="mb-6 mt-12" />
+      {/* Browse by category — visual quick-filter tiles */}
+      <View className="mt-section gap-4">
+        <Text variant="overline" tone="pink">
+          Browse by category
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="gap-3 pr-4"
+          className="-mx-gutter px-gutter"
+        >
+          {EVENT_TYPES.map((type) => {
+            const meta = CATEGORY_META[type];
+            const on = categories.includes(type);
+            return (
+              <Pressable
+                key={type}
+                onPress={() => toggleCategory(type)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                className="w-[76px] items-center gap-2"
+              >
+                <View
+                  className={cn(
+                    "h-16 w-16 items-center justify-center rounded-2xl border-2",
+                    on ? "border-ink bg-ink" : `border-transparent ${meta.tone}`,
+                  )}
+                >
+                  <Icon name={meta.icon} size={24} color={on ? colors.paper : meta.fg} />
+                </View>
+                <Text
+                  variant="caption"
+                  numberOfLines={1}
+                  className={cn("text-center text-xs", on ? "text-ink" : "text-ink-muted")}
+                >
+                  {EVENT_TYPE_LABELS[type]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Featured / Happening soon — image-forward banner rail */}
+      <View className="mt-section gap-5">
+        <SectionHeader
+          eyebrow={firstNations ? "First Nations" : "Happening soon"}
+          title="Featured"
+          onSeeAll={() => router.push("/calendar")}
+          showSeeAll={featured.length > 0}
+        />
+        {eventsLoading ? (
+          <Card>
+            <Text variant="caption" tone="faint">
+              Loading…
+            </Text>
+          </Card>
+        ) : eventsError ? (
+          <Card>
+            <Text variant="caption" tone="muted">
+              Could not load events. Check your connection and try again.
+            </Text>
+          </Card>
+        ) : featured.length > 0 ? (
+          <Carousel>
+            {featured.map((event) => (
+              <View key={event.id} style={{ width: featuredWidth }}>
+                <FeaturedEventCard event={event} />
+              </View>
+            ))}
+          </Carousel>
+        ) : (
+          <EmptyCard
+            title="No matching events yet"
+            body="Try clearing a filter, or add the first event for this community."
+            action="Add an event"
+            onPress={() => router.push("/create/event")}
+          />
+        )}
+      </View>
+
+      {/* First Nations voices — kept near the top, honouring the core mission */}
+      {showFnSection ? (
+        <View className="mt-section gap-5">
+          <View className="gap-1.5">
+            <View className="flex-row items-center gap-1.5">
+              <View className="h-2 w-2 rounded-pill bg-country-red" />
+              <View className="h-2 w-2 rounded-pill bg-country-ochre" />
+              <View className="h-2 w-2 rounded-pill bg-ink" />
+              <Text variant="overline" className="ml-1 text-ink-muted">
+                First Nations voices
+              </Text>
+            </View>
+            <Text variant="title">Always was, always will be</Text>
+          </View>
+          <Carousel>
+            {fnEvents.slice(0, 6).map((event) => (
+              <View key={event.id} className="w-[300px]">
+                <EventCard event={event} />
+              </View>
+            ))}
+            {fnHubs.slice(0, 4).map((hub) => (
+              <View key={hub.slug} className="w-[300px]">
+                <HubCard hub={hub} />
+              </View>
+            ))}
+          </Carousel>
+        </View>
+      ) : null}
+
+      {/* For you */}
+      {hasForYou ? (
+        <View className="mt-section gap-5">
+          <SectionHeader eyebrow="Tuned to you" title="For you" />
+          <View className="gap-4 md:flex-row md:flex-wrap">
+            {forYouEvents.slice(0, 4).map((event) => (
+              <View key={event.id} className="md:w-[calc(50%-8px)]">
+                <EventCard event={event} />
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Coming up */}
+      {comingUp.length > 0 ? (
+        <View className="mt-section gap-5">
+          <SectionHeader
+            eyebrow={hasForYou ? "More to explore" : "On the calendar"}
+            title="Coming up"
+            onSeeAll={() => router.push("/calendar")}
+            showSeeAll
+          />
+          <View className="gap-4 md:flex-row md:flex-wrap">
+            {comingUp.map((event) => (
+              <View key={event.id} className="md:w-[calc(50%-8px)]">
+                <EventCard event={event} />
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {/* Hubs you might like — horizontal discovery carousel */}
+      <View className="mt-section gap-5">
+        <SectionHeader
+          eyebrow="Communities"
+          title="Hubs you might like"
+          onSeeAll={() => router.push("/explore")}
+          showSeeAll={hubsYouMightLike.length > 0}
+        />
+        {hubsLoading ? (
+          <Card>
+            <Text variant="caption" tone="faint">
+              Loading…
+            </Text>
+          </Card>
+        ) : hubsError ? (
+          <Card>
+            <Text variant="caption" tone="muted">
+              Could not load communities.
+            </Text>
+          </Card>
+        ) : hubsYouMightLike.length > 0 ? (
+          <Carousel>
+            {hubsYouMightLike.map((hub) => (
+              <View key={hub.slug} className="w-[300px]">
+                <HubCard hub={hub} />
+              </View>
+            ))}
+          </Carousel>
+        ) : (
+          <EmptyCard
+            title="No communities here yet"
+            body="Be the first to create a hub for your community."
+            action="Create a hub"
+            onPress={() => router.push("/create/hub")}
+          />
+        )}
+      </View>
+
+      <Footer className="mt-section" />
     </Screen>
   );
 }
 
-function DiscoverySection({
+function Carousel({ children }: { children: React.ReactNode }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerClassName="gap-4 pr-4"
+      className="-mx-gutter px-gutter"
+    >
+      {children}
+    </ScrollView>
+  );
+}
+
+function FirstNationsToggle({ active, onPress }: { active: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      className={cn(
+        "h-11 flex-row items-center gap-2 self-start rounded-pill border px-4",
+        active ? "border-country-black bg-country-black" : "border-linen bg-card active:bg-sand",
+      )}
+    >
+      <View className="flex-row gap-0.5">
+        <View className="h-2 w-2 rounded-pill bg-country-red" />
+        <View className="h-2 w-2 rounded-pill bg-country-ochre" />
+        <View className={cn("h-2 w-2 rounded-pill", active ? "bg-paper" : "bg-ink")} />
+      </View>
+      <Text variant="label" className={cn("font-heading text-sm", active ? "text-paper" : "text-ink")}>
+        First Nations
+      </Text>
+    </Pressable>
+  );
+}
+
+function SectionHeader({
+  eyebrow,
   title,
-  loading,
-  error,
-  emptyTitle,
-  emptyBody,
-  actionLabel,
-  onAction,
-  children,
+  onSeeAll,
+  showSeeAll,
+}: {
+  eyebrow: string;
+  title: string;
+  onSeeAll?: () => void;
+  showSeeAll?: boolean;
+}) {
+  return (
+    <View className="flex-row items-end justify-between gap-3">
+      <View className="gap-1">
+        <Text variant="overline" tone="pink">
+          {eyebrow}
+        </Text>
+        <Text variant="title">{title}</Text>
+      </View>
+      {onSeeAll && showSeeAll ? (
+        <Pressable onPress={onSeeAll} hitSlop={8} className="flex-row items-center gap-1 pb-1 active:opacity-60">
+          <Text variant="label" tone="muted" className="font-heading">
+            View all
+          </Text>
+          <Icon name="arrow-right" size={16} color={colors.inkMuted} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function EmptyCard({
+  title,
+  body,
+  action,
+  onPress,
 }: {
   title: string;
-  loading: boolean;
-  error: boolean;
-  emptyTitle: string;
-  emptyBody: string;
-  actionLabel: string;
-  onAction: () => void;
-  children: React.ReactNode;
+  body: string;
+  action: string;
+  onPress: () => void;
 }) {
-  const hasChildren = Array.isArray(children) ? children.length > 0 : !!children;
-
   return (
-    <View className="gap-4">
-      <Text variant="heading">{title}</Text>
-      {loading ? (
-        <Card>
-          <Text variant="caption" tone="faint">
-            Loading…
-          </Text>
-        </Card>
-      ) : error ? (
-        <Card>
-          <Text variant="caption" tone="muted">
-            Could not load this section. Check your connection and try again.
-          </Text>
-        </Card>
-      ) : hasChildren ? (
-        <View className="gap-4">{children}</View>
-      ) : (
-        <Card className="gap-3">
-          <Text variant="subheading">{emptyTitle}</Text>
-          <Text variant="caption" tone="muted">
-            {emptyBody}
-          </Text>
-          <Button
-            label={actionLabel}
-            variant="whatsapp"
-            size="sm"
-            className="self-start"
-            onPress={onAction}
-          />
-        </Card>
-      )}
-    </View>
+    <Card className="items-start gap-3">
+      <Text variant="subheading">{title}</Text>
+      <Text variant="caption" tone="muted">
+        {body}
+      </Text>
+      <Button label={action} variant="whatsapp" size="sm" onPress={onPress} />
+    </Card>
   );
 }

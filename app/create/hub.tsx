@@ -6,6 +6,7 @@ import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { BackButton } from "@/components/ui/BackButton";
 import { Field } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
@@ -13,6 +14,7 @@ import { OptionCard } from "@/components/ui/OptionCard";
 import { Stepper } from "@/components/ui/Stepper";
 import { TagInput } from "@/components/ui/TagInput";
 import { ImagePickerComponent } from "@/components/ui/ImagePicker";
+import { colors } from "@/lib/theme";
 
 import {
   HUB_TYPES,
@@ -69,15 +71,10 @@ export default function CreateHubWizard() {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
+    <Screen maxWidth="form" contentClassName="pt-6">
       <View className="mb-6 flex-row items-center justify-between">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          onPress={() => (step === 0 ? router.back() : back())}
-        />
-        <Text variant="overline" tone="ochre">
+        <BackButton onPress={() => (step === 0 ? router.back() : back())} />
+        <Text variant="overline" tone="pink">
           New Hub
         </Text>
       </View>
@@ -327,8 +324,8 @@ function StepCulture({ draft, update }: StepProps) {
         <Switch
           value={draft.indigenous_led}
           onValueChange={(indigenous_led) => update({ indigenous_led })}
-          trackColor={{ true: "#1C1815", false: "#EDE4D6" }}
-          thumbColor="#FAF6EF"
+          trackColor={{ true: colors.ink, false: colors.linen }}
+          thumbColor={colors.paper}
         />
       </Card>
 
@@ -410,7 +407,7 @@ function StepReview({
 
       <Card elevated className="gap-2">
         <View className="flex-row items-center justify-between">
-          <Text variant="overline" tone="faint">
+          <Text variant="overline" tone="pink">
             Summary
           </Text>
           <Button label="Edit" variant="ghost" size="sm" onPress={() => onEditStep(0)} />
@@ -441,7 +438,7 @@ function StepHeading({ title, subtitle }: { title: string; subtitle?: string }) 
     <View>
       <Text variant="title">{title}</Text>
       {subtitle ? (
-        <Text variant="body" tone="muted" className="mt-3">
+        <Text variant="lead" className="mt-3">
           {subtitle}
         </Text>
       ) : null}

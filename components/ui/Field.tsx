@@ -21,7 +21,9 @@ export function Field({ label, helper, error, optional, className, children }: F
     <View className={cn("gap-2", className)}>
       {label ? (
         <View className="flex-row items-baseline justify-between">
-          <Text variant="label">{label}</Text>
+          <Text variant="label" className="font-heading">
+            {label}
+          </Text>
           {optional ? (
             <Text variant="caption" tone="faint">
               Optional

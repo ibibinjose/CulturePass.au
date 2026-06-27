@@ -38,7 +38,7 @@ export default function MyHubsScreen() {
   return (
     <Screen contentClassName="pt-10">
       <View className="mb-2 flex-row items-center justify-between">
-        <Text variant="overline" tone="ochre">
+        <Text variant="overline" tone="pink">
           My Hubs
         </Text>
         <Button
