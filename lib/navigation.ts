@@ -22,6 +22,7 @@ export type AppFooterGroup = {
 export const PRIMARY_NAV: AppNavItem[] = [
   { key: "discover", label: "Discover", href: "/", match: "/", icon: "compass" },
   { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
+  { key: "my-council", label: "My Council", href: "/my-council", match: "/my-council", icon: "map-pin" },
   { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
   { key: "my-hubs", label: "My Hubs", href: "/my-hubs", match: "/my-hubs", icon: "grid", authOnly: true },
 ];
@@ -40,6 +41,7 @@ export const FOOTER_GROUPS: AppFooterGroup[] = [
     links: [
       { label: "Discover", href: "/" },
       { label: "Calendar", href: "/calendar" },
+      { label: "Councils Directory", href: "/councils" },
     ],
   },
   {

@@ -105,6 +105,7 @@ export interface Database {
           indigenous_connection: string | null;
           preferred_languages: string[];
           is_public_professional: boolean;
+          is_admin: boolean;
           professional_category: Database["public"]["Enums"]["professional_category"] | null;
           professional_title: string | null;
           public_bio: string | null;
@@ -126,6 +127,7 @@ export interface Database {
           indigenous_connection?: string | null;
           preferred_languages?: string[];
           is_public_professional?: boolean;
+          is_admin?: boolean;
           professional_category?: Database["public"]["Enums"]["professional_category"] | null;
           professional_title?: string | null;
           public_bio?: string | null;

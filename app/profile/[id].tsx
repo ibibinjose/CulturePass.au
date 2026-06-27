@@ -113,18 +113,22 @@ export default function PublicProfileScreen() {
               {profile.professional_title}
             </Text>
           ) : null}
-          {profile.is_public_professional && profile.professional_category ? (
-            <Badge
-              variant="ochre"
-              label={PROFESSIONAL_CATEGORY_LABELS[profile.professional_category as ProfessionalCategory]}
-            />
-          ) : null}
-          {showLocation ? (
-            <View className="flex-row items-center gap-1.5">
-              <Icon name="map-pin" size={14} color={colors.inkFaint} />
-              <Text variant="caption" tone="faint">
-                {profile.location}
-              </Text>
+          {showLocation || (profile.is_public_professional && profile.professional_category) ? (
+            <View className="flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-1">
+              {profile.is_public_professional && profile.professional_category ? (
+                <Badge
+                  variant="ochre"
+                  label={PROFESSIONAL_CATEGORY_LABELS[profile.professional_category as ProfessionalCategory]}
+                />
+              ) : null}
+              {showLocation ? (
+                <View className="flex-row items-center gap-1.5">
+                  <Icon name="map-pin" size={14} color={colors.inkFaint} />
+                  <Text variant="caption" tone="faint">
+                    {profile.location}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ) : null}
         </View>

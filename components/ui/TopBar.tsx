@@ -208,6 +208,9 @@ export function TopBar() {
         </>
       ) : null}
 
+      <MenuRow label="My Council" icon="map-pin" onPress={() => go("/my-council")} />
+      <View className="h-px bg-linen" />
+
       {isAuthenticated ? (
         <>
           <MenuRow
@@ -223,6 +226,9 @@ export function TopBar() {
             <MenuRow label="Profile" icon="user" onPress={() => go(`/profile/${profile.id}`)} />
           ) : null}
           <MenuRow label="My tickets" icon="ticket" onPress={() => go("/tickets")} />
+          {profile?.is_admin ? (
+            <MenuRow label="Admin Dashboard" icon="lock" onPress={() => go("/admin")} />
+          ) : null}
           <MenuRow label="Settings" icon="settings" onPress={() => go("/settings")} />
           <View className="h-px bg-linen" />
           <MenuRow label="Sign out" icon="logout" danger onPress={handleSignOut} />

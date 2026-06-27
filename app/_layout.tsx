@@ -69,20 +69,28 @@ export default function RootLayout() {
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="create/event"
+                    name="hub/edit"
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="hub/edit/[slug]"
+                    name="event"
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="event/[id]"
+                    name="my-hubs"
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="my-hubs/index"
+                    name="my-council/index"
                     options={{ animation: "slide_from_bottom" }}
+                  />
+                  <Stack.Screen
+                    name="councils/index"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
+                    name="admin/index"
+                    options={{ animation: "slide_from_right" }}
                   />
                   <Stack.Screen name="l" options={{ animation: "fade" }} />
                   <Stack.Screen name="card" options={{ animation: "fade" }} />

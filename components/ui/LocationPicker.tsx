@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, View } from "react-native";
+import { Modal, Pressable, ScrollView, View, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Text } from "./Text";
@@ -10,6 +10,18 @@ import { cn } from "@/lib/utils/cn";
 import { colors } from "@/lib/theme";
 import { AUSTRALIAN_STATES, type StateCode } from "@/lib/constants";
 import { useCouncils } from "@/features/reference/api";
+import { supabase } from "@/lib/supabase/client";
+
+const STATE_NAME_TO_CODE: Record<string, string> = {
+  "new south wales": "NSW",
+  "victoria": "VIC",
+  "queensland": "QLD",
+  "western australia": "WA",
+  "south australia": "SA",
+  "tasmania": "TAS",
+  "australian capital territory": "ACT",
+  "northern territory": "NT",
+};
 
 export interface LocationValue {
   state?: StateCode;
@@ -37,6 +49,7 @@ export function LocationPicker({
   const [stateSel, setStateSel] = useState<StateCode | undefined>(value.state);
   const [search, setSearch] = useState("");
   const { data: councils, isLoading } = useCouncils(stateSel);
+  const [detecting, setDetecting] = useState(false);
 
   const active = !!value.state || !!value.councilId;
 
@@ -44,6 +57,73 @@ export function LocationPicker({
     onChange(v);
     setSearch("");
     setOpen(false);
+  };
+
+  const detectLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    setDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`
+          );
+          if (!res.ok) throw new Error("reverse-geocode");
+          const geo = await res.json();
+          
+          const stateName = geo.address?.state?.toLowerCase();
+          const county = geo.address?.county || geo.address?.city_district || geo.address?.city;
+          
+          if (!stateName || !county) {
+            throw new Error("incomplete-address");
+          }
+
+          const stateCode = STATE_NAME_TO_CODE[stateName];
+          if (!stateCode) {
+            throw new Error("unsupported-state");
+          }
+
+          const { data: councilsData } = await supabase
+            .from("australian_councils")
+            .select("*")
+            .eq("state_code", stateCode);
+
+          if (!councilsData || councilsData.length === 0) {
+            throw new Error("no-councils-in-state");
+          }
+
+          const cleanCounty = county.toLowerCase().replace("council", "").replace("city of", "").trim();
+          const matchedCouncil = councilsData.find((c) => {
+            const cleanName = c.name.toLowerCase().replace("council", "").replace("city of", "").trim();
+            return cleanName.includes(cleanCounty) || cleanCounty.includes(cleanName);
+          }) || councilsData[0];
+
+          if (!matchedCouncil) {
+            throw new Error("no-matched-council");
+          }
+
+          choose({
+            state: stateCode as StateCode,
+            councilId: matchedCouncil.id,
+            label: matchedCouncil.name,
+          });
+        } catch (err) {
+          console.error(err);
+          alert("Could not automatically resolve your local council. Please select manually.");
+        } finally {
+          setDetecting(false);
+        }
+      },
+      (error) => {
+        console.error(error);
+        alert("Permission denied or location unavailable.");
+        setDetecting(false);
+      }
+    );
   };
 
   const filteredCouncils = (() => {
@@ -104,6 +184,28 @@ export function LocationPicker({
 
           {!stateSel ? (
             <ScrollView contentContainerClassName="px-gutter py-4 gap-2" showsVerticalScrollIndicator={false}>
+              <Pressable
+                onPress={detectLocation}
+                disabled={detecting}
+                className="flex-row items-center gap-3 bg-pink-50/50 border border-pink-100/60 rounded-2xl p-3.5 mb-2 active:opacity-85"
+              >
+                <View className="h-8 w-8 rounded-full bg-pink-600 items-center justify-center">
+                  {detecting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Icon name="map-pin" size={14} color="#FFFFFF" />
+                  )}
+                </View>
+                <View className="flex-1">
+                  <Text className="font-heading text-xs text-ink">
+                    {detecting ? "Locating you..." : "Detect my location"}
+                  </Text>
+                  <Text className="text-[10px] text-ink-faint mt-0.5">
+                    Find postcodes and local council automatically
+                  </Text>
+                </View>
+              </Pressable>
+
               <Row label="Anywhere in Australia" active={!active} onPress={() => choose(ANYWHERE)} />
               <Text variant="overline" tone="pink" className="mb-1 mt-3">
                 States & territories

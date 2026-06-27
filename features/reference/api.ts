@@ -23,7 +23,7 @@ export function useCouncils(stateCode?: string) {
     queryFn: async () => {
       let query = supabase
         .from("australian_councils")
-        .select("id, name, slug, state_code, is_metro, population")
+        .select("id, name, slug, state_code, is_metro, population, traditional_custodians")
         .order("name");
       if (stateCode) query = query.eq("state_code", stateCode);
       const { data, error } = await query;

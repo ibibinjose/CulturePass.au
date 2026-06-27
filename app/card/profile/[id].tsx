@@ -9,8 +9,10 @@ import {
   Avatar,
   Badge,
   ShareBar,
+  Icon,
 } from "@/components/ui";
 import { useProfile } from "@/features/profiles/api";
+import { colors } from "@/lib/theme";
 import { resolveLinks } from "@/lib/social";
 import { saveContact } from "@/lib/vcard";
 import { parsePreferences } from "@/lib/validation/profile";
@@ -79,21 +81,32 @@ export default function ProfileBusinessCard() {
               {profile.professional_title}
             </Text>
           ) : null}
-          {profile.is_public_professional && profile.professional_category ? (
-            <Badge
-              variant="ochre"
-              label={
-                PROFESSIONAL_CATEGORY_LABELS[
-                  profile.professional_category as ProfessionalCategory
-                ]
-              }
-            />
-          ) : null}
-          {prefs.privacy.show_location && profile.location ? (
-            <Text variant="caption" tone="faint">
-              {profile.location}
-            </Text>
-          ) : null}
+          {(() => {
+            const showLocation = prefs.privacy.show_location && profile.location;
+            if (!showLocation && !(profile.is_public_professional && profile.professional_category)) return null;
+            return (
+              <View className="flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-1">
+                {profile.is_public_professional && profile.professional_category ? (
+                  <Badge
+                    variant="ochre"
+                    label={
+                      PROFESSIONAL_CATEGORY_LABELS[
+                        profile.professional_category as ProfessionalCategory
+                      ]
+                    }
+                  />
+                ) : null}
+                {showLocation ? (
+                  <View className="flex-row items-center gap-1.5">
+                    <Icon name="map-pin" size={13} color={colors.inkFaint} />
+                    <Text variant="caption" tone="faint">
+                      {profile.location}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+            );
+          })()}
         </View>
 
         {links.length > 0 ? (
