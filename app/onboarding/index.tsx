@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, Icon, LocationPicker, ANYWHERE, type LocationValue } from "@/components/ui";
+import { Screen, Text, Button, Icon, BrandLockup, LocationPicker, ANYWHERE, type LocationValue } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { RequireAuth } from "@/features/auth/RequireAuth";
@@ -54,14 +54,7 @@ function Onboarding() {
 
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
-      <View className="mb-6 flex-row items-center gap-2.5">
-        <View className="h-9 w-9 items-center justify-center rounded-xl bg-ink">
-          <View className="h-2 w-2 rounded-pill bg-teal-500" />
-        </View>
-        <Text className="font-display text-lg text-ink">
-          CulturePass <Text className="font-display text-lg text-pink-500">AU</Text>
-        </Text>
-      </View>
+      <BrandLockup className="mb-6" />
 
       <Text variant="overline" tone="pink">
         Welcome

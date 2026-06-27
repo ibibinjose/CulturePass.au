@@ -79,9 +79,6 @@ export default function HubScreen() {
       <Screen maxWidth="prose" contentClassName="pt-6">
         <Card className="mt-8 items-start gap-3 border border-linen p-6">
           <Text variant="title" className="font-display tracking-tight">Hub not found</Text>
-          <Text variant="body" tone="muted">
-            It may be unpublished, or your Supabase project isn’t connected yet.
-          </Text>
           <Button
             label="Browse hubs"
             variant="secondary"
@@ -116,9 +113,6 @@ export default function HubScreen() {
   const partners = (hub.indigenous_partners ?? []).filter(Boolean);
   const websiteLabel = hub.website
     ? hub.website.replace(/^https?:\/\//i, "").replace(/\/+$/, "")
-    : null;
-  const joined = hub.created_at
-    ? new Date(hub.created_at).toLocaleDateString("en-AU", { month: "long", year: "numeric" })
     : null;
 
   const openUrl = (raw: string) => {
@@ -174,11 +168,23 @@ export default function HubScreen() {
 
   const activeTab = tab === "details" && !isMobile ? "events" : tab;
 
+  const stats = [
+    { key: "events", value: eventCount, label: "Events", onPress: () => setTab("events") },
+    { key: "likes", value: likeStatus?.count ?? 0, label: "Likes" },
+    { key: "followers", value: followStatus?.count ?? 0, label: "Followers" },
+    topics.length > 0
+      ? { key: "topics", value: topics.length, label: "Topics", onPress: () => setTab("about") }
+      : null,
+    partners.length > 0
+      ? { key: "partners", value: partners.length, label: "Partners", onPress: () => setTab("about") }
+      : null,
+  ].filter(Boolean) as { key: string; value: number; label: string; onPress?: () => void }[];
+
   return (
     <Screen maxWidth="content" contentClassName="pt-0 pb-10">
       {/* Cover image banner */}
       <View
-        className="relative overflow-hidden rounded-b-3xl bg-sand"
+        className="relative overflow-hidden rounded-b-[28px] bg-sand"
         style={{ aspectRatio: 5 / 2, marginLeft: -20, marginRight: -20 }}
       >
         {coverUrl ? (
@@ -191,15 +197,26 @@ export default function HubScreen() {
         ) : (
           <View
             className={cn(
-              "flex-1 items-end justify-center pr-6",
-              hub.indigenous_led ? "bg-eucalyptus-50" : "bg-ochre-50",
+              "flex-1 items-center justify-center",
+              hub.indigenous_led ? "bg-eucalyptus-100" : "bg-ochre-100",
             )}
           >
-            <Text className="font-display text-8xl text-linen font-bold">
+            <Text
+              className={cn(
+                "font-display font-bold leading-none opacity-20",
+                hub.indigenous_led ? "text-eucalyptus-700" : "text-ochre-700",
+              )}
+              style={{ fontSize: 168 }}
+            >
               {hub.name.charAt(0).toUpperCase()}
             </Text>
           </View>
         )}
+
+        {/* Top scrim keeps the back control legible over bright imagery */}
+        {coverUrl ? (
+          <View pointerEvents="none" className="absolute inset-x-0 top-0 h-20 bg-ink/15" />
+        ) : null}
 
         {/* Back Button */}
         <View className="absolute left-4 top-4">
@@ -207,7 +224,7 @@ export default function HubScreen() {
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             accessibilityLabel="Go back"
             hitSlop={8}
-            className="h-9 w-9 items-center justify-center rounded-full bg-ink/40 border border-white/20 active:bg-ink/65"
+            className="h-9 w-9 items-center justify-center rounded-full bg-ink/45 border border-white/20 active:bg-ink/70"
           >
             <Icon name="arrow-left" size={18} color={colors.paper} />
           </Pressable>
@@ -215,111 +232,143 @@ export default function HubScreen() {
       </View>
 
       {/* Unified Header Identity & Actions Block */}
-      <View className="flex-col md:flex-row md:items-end justify-between gap-5 mt-[-44px] pb-6 border-b border-linen/50 z-10">
+      <View className="flex-col md:flex-row md:items-end justify-between gap-5 mt-[-44px] pb-6 border-b border-linen/60 z-10">
         <View className="flex-row items-end gap-4 min-w-0 flex-1">
           <Pressable
             onPress={() => {
               if (isOwnerOrEditor) router.push(`/hub/edit/${hub.slug}`);
             }}
+            disabled={!isOwnerOrEditor}
             className="active:opacity-90"
           >
-            <Avatar name={hub.name} uri={logoUrl} size={88} ring />
+            <Avatar name={hub.name} uri={logoUrl} size={92} ring />
           </Pressable>
-          
-          <View className="min-w-0 flex-1 pb-1 gap-1">
-            <View className="flex-row flex-wrap items-center gap-1.5">
+
+          <View className="min-w-0 flex-1 pb-1 gap-2">
+            <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
               <Text className="font-display text-2xl md:text-3xl font-bold tracking-tight text-ink">
                 {hub.name}
               </Text>
               {isVerified ? <VerifiedCheck /> : null}
               {hub.indigenous_led ? <IndigenousLedBadge /> : null}
             </View>
-            <Text variant="caption" tone="faint" className="text-xs">
-              @{hub.slug} · {HUB_TYPE_LABELS[hub.type as HubType]}
-            </Text>
+            <View className="flex-row flex-wrap items-center gap-x-2.5 gap-y-0.5">
+              <Text variant="overline" tone="ochre">
+                {HUB_TYPE_LABELS[hub.type as HubType]}
+              </Text>
+              {place ? (
+                <View className="flex-row items-center gap-1">
+                  <Icon name="map-pin" size={12} color={colors.inkFaint} />
+                  <Text variant="caption" tone="faint" className="text-xs">
+                    {place}
+                  </Text>
+                </View>
+              ) : null}
+              <Text variant="caption" tone="faint" className="text-xs">
+                @{hub.slug}
+              </Text>
+            </View>
           </View>
         </View>
 
-        {/* Unified Actions Bar (Works consistently for both mobile and desktop) */}
-        <View className="flex-row flex-wrap items-center gap-2 pb-1">
-          <Button
-            label={likeStatus?.liked ? "Liked" : "Like"}
-            variant={likeStatus?.liked ? "pink" : "outline"}
-            size="sm"
-            leftIcon={
-              <Icon
-                name="heart"
-                size={14}
-                color={likeStatus?.liked ? colors.white : colors.pink}
-                filled={likeStatus?.liked}
-              />
-            }
-            onPress={handleLike}
-            loading={toggleLike.isPending}
-          />
-          <Button
-            label={followStatus?.followed ? "Following" : "Follow"}
-            variant={followStatus?.followed ? "primary" : "outline"}
-            size="sm"
-            leftIcon={
-              <Icon
-                name="star"
-                size={14}
-                color={followStatus?.followed ? colors.white : colors.ochre}
-                filled={followStatus?.followed}
-              />
-            }
-            onPress={handleFollow}
-            loading={toggleFollow.isPending}
-          />
-          {!isOwnerOrEditor ? (
+        {/* Unified Actions Bar — 2×2 grid on mobile, single row on desktop */}
+        <View className="gap-2 md:flex-row md:items-center pb-1">
+          <View className="flex-row gap-2">
             <Button
-              label="Message"
-              variant="secondary"
+              label={followStatus?.followed ? "Following" : "Follow"}
+              variant={followStatus?.followed ? "outline" : "primary"}
               size="sm"
-              leftIcon={<Icon name="chat" size={14} color={colors.paper} />}
-              onPress={messageOrganiser}
-              loading={startConversation.isPending}
+              className="flex-1 md:flex-none"
+              leftIcon={
+                <Icon
+                  name={followStatus?.followed ? "check" : "star"}
+                  size={14}
+                  color={colors.ink}
+                  filled={!followStatus?.followed}
+                />
+              }
+              onPress={handleFollow}
+              loading={toggleFollow.isPending}
             />
-          ) : null}
-          <ShareButton path={`/hub/${hub.slug}`} title={hub.name} message={hub.short_description ?? undefined} />
+            <Button
+              label={likeStatus?.liked ? "Liked" : "Like"}
+              variant={likeStatus?.liked ? "pink" : "outline"}
+              size="sm"
+              className="flex-1 md:flex-none"
+              leftIcon={
+                <Icon
+                  name="heart"
+                  size={14}
+                  color={likeStatus?.liked ? colors.white : colors.pink}
+                  filled={likeStatus?.liked}
+                />
+              }
+              onPress={handleLike}
+              loading={toggleLike.isPending}
+            />
+          </View>
+          <View className="flex-row gap-2">
+            {!isOwnerOrEditor ? (
+              <Button
+                label="Message"
+                variant="secondary"
+                size="sm"
+                className="flex-1 md:flex-none"
+                leftIcon={<Icon name="chat" size={14} color={colors.paper} />}
+                onPress={messageOrganiser}
+                loading={startConversation.isPending}
+              />
+            ) : null}
+            <ShareButton
+              path={`/hub/${hub.slug}`}
+              title={hub.name}
+              message={hub.short_description ?? undefined}
+              className="flex-1 md:flex-none"
+            />
+          </View>
         </View>
       </View>
 
       {/* Responsive Two-Column Layout */}
       <View className="mt-6 gap-8 lg:flex-row lg:items-start lg:gap-10">
-        
+
         {/* Left Column: Descriptions & Tab Content */}
-        <View className="flex-1 gap-6">
+        <View className="flex-1 gap-6 min-w-0">
           {hub.short_description ? (
-            <Text className="font-sans text-sm md:text-base text-ink-muted leading-7">
+            <Text className="font-sans text-base md:text-lg text-ink-muted leading-7 max-w-prose">
               {hub.short_description}
             </Text>
           ) : null}
 
-          {/* Mobile-only Stats */}
-          <View className="flex-row flex-wrap gap-x-7 gap-y-2 lg:hidden border-y border-linen/30 py-3">
-            <Stat value={eventCount} label="Events" onPress={() => setTab("events")} />
-            <Stat value={likeStatus?.count ?? 0} label="Likes" />
-            <Stat value={followStatus?.count ?? 0} label="Followers" />
-            {topics.length > 0 ? <Stat value={topics.length} label="Topics" onPress={() => setTab("about")} /> : null}
-            {partners.length > 0 ? <Stat value={partners.length} label="Partners" onPress={() => setTab("about")} /> : null}
+          {/* Stats strip — shared across mobile & desktop */}
+          <View className="flex-row items-stretch rounded-2xl border border-linen bg-card">
+            {stats.map((s, i) => (
+              <View key={s.key} className="flex-1 flex-row items-stretch">
+                {i > 0 ? <View className="w-px self-stretch bg-linen/70 my-3" /> : null}
+                <Stat value={s.value} label={s.label} onPress={s.onPress} />
+              </View>
+            ))}
           </View>
 
           {/* Welcome to Country / Respect Board */}
           <WelcomeToCountry statement={hub.welcome_to_country} custodians={custodians} />
 
           {/* Tabs */}
-          <View className="flex-row gap-6 border-b border-linen">
+          <View className="flex-row gap-7 border-b border-linen">
             {tabs.map((t) => {
               const active = activeTab === t.key;
               return (
                 <Pressable key={t.key} onPress={() => setTab(t.key)} className="items-center pb-3 relative">
-                  <Text className={cn("font-heading text-xs", active ? "text-ink font-semibold" : "text-ink-faint")}>
+                  <Text
+                    className={cn(
+                      "font-heading text-sm",
+                      active ? "text-ink font-semibold" : "text-ink-faint",
+                    )}
+                  >
                     {t.label}
                   </Text>
                   {active && (
-                    <View className="h-0.5 w-full rounded-full bg-ochre-500 absolute bottom-[-1px]" />
+                    <View className="h-[2.5px] w-full rounded-full bg-ochre-500 absolute bottom-[-1.5px]" />
                   )}
                 </Pressable>
               );
@@ -327,7 +376,7 @@ export default function HubScreen() {
           </View>
 
           {/* Tab content */}
-          <View className="pt-2">
+          <View className="pt-1">
             {activeTab === "events" ? (
               <EventsTab
                 events={events}
@@ -345,98 +394,77 @@ export default function HubScreen() {
           </View>
         </View>
 
-        {/* Right Column: Directory Stats & Contact Details (Desktop Sidebar) */}
-        <View className="hidden lg:flex gap-6 lg:w-[320px] w-full">
-          
-          {/* Metadata Card */}
-          <Card className="gap-6 border border-linen bg-card rounded-3xl p-6">
-            <Text variant="overline" tone="pink">
-              Hub Directory
-            </Text>
+        {/* Right Column: Contact Details & Tools (Desktop Sidebar) */}
+        <View className="hidden lg:flex gap-5 lg:w-[324px] w-full">
 
-            {/* Statistics */}
-            <View className="flex-row justify-around border-b border-linen/35 pb-4">
-              <View className="items-center">
-                <Text className="font-display text-xl font-bold text-ink">
-                  {eventCount}
-                </Text>
-                <Text className="text-[10px] font-heading uppercase text-ink-faint mt-0.5">Events</Text>
+          {/* Contact & location card */}
+          {detailRows.length > 0 ? (
+            <Card className="gap-5 border border-linen bg-card rounded-3xl p-6">
+              <Text variant="overline" tone="pink">
+                Get in touch
+              </Text>
+              <View className="gap-4">
+                {detailRows.map((row) => (
+                  <Pressable
+                    key={row.key}
+                    disabled={!row.onPress}
+                    onPress={row.onPress}
+                    className={cn("flex-row items-start gap-3", row.onPress && "active:opacity-75")}
+                  >
+                    <View className="h-9 w-9 items-center justify-center rounded-xl bg-sand/60">
+                      <Icon name={row.icon} size={15} color={colors.inkMuted} />
+                    </View>
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-[10px] text-ink-faint uppercase font-heading tracking-wide">
+                        {row.title}
+                      </Text>
+                      <Text
+                        className={cn(
+                          "text-xs font-semibold mt-0.5 text-ink",
+                          row.onPress && "text-ochre-600 underline",
+                        )}
+                        numberOfLines={2}
+                      >
+                        {row.value}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
               </View>
-              <View className="items-center">
-                <Text className="font-display text-xl font-bold text-ink">
-                  {likeStatus?.count ?? 0}
-                </Text>
-                <Text className="text-[10px] font-heading uppercase text-ink-faint mt-0.5">Likes</Text>
-              </View>
-              <View className="items-center">
-                <Text className="font-display text-xl font-bold text-ink">
-                  {followStatus?.count ?? 0}
-                </Text>
-                <Text className="text-[10px] font-heading uppercase text-ink-faint mt-0.5">Followers</Text>
-              </View>
-            </View>
+            </Card>
+          ) : null}
 
-            {/* Contacts & Location list */}
-            <View className="gap-4">
-              {detailRows.map((row) => (
-                <Pressable
-                  key={row.key}
-                  disabled={!row.onPress}
-                  onPress={row.onPress}
-                  className={cn("flex-row items-start gap-3", row.onPress && "active:opacity-75")}
-                >
-                  <View className="h-9 w-9 items-center justify-center rounded-xl bg-sand/50">
-                    <Icon name={row.icon} size={15} color={colors.inkMuted} />
-                  </View>
-                  <View className="flex-1 min-w-0">
-                    <Text className="text-[10px] text-ink-faint uppercase font-heading tracking-wide">
-                      {row.title}
-                    </Text>
-                    <Text
-                      className={cn("text-xs font-semibold mt-0.5 text-ink truncate", row.onPress && "text-ochre-600 underline")}
-                      numberOfLines={1}
-                    >
-                      {row.value}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          </Card>
-
-          {/* Action Links Card */}
-          <Card className="gap-3.5 border border-linen bg-card rounded-3xl p-5">
-            <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
-              Utilities
+          {/* Tools card */}
+          <Card className="gap-3 border border-linen bg-card rounded-3xl p-6">
+            <Text variant="overline" tone="muted">
+              Share &amp; tools
             </Text>
             {isOwnerOrEditor && (
               <Button
-                label="Edit Hub Profile"
+                label="Edit hub profile"
                 variant="outline"
                 size="sm"
                 fullWidth
+                leftIcon={<Icon name="edit" size={14} color={colors.ink} />}
                 onPress={() => router.push(`/hub/edit/${hub.slug}`)}
               />
             )}
             <Button
-              label="Share Link in Bio"
+              label="Link in bio"
               variant="ghost"
               size="sm"
               fullWidth
+              leftIcon={<Icon name="link" size={14} color={colors.ink} />}
               onPress={() => router.push(`/l/hub/${hub.slug}`)}
             />
             <Button
-              label="Digital Business Card"
+              label="Digital business card"
               variant="ghost"
               size="sm"
               fullWidth
+              leftIcon={<Icon name="bag" size={14} color={colors.ink} />}
               onPress={() => router.push(`/card/hub/${hub.slug}`)}
             />
-            {joined && (
-              <Text className="text-[9px] text-ink-faint text-center mt-1">
-                Joined CulturePass in {joined}
-              </Text>
-            )}
           </Card>
         </View>
 
@@ -477,10 +505,14 @@ function EventsTab({
   if (count === 0) {
     return (
       <Card className="items-center gap-2 p-8 border border-dashed border-linen bg-sand/15">
-        <Icon name="calendar" size={28} color={colors.inkFaint} />
-        <Text variant="subheading" className="font-display font-bold">No events listed</Text>
-        <Text variant="caption" tone="muted" className="text-center max-w-xs leading-4">
-          This hub doesn’t have any upcoming public events scheduled yet.
+        <View className="h-12 w-12 items-center justify-center rounded-full bg-sand/70">
+          <Icon name="calendar" size={24} color={colors.inkFaint} />
+        </View>
+        <Text variant="subheading" className="font-display font-bold mt-1">No events yet</Text>
+        <Text variant="caption" tone="faint" className="text-center max-w-xs leading-5">
+          {isOwner
+            ? "Publish your first event and it’ll show up here for your community."
+            : "This hub hasn’t scheduled any upcoming events. Follow to be notified when it does."}
         </Text>
         {isOwner ? (
           <CreateEventButton
@@ -519,7 +551,7 @@ function EventsTab({
             onPress={() => setViewMode("box")}
             className={cn(
               "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
-              viewMode === "box" ? "bg-card shadow-xs border border-linen/10" : ""
+              viewMode === "box" ? "bg-card shadow-subtle border border-linen/40" : ""
             )}
           >
             <Icon name="grid" size={13} color={viewMode === "box" ? colors.ink : colors.inkMuted} />
@@ -531,7 +563,7 @@ function EventsTab({
             onPress={() => setViewMode("list")}
             className={cn(
               "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
-              viewMode === "list" ? "bg-card shadow-xs border border-linen/10" : ""
+              viewMode === "list" ? "bg-card shadow-subtle border border-linen/40" : ""
             )}
           >
             <Icon name="menu" size={13} color={viewMode === "list" ? colors.ink : colors.inkMuted} />
@@ -672,9 +704,13 @@ function VerifiedCheck() {
 
 function Stat({ value, label, onPress }: { value: number; label: string; onPress?: () => void }) {
   return (
-    <Pressable onPress={onPress} className="flex-row items-baseline gap-1 active:opacity-60">
-      <Text className="font-display text-base font-bold text-ink">{value}</Text>
-      <Text className="text-[10px] text-ink-faint">
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      className={cn("flex-1 items-center py-3.5", onPress && "active:opacity-60")}
+    >
+      <Text className="font-display text-xl md:text-2xl font-bold text-ink">{value}</Text>
+      <Text className="text-[10px] font-heading uppercase tracking-wide text-ink-faint mt-1">
         {label}
       </Text>
     </Pressable>
@@ -683,16 +719,23 @@ function Stat({ value, label, onPress }: { value: number; label: string; onPress
 
 function HubSkeleton() {
   return (
-    <Screen maxWidth="prose" contentClassName="pt-0">
+    <Screen maxWidth="content" contentClassName="pt-0 pb-10">
       <View
-        className="rounded-b-3xl bg-sand"
+        className="rounded-b-[28px] bg-sand animate-pulse"
         style={{ aspectRatio: 5 / 2, marginLeft: -20, marginRight: -20 }}
       />
-      <View className="-mt-12 h-[88px] w-[88px] rounded-2xl border-4 border-paper bg-linen" />
-      <View className="mt-4 gap-3">
-        <View className="h-8 w-2/3 rounded-lg bg-sand animate-pulse" />
-        <View className="h-4 w-1/3 rounded bg-sand animate-pulse" />
+      <View className="flex-row items-end gap-4 mt-[-44px]">
+        <View className="h-[92px] w-[92px] rounded-full border-[3px] border-paper bg-linen" />
+        <View className="flex-1 gap-2 pb-2">
+          <View className="h-7 w-2/3 rounded-lg bg-sand animate-pulse" />
+          <View className="h-4 w-1/3 rounded bg-sand animate-pulse" />
+        </View>
+      </View>
+      <View className="mt-8 h-16 rounded-2xl bg-sand animate-pulse" />
+      <View className="mt-6 gap-3">
         <View className="h-4 w-full rounded bg-sand animate-pulse" />
+        <View className="h-4 w-5/6 rounded bg-sand animate-pulse" />
+        <View className="h-48 w-full rounded-2xl bg-sand animate-pulse mt-2" />
       </View>
     </Screen>
   );

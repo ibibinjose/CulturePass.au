@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen, Text, Button, Avatar, Badge, LinkButtons, ShareBar, Icon } from "@/components/ui";
+import { Screen, Text, Button, Avatar, Badge, LinkButtons, ShareBar, Icon, Pinwheel } from "@/components/ui";
 import { useProfile } from "@/features/profiles/api";
 import { colors } from "@/lib/theme";
 import { resolveLinks } from "@/lib/social";
@@ -115,9 +115,12 @@ export default function ProfileLinkInBio() {
         message={profile.professional_title ?? undefined}
       />
 
-      <Text variant="overline" tone="faint" className="mt-10 text-center">
-        Powered by CulturePass Australia
-      </Text>
+      <View className="mt-10 items-center gap-2">
+        <Pinwheel size={22} />
+        <Text variant="overline" tone="faint" className="text-center">
+          Powered by CulturePass Australia
+        </Text>
+      </View>
     </Screen>
   );
 }

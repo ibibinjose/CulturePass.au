@@ -12,6 +12,7 @@ import { ImagePickerComponent } from "@/components/ui/ImagePicker";
 import { Toggle } from "@/components/ui/Toggle";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Icon } from "@/components/ui/Icon";
+import { CohostManager } from "@/features/events/CohostManager";
 import { useMyHubs } from "@/features/hubs/api";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useCouncils } from "@/features/reference/api";
@@ -83,6 +84,8 @@ interface EventFormProps {
   onSubmit: (values: EventFormValues, opts: { publish: boolean }) => void;
   /** Extra footer content (e.g. a delete button on the edit screen). */
   footer?: ReactNode;
+  /** Set on the edit screen — enables co-host management (needs a saved event). */
+  eventId?: string;
 }
 
 /**
@@ -90,7 +93,7 @@ interface EventFormProps {
  * the action buttons (Publish / Save draft / Save changes …) and validates the
  * returned values against the appropriate schema.
  */
-export function EventForm({ initial, submitting, error, actions, onSubmit, footer }: EventFormProps) {
+export function EventForm({ initial, submitting, error, actions, onSubmit, footer, eventId }: EventFormProps) {
   const [form, setForm] = useState<EventFormValues>(initial);
   const set = (patch: Partial<EventFormValues>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -330,6 +333,24 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
             placeholder="e.g. Indigenous, Multicultural"
           />
         </Field>
+      </Card>
+
+      {/* 6. Co-hosts & partners */}
+      <Card className="p-5 gap-5 border border-linen bg-card">
+        <Text className="font-display text-lg text-ink tracking-tight border-b border-linen/30 pb-2">
+          6. Co-hosts & Partners
+        </Text>
+        {eventId ? (
+          <CohostManager eventId={eventId} hostHubId={form.hub_id} />
+        ) : (
+          <View className="flex-row items-start gap-3 rounded-2xl border border-dashed border-linen bg-sand/15 p-4">
+            <Icon name="users" size={18} color={colors.inkFaint} />
+            <Text variant="caption" tone="faint" className="flex-1 leading-5">
+              Save this event first, then reopen it to invite other communities, businesses, venues or
+              people as co-hosts. Each co-host must approve before they appear on the event.
+            </Text>
+          </View>
+        )}
       </Card>
 
       {error ? (

@@ -9,6 +9,7 @@ import {
   Badge,
   LinkButtons,
   ShareBar,
+  Pinwheel,
   type LinkItem,
 } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
@@ -87,9 +88,12 @@ export default function HubLinkInBio() {
         message={hub.short_description ?? undefined}
       />
 
-      <Text variant="overline" tone="faint" className="mt-10 text-center">
-        Powered by CulturePass Australia
-      </Text>
+      <View className="mt-10 items-center gap-2">
+        <Pinwheel size={22} />
+        <Text variant="overline" tone="faint" className="text-center">
+          Powered by CulturePass Australia
+        </Text>
+      </View>
     </Screen>
   );
 }

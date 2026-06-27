@@ -20,6 +20,8 @@ export { Chip } from "./Chip";
 export { LocationPicker, ANYWHERE, type LocationValue } from "./LocationPicker";
 export { MultiSelectFilter } from "./MultiSelectFilter";
 export { Avatar } from "./Avatar";
+export { Pinwheel } from "./Pinwheel";
+export { BrandLockup } from "./BrandLockup";
 export { Toggle } from "./Toggle";
 export { ListRow } from "./ListRow";
 export { TagInput } from "./TagInput";

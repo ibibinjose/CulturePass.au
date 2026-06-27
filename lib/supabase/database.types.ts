@@ -329,6 +329,55 @@ export interface Database {
           },
         ];
       };
+      event_cohosts: {
+        Row: {
+          id: string;
+          event_id: string;
+          hub_id: string | null;
+          profile_id: string | null;
+          role: Database["public"]["Enums"]["cohost_role"];
+          status: Database["public"]["Enums"]["cohost_status"];
+          invited_by: string;
+          message: string | null;
+          created_at: string;
+          responded_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          hub_id?: string | null;
+          profile_id?: string | null;
+          role?: Database["public"]["Enums"]["cohost_role"];
+          status?: Database["public"]["Enums"]["cohost_status"];
+          invited_by: string;
+          message?: string | null;
+          created_at?: string;
+          responded_at?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_cohosts"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "event_cohosts_event_id_fkey";
+            columns: ["event_id"];
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "event_cohosts_hub_id_fkey";
+            columns: ["hub_id"];
+            referencedRelation: "hubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "event_cohosts_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       hub_likes: {
         Row: {
           id: string;
@@ -566,6 +615,8 @@ export interface Database {
       event_status: "draft" | "published" | "cancelled";
       rsvp_status: "going" | "interested" | "waitlist" | "cancelled";
       ticket_order_status: "pending" | "paid" | "failed" | "refunded" | "cancelled";
+      cohost_role: "cohost" | "venue" | "partner" | "sponsor";
+      cohost_status: "pending" | "accepted" | "declined";
     };
     CompositeTypes: Record<string, never>;
   };
@@ -586,3 +637,4 @@ export type ConversationRow = Database["public"]["Tables"]["conversations"]["Row
 export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
 export type EventLikeRow = Database["public"]["Tables"]["event_likes"]["Row"];
 export type EventSaveRow = Database["public"]["Tables"]["event_saves"]["Row"];
+export type EventCohostRow = Database["public"]["Tables"]["event_cohosts"]["Row"];

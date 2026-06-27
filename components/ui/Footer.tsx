@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 
 import { Text } from "./Text";
 import { AustralianFlag } from "./AustralianFlag";
+import { Pinwheel } from "./Pinwheel";
 import { cn } from "@/lib/utils/cn";
 import { COMPANY } from "@/lib/company";
 import { FOOTER_GROUPS } from "@/lib/navigation";
@@ -43,8 +44,8 @@ export function Footer({ className }: { className?: string }) {
             {/* Brand summary */}
             <View className="max-w-[220px] gap-3">
               <View className="flex-row items-center gap-2">
-                <View className="h-7 w-7 items-center justify-center rounded bg-paper">
-                  <Text className="font-display text-xs text-ink font-semibold">CP</Text>
+                <View className="h-7 w-7 items-center justify-center rounded-lg bg-white">
+                  <Pinwheel size={20} />
                 </View>
                 <Text className="font-display text-sm text-paper font-semibold">
                   CulturePass <Text className="text-paper/60">AU</Text>

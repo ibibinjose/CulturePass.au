@@ -9,6 +9,7 @@ import {
   Avatar,
   Badge,
   ShareBar,
+  Pinwheel,
 } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { useHub } from "@/features/hubs/api";
@@ -117,6 +118,13 @@ export default function HubBusinessCard() {
         className="mt-3"
         onPress={() => router.push(`/hub/${hub.slug}`)}
       />
+
+      <View className="mt-10 items-center gap-2">
+        <Pinwheel size={22} />
+        <Text variant="overline" tone="faint" className="text-center">
+          Powered by CulturePass Australia
+        </Text>
+      </View>
     </Screen>
   );
 }

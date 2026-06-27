@@ -5,6 +5,7 @@ import { Screen } from "@/components/ui/Screen";
 import { Text } from "@/components/ui/Text";
 import { Card } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
+import { BrandLockup } from "@/components/ui/BrandLockup";
 import { colors } from "@/lib/theme";
 
 interface AuthShellProps {
@@ -20,14 +21,7 @@ interface AuthShellProps {
 export function AuthShell({ title, subtitle, children, footer, error, notice }: AuthShellProps) {
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
-      <View className="mb-6 flex-row items-center gap-2.5">
-        <View className="h-9 w-9 items-center justify-center rounded-xl bg-ink">
-          <View className="h-2 w-2 rounded-pill bg-teal-500" />
-        </View>
-        <Text className="font-display text-lg text-ink">
-          CulturePass <Text className="font-display text-lg text-pink-500">AU</Text>
-        </Text>
-      </View>
+      <BrandLockup className="mb-6" />
 
       <Text variant="display">{title}</Text>
       {subtitle ? (

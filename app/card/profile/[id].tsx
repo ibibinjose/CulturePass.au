@@ -10,6 +10,7 @@ import {
   Badge,
   ShareBar,
   Icon,
+  Pinwheel,
 } from "@/components/ui";
 import { useProfile } from "@/features/profiles/api";
 import { colors } from "@/lib/theme";
@@ -142,6 +143,13 @@ export default function ProfileBusinessCard() {
         className="mt-3"
         onPress={() => router.push(`/profile/${profile.id}`)}
       />
+
+      <View className="mt-10 items-center gap-2">
+        <Pinwheel size={22} />
+        <Text variant="overline" tone="faint" className="text-center">
+          Powered by CulturePass Australia
+        </Text>
+      </View>
     </Screen>
   );
 }

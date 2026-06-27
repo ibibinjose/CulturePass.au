@@ -25,7 +25,14 @@ import {
   useToggleEventSave,
 } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
+import { useMyHubs } from "@/features/hubs/api";
 import { useBuyTicket } from "@/features/tickets/api";
+import {
+  useEventCohosts,
+  useRespondToCohost,
+  COHOST_ROLE_LABELS,
+  type EventCohost,
+} from "@/features/events/cohosts";
 import {
   EVENT_TYPE_LABELS,
   type EventType,
@@ -62,6 +69,10 @@ export default function EventScreen() {
 
   const { data: saveData } = useEventSaveStatus(event?.id || "");
   const toggleSave = useToggleEventSave();
+
+  const { data: cohosts } = useEventCohosts(event?.id || "");
+  const { data: myHubs } = useMyHubs();
+  const respondToCohost = useRespondToCohost(event?.id || "");
 
   const handleSubscribe = () => {
     if (!profile) {
@@ -132,6 +143,19 @@ export default function EventScreen() {
   const isOwner = !!profile && ownerId === profile.id;
   const isPaidTicketed = !event.is_free && !!event.price && Number(event.price) > 0;
 
+  const acceptedCohosts = (cohosts ?? []).filter((c) => c.status === "accepted");
+  const myHubIds = new Set((myHubs ?? []).map((h) => h.id));
+  const myPendingInvites = (cohosts ?? []).filter(
+    (c) =>
+      c.status === "pending" &&
+      ((c.profileId && c.profileId === profile?.id) || (c.hubId && myHubIds.has(c.hubId))),
+  );
+
+  const openCohost = (c: EventCohost) => {
+    if (c.kind === "hub" && c.slug) router.push(`/hub/${c.slug}`);
+    else if (c.kind === "profile" && c.profileId) router.push(`/profile/${c.profileId}`);
+  };
+
   const handleBuy = () => {
     if (!profile) {
       router.push("/sign-in");
@@ -157,6 +181,41 @@ export default function EventScreen() {
   return (
     <Screen contentClassName="pt-6 px-gutter">
       <BackButton fallbackHref="/" className="mb-4" />
+
+      {/* Co-host invitation banner — shown to an invited party with a pending invite */}
+      {myPendingInvites.map((invite) => (
+        <Card key={invite.id} className="mb-5 gap-3 border border-ochre-200 bg-ochre-50 rounded-3xl p-5">
+          <View className="flex-row items-center gap-2">
+            <Icon name="users" size={16} color={colors.ochre} />
+            <Text variant="overline" tone="ochre">
+              Co-host invitation
+            </Text>
+          </View>
+          <Text variant="bodyLarge" className="text-ink leading-6">
+            You’ve been invited to join{" "}
+            <Text className="font-heading">{event.title}</Text> as{" "}
+            <Text className="font-heading">{COHOST_ROLE_LABELS[invite.role]}</Text>
+            {invite.kind === "hub" ? ` (as ${invite.name})` : ""}.
+          </Text>
+          <View className="flex-row gap-3 mt-1">
+            <Button
+              label="Accept"
+              variant="whatsapp"
+              className="flex-1"
+              loading={respondToCohost.isPending}
+              leftIcon={<Icon name="check" size={16} color={colors.ink} />}
+              onPress={() => respondToCohost.mutate({ id: invite.id, status: "accepted" })}
+            />
+            <Button
+              label="Decline"
+              variant="outline"
+              className="flex-1"
+              disabled={respondToCohost.isPending}
+              onPress={() => respondToCohost.mutate({ id: invite.id, status: "declined" })}
+            />
+          </View>
+        </Card>
+      ))}
 
       <View className="gap-8 lg:flex-row lg:items-start lg:gap-10">
         {/* Left Column: Media + Info */}
@@ -205,6 +264,35 @@ export default function EventScreen() {
               </View>
               <Icon name="chevron-right" size={16} color={colors.inkMuted} />
             </Pressable>
+          ) : null}
+
+          {/* Presented with — accepted co-hosts & partners */}
+          {acceptedCohosts.length > 0 ? (
+            <View className="gap-3">
+              <Text variant="overline" tone="pink">
+                Presented with
+              </Text>
+              <View className="gap-2">
+                {acceptedCohosts.map((c) => (
+                  <Pressable
+                    key={c.id}
+                    onPress={() => openCohost(c)}
+                    className="flex-row items-center gap-3 rounded-2xl border border-linen bg-card p-3 active:bg-sand/40"
+                  >
+                    <Avatar name={c.name} uri={c.avatarUrl} size={40} />
+                    <View className="flex-1 min-w-0">
+                      <Text variant="label" className="font-heading text-ink" numberOfLines={1}>
+                        {c.name}
+                      </Text>
+                      <Text variant="caption" tone="faint" className="text-xs" numberOfLines={1}>
+                        {COHOST_ROLE_LABELS[c.role]} · {c.subtitle}
+                      </Text>
+                    </View>
+                    <Icon name="chevron-right" size={16} color={colors.inkMuted} />
+                  </Pressable>
+                ))}
+              </View>
+            </View>
           ) : null}
 
           {/* Description */}

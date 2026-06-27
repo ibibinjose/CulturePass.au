@@ -136,6 +136,7 @@ export default function EditEventScreen() {
         error={banner}
         onSubmit={handleSubmit}
         actions={actions}
+        eventId={ev.id}
         footer={
           <Card className="mt-2 gap-3 border-danger/30 p-4">
             <Text variant="subheading">Danger zone</Text>

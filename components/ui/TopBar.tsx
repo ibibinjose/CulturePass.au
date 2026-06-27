@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils/cn";
 import { colors, spacing } from "@/lib/theme";
 import { Text } from "./Text";
 import { Avatar } from "./Avatar";
+import { Pinwheel } from "./Pinwheel";
 import { Icon, type IconName } from "./Icon";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useMyProfile } from "@/features/profiles/api";
@@ -45,14 +46,17 @@ function BrandMark({ onPress }: { onPress: () => void }) {
     <Pressable
       onPress={onPress}
       hitSlop={8}
-      className="flex-row items-center gap-2"
+      className="flex-row items-center gap-2.5 active:opacity-85"
+      accessibilityRole="link"
       accessibilityLabel="CulturePass Australia home"
     >
-      <View className="h-8 w-8 items-center justify-center rounded-xl bg-white shadow-subtle">
-        <View className="h-2.5 w-2.5 rounded-pill bg-pink-500" />
+      <View className="h-9 w-9 items-center justify-center rounded-2xl bg-white shadow-subtle">
+        <Pinwheel size={26} />
       </View>
-      <Text className="font-display text-lg text-white">CulturePass</Text>
-      <Text className="font-display text-lg text-gold-500">AU</Text>
+      <View className="flex-row items-baseline gap-1">
+        <Text className="font-display text-lg leading-none text-white">CulturePass</Text>
+        <Text className="font-display text-lg leading-none text-gold-500">AU</Text>
+      </View>
     </Pressable>
   );
 }

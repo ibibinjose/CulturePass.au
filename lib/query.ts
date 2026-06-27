@@ -38,4 +38,6 @@ export const qk = {
   eventLikes: (eventId: string) => ["event-likes", eventId] as const,
   eventSaves: (eventId: string) => ["event-saves", eventId] as const,
   eventRsvps: (eventId: string) => ["event-rsvps", eventId] as const,
+  eventCohosts: (eventId: string) => ["event-cohosts", eventId] as const,
+  accountSearch: (q: string) => ["account-search", q] as const,
 };
