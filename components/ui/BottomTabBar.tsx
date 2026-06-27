@@ -7,19 +7,23 @@ import { Text } from "./Text";
 import { Icon } from "./Icon";
 import { colors } from "@/lib/theme";
 import { useMobileLayout } from "@/lib/useMobileLayout";
-import { MOBILE_TABS, isActivePath } from "@/lib/navigation";
+import { MOBILE_TABS, isActivePath, type AppNavItem } from "@/lib/navigation";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { useMyProfile } from "@/features/profiles/api";
 import { cn } from "@/lib/utils/cn";
 
 /**
  * Mobile bottom tab bar. Rendered globally (alongside the TopBar) and only on a
  * mobile layout — desktop web uses the TopBar's inline links instead. The
- * TopBar burger menu still carries account links (Profile, Tickets, Settings).
+ * TopBar burger menu still carries account links (Tickets, Settings, Sign out).
  */
 export function BottomTabBar() {
   const mobile = useMobileLayout();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  const { isAuthenticated } = useAuth();
+  const { data: profile } = useMyProfile();
   const [keyboardUp, setKeyboardUp] = useState(false);
 
   useEffect(() => {
@@ -37,36 +41,33 @@ export function BottomTabBar() {
 
   const isActive = (match: string) => isActivePath(pathname, match);
 
+  // Auth-only tabs (Chat, Profile) only appear once signed in.
+  const tabs = MOBILE_TABS.filter((tab) => !tab.authOnly || isAuthenticated);
+
+  const handlePress = (tab: AppNavItem) => {
+    // Profile is a dynamic route — resolve it to the signed-in user's id.
+    if (tab.key === "profile") {
+      if (profile) {
+        router.navigate({ pathname: "/profile/[id]", params: { id: profile.id } });
+      } else {
+        router.navigate("/sign-in");
+      }
+      return;
+    }
+    router.navigate(tab.href);
+  };
+
   return (
     <View style={{ paddingBottom: insets.bottom }} className="border-t border-pink-600 bg-pink-500">
       <View className="h-16 flex-row items-stretch">
-        {MOBILE_TABS.map((tab) => {
-          if (tab.center) {
-            return (
-              <View key={tab.key} className="flex-1 items-center justify-center">
-                <Pressable
-                  onPress={() => router.navigate(tab.href)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Create"
-                  className="-mt-7 items-center gap-1"
-                >
-                  <View className="h-14 w-14 items-center justify-center rounded-pill border-4 border-pink-500 bg-white shadow-card active:bg-white/90">
-                    <Icon name="plus" size={26} color={colors.pink} strokeWidth={2.4} />
-                  </View>
-                  <Text variant="overline" className="text-[10px] font-heading text-white/80">
-                    {tab.label}
-                  </Text>
-                </Pressable>
-              </View>
-            );
-          }
-
+        {tabs.map((tab) => {
           const active = isActive(tab.match);
           return (
             <Pressable
               key={tab.key}
-              onPress={() => router.navigate(tab.href)}
+              onPress={() => handlePress(tab)}
               accessibilityRole="tab"
+              accessibilityLabel={tab.label}
               accessibilityState={{ selected: active }}
               className={cn(
                 "flex-1 items-center justify-center gap-1",
@@ -74,7 +75,7 @@ export function BottomTabBar() {
               )}
             >
               <Icon
-                name={tab.icon!}
+                name={tab.icon}
                 size={23}
                 color={colors.white}
                 strokeWidth={active ? 2.2 : 1.8}
