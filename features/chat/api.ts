@@ -7,6 +7,12 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { getCurrentProfileId } from "@/features/auth/api";
 import type { HubImage, MessageRow } from "@/lib/supabase/database.types";
 
+export interface ChatProfile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 export interface ConversationListItem {
   id: string;
   hub_id: string;
@@ -14,8 +20,13 @@ export interface ConversationListItem {
   created_at: string;
   last_message_at: string;
   hub: { name: string; slug: string; images: HubImage[] | null; owner_id: string } | null;
-  member: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  member: ChatProfile | null;
+  last_message?: MessageRow | null;
 }
+
+export type MessageWithSender = MessageRow & {
+  sender: ChatProfile | null;
+};
 
 const CONVERSATION_SELECT = `
   id, hub_id, member_id, created_at, last_message_at,
@@ -36,7 +47,31 @@ export function useConversations() {
         .order("last_message_at", { ascending: false })
         .returns<ConversationListItem[]>();
       if (error) throw error;
-      return data ?? [];
+
+      const conversations = data ?? [];
+      const ids = conversations.map((conversation) => conversation.id);
+      if (ids.length === 0) return conversations;
+
+      const { data: messages, error: messagesError } = await supabase
+        .from("messages")
+        .select("*")
+        .in("conversation_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(250)
+        .returns<MessageRow[]>();
+      if (messagesError) throw messagesError;
+
+      const latestByConversation = new Map<string, MessageRow>();
+      for (const message of messages ?? []) {
+        if (!latestByConversation.has(message.conversation_id)) {
+          latestByConversation.set(message.conversation_id, message);
+        }
+      }
+
+      return conversations.map((conversation) => ({
+        ...conversation,
+        last_message: latestByConversation.get(conversation.id) ?? null,
+      }));
     },
   });
 }
@@ -64,12 +99,13 @@ export function useMessages(conversationId: string) {
   return useQuery({
     queryKey: qk.messages(conversationId),
     enabled: conversationId.length > 0,
-    queryFn: async (): Promise<MessageRow[]> => {
+    queryFn: async (): Promise<MessageWithSender[]> => {
       const { data, error } = await supabase
         .from("messages")
-        .select("*")
+        .select("*, sender: profiles (id, full_name, avatar_url)")
         .eq("conversation_id", conversationId)
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: true })
+        .returns<MessageWithSender[]>();
       if (error) throw error;
       return data ?? [];
     },
@@ -94,6 +130,28 @@ export function useSendMessage(conversationId: string) {
       qc.invalidateQueries({ queryKey: qk.conversations });
     },
   });
+}
+
+export function useConversationsRealtime() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const channel = supabase
+      .channel("conversations:inbox")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        () => qc.invalidateQueries({ queryKey: qk.conversations }),
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        () => qc.invalidateQueries({ queryKey: qk.conversations }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
 }
 
 /** Find-or-create the conversation between the current member and a hub. */

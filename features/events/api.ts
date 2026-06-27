@@ -86,6 +86,26 @@ export function useHubEvents(hubId: string) {
   });
 }
 
+export function useMyHubEvents(hubId: string) {
+  return useQuery({
+    queryKey: qk.myHubEvents(hubId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select(`
+          *,
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id)
+        `)
+        .eq("hub_id", hubId)
+        .order("start_time", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!hubId,
+  });
+}
+
 export function useEvent(id: string) {
   return useQuery({
     queryKey: qk.event(id),
@@ -118,6 +138,7 @@ export function useCreateEvent() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: qk.events({ hubId: data.hub_id }) });
       qc.invalidateQueries({ queryKey: qk.hubEvents(data.hub_id) });
+      qc.invalidateQueries({ queryKey: qk.myHubEvents(data.hub_id) });
     },
   });
 }
@@ -145,6 +166,7 @@ export function useUpdateEvent() {
       qc.invalidateQueries({ queryKey: qk.event(data.id) });
       qc.invalidateQueries({ queryKey: qk.events({ hubId: data.hub_id }) });
       qc.invalidateQueries({ queryKey: qk.hubEvents(data.hub_id) });
+      qc.invalidateQueries({ queryKey: qk.myHubEvents(data.hub_id) });
     },
   });
 }
@@ -158,7 +180,10 @@ export function useDeleteEvent() {
     },
     onSuccess: (_, { id, hubId }) => {
       qc.removeQueries({ queryKey: qk.event(id) });
-      if (hubId) qc.invalidateQueries({ queryKey: qk.hubEvents(hubId) });
+      if (hubId) {
+        qc.invalidateQueries({ queryKey: qk.hubEvents(hubId) });
+        qc.invalidateQueries({ queryKey: qk.myHubEvents(hubId) });
+      }
       // Prefix-match invalidates every ["events", …] filtered list.
       qc.invalidateQueries({ queryKey: ["events"] });
     },

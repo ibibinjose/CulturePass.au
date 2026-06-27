@@ -1,0 +1,77 @@
+import type { Href } from "expo-router";
+
+import type { IconName } from "@/components/ui/Icon";
+
+export type AppNavItem = {
+  key: string;
+  label: string;
+  href: Href;
+  match: string;
+  icon: IconName;
+  authOnly?: boolean;
+};
+
+export type AppFooterGroup = {
+  title: string;
+  links: {
+    label: string;
+    href: Href;
+  }[];
+};
+
+export const PRIMARY_NAV: AppNavItem[] = [
+  { key: "home", label: "Home", href: "/", match: "/", icon: "home" },
+  { key: "explore", label: "Explore", href: "/explore", match: "/explore", icon: "compass" },
+  { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
+  { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
+  { key: "my-hubs", label: "My Hubs", href: "/my-hubs", match: "/my-hubs", icon: "grid", authOnly: true },
+];
+
+export const MOBILE_TABS: (AppNavItem & { center?: boolean })[] = [
+  { key: "home", label: "Home", href: "/", match: "/", icon: "home" },
+  { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
+  { key: "create", label: "Create", href: "/create", match: "/create", icon: "plus", center: true },
+  { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
+  { key: "my-hubs", label: "My Hubs", href: "/my-hubs", match: "/my-hubs", icon: "grid", authOnly: true },
+];
+
+export const FOOTER_GROUPS: AppFooterGroup[] = [
+  {
+    title: "Discover",
+    links: [
+      { label: "Home", href: "/" },
+      { label: "Explore", href: "/explore" },
+      { label: "Calendar", href: "/calendar" },
+    ],
+  },
+  {
+    title: "Create",
+    links: [
+      { label: "Create a hub", href: "/create/hub" },
+      { label: "Professional profile", href: "/create/professional" },
+      { label: "My hubs", href: "/my-hubs" },
+    ],
+  },
+  {
+    title: "Account",
+    links: [
+      { label: "Messages", href: "/messages" },
+      { label: "Notifications", href: "/notifications" },
+      { label: "Tickets", href: "/tickets" },
+      { label: "Settings", href: "/settings" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/settings/about" },
+      { label: "Privacy", href: "/legal/privacy" },
+      { label: "Terms", href: "/legal/terms" },
+      { label: "Contact", href: "/legal/contact" },
+    ],
+  },
+];
+
+export function isActivePath(pathname: string, match: string) {
+  return match === "/" ? pathname === "/" : pathname === match || pathname.startsWith(`${match}/`);
+}

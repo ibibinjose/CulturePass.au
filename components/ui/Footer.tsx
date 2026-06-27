@@ -7,6 +7,7 @@ import { AustralianFlag } from "./AustralianFlag";
 import { cn } from "@/lib/utils/cn";
 import { COMPANY } from "@/lib/company";
 import { AcknowledgementBar } from "@/components/cultural/AcknowledgementBar";
+import { FOOTER_GROUPS } from "@/lib/navigation";
 
 /** Site footer on the exact WhatsApp brand green (#25D366, the `whatsapp` token). */
 export function Footer({ className }: { className?: string }) {
@@ -37,27 +38,13 @@ export function Footer({ className }: { className?: string }) {
 
           {/* Link columns */}
           <View className="flex-row flex-wrap gap-x-12 gap-y-8">
-            <FooterColumn title="Discover">
-              <FooterLink label="Home" onPress={() => router.push("/")} />
-              <FooterLink label="Explore" onPress={() => router.push("/explore")} />
-              <FooterLink label="Calendar" onPress={() => router.push("/calendar")} />
-            </FooterColumn>
-
-            <FooterColumn title="Create">
-              <FooterLink label="Create a hub" onPress={() => router.push("/create/hub")} />
-              <FooterLink
-                label="Professional profile"
-                onPress={() => router.push("/create/professional")}
-              />
-              <FooterLink label="My hubs" onPress={() => router.push("/my-hubs")} />
-            </FooterColumn>
-
-            <FooterColumn title="Company">
-              <FooterLink label="About" onPress={() => router.push("/settings/about")} />
-              <FooterLink label="Privacy" onPress={() => router.push("/legal/privacy")} />
-              <FooterLink label="Terms" onPress={() => router.push("/legal/terms")} />
-              <FooterLink label="Contact & support" onPress={() => router.push("/legal/contact")} />
-            </FooterColumn>
+            {FOOTER_GROUPS.map((group) => (
+              <FooterColumn key={group.title} title={group.title}>
+                {group.links.map((link) => (
+                  <FooterLink key={link.label} label={link.label} onPress={() => router.push(link.href)} />
+                ))}
+              </FooterColumn>
+            ))}
           </View>
         </View>
 

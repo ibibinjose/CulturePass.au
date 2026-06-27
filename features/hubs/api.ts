@@ -13,7 +13,7 @@ export interface HubFilters {
 }
 
 const HUB_CARD_COLUMNS =
-  "id, name, slug, type, short_description, location_state, location_city, indigenous_led, traditional_custodians, images, verification_status, categories, tags";
+  "id, name, slug, type, short_description, location_state, location_city, indigenous_led, traditional_custodians, images, verification_status, status, categories, tags";
 
 export function useHubs(filters: HubFilters = {}) {
   return useQuery({

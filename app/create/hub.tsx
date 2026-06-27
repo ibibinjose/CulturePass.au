@@ -31,6 +31,7 @@ import {
   HUB_WIZARD_STEPS,
   type HubDraft,
 } from "@/features/hubs/useHubDraftStore";
+import { getHubImage, setHubImage } from "@/lib/hubImages";
 
 export default function CreateHubWizard() {
   const router = useRouter();
@@ -190,20 +191,40 @@ function StepIdentity({ draft, update }: StepProps) {
           multiline
         />
       </Field>
-      <Field label="Hub Images" optional>
+      <Field
+        label="Hub logo / icon"
+        helper="Used as the compact identity mark on cards and profile headers."
+        optional
+      >
         <ImagePickerComponent
-          currentImageUrl={draft.images?.[0]?.url ?? null}
-          onImageChange={(url) => {
-            if (url) {
-              update({ images: [{ url, type: "cover", alt: "Hub cover image" }] });
-            } else {
-              update({ images: [] });
-            }
-          }}
+          currentImageUrl={getHubImage(draft.images, "logo")}
+          onImageChange={(url) =>
+            update({ images: setHubImage(draft.images, "logo", url, `${draft.name || "Hub"} logo`) })
+          }
           imageType="hub"
-          folderPath="hub-images"
-          label="Upload Hub Image"
-          helperText="Add a cover image for your hub"
+          folderPath="hub-logos"
+          label="Upload logo"
+          helperText="A square logo or icon works best."
+          aspect={[1, 1]}
+          previewAspectRatio={1}
+        />
+      </Field>
+      <Field
+        label="Top hub image"
+        helper="The wide cover image shown at the top of the hub page."
+        optional
+      >
+        <ImagePickerComponent
+          currentImageUrl={getHubImage(draft.images, "cover")}
+          onImageChange={(url) =>
+            update({ images: setHubImage(draft.images, "cover", url, `${draft.name || "Hub"} cover image`) })
+          }
+          imageType="cover"
+          folderPath="hub-covers"
+          label="Upload top image"
+          helperText="Use a wide image that represents the hub or place."
+          aspect={[16, 9]}
+          previewAspectRatio={16 / 9}
         />
       </Field>
     </View>

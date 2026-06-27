@@ -1,30 +1,13 @@
 import { useEffect, useState } from "react";
 import { Keyboard, Platform, Pressable, View } from "react-native";
-import { useRouter, usePathname, type Href } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Text } from "./Text";
-import { Icon, type IconName } from "./Icon";
+import { Icon } from "./Icon";
 import { colors } from "@/lib/theme";
 import { useMobileLayout } from "@/lib/useMobileLayout";
-
-interface Tab {
-  key: string;
-  label: string;
-  href: Href;
-  /** Path prefix used for the active state. */
-  match?: string;
-  icon?: IconName;
-  center?: boolean;
-}
-
-const TABS: Tab[] = [
-  { key: "home", label: "Home", href: "/", match: "/", icon: "home" },
-  { key: "calendar", label: "Calendar", href: "/calendar", match: "/calendar", icon: "calendar" },
-  { key: "create", label: "Create", href: "/create", center: true },
-  { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat" },
-  { key: "hubs", label: "My Hubs", href: "/my-hubs", match: "/my-hubs", icon: "grid" },
-];
+import { MOBILE_TABS, isActivePath } from "@/lib/navigation";
 
 /**
  * Mobile bottom tab bar. Rendered globally (alongside the TopBar) and only on a
@@ -51,14 +34,12 @@ export function BottomTabBar() {
   // Hidden on desktop and while typing (so it never floats over the keyboard).
   if (!mobile || keyboardUp) return null;
 
-  const isActive = (match?: string) =>
-    !!match &&
-    (match === "/" ? pathname === "/" : pathname === match || pathname.startsWith(`${match}/`));
+  const isActive = (match: string) => isActivePath(pathname, match);
 
   return (
     <View style={{ paddingBottom: insets.bottom }} className="border-t border-linen bg-paper/98">
       <View className="h-16 flex-row items-stretch">
-        {TABS.map((tab) => {
+        {MOBILE_TABS.map((tab) => {
           if (tab.center) {
             return (
               <View key={tab.key} className="flex-1 items-center justify-center">

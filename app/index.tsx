@@ -21,10 +21,14 @@ import { useEvents } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
 import { parsePreferences } from "@/lib/validation/profile";
 import {
+  AUSTRALIAN_STATES,
   EVENT_TYPES,
   EVENT_TYPE_LABELS,
+  HUB_TYPES,
+  HUB_TYPE_LABELS,
   INTEREST_OPTIONS,
   type EventType,
+  type HubType,
   type StateCode,
 } from "@/lib/constants";
 
@@ -64,6 +68,7 @@ export default function DiscoverScreen() {
   const [location, setLocation] = useState<LocationValue>(ANYWHERE);
   const [interests, setInterests] = useState<string[]>([]);
   const [categories, setCategories] = useState<EventType[]>([]);
+  const [hubTypes, setHubTypes] = useState<HubType[]>([]);
   const [firstNations, setFirstNations] = useState(false);
   const query = search.trim();
 
@@ -88,6 +93,7 @@ export default function DiscoverScreen() {
   const hubFilters = {
     ...(query ? { search: query } : {}),
     ...(location.state ? { state: location.state } : {}),
+    ...(hubTypes.length === 1 ? { type: hubTypes[0] } : {}),
   };
 
   const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(eventFilters);
@@ -100,15 +106,19 @@ export default function DiscoverScreen() {
   const interestSet = lowerSet(activeInterests);
   const matches = (haystack: (string | null | undefined)[]) =>
     [...lowerSet(haystack)].some((v) => interestSet.has(v));
+  const filteredHubs = hubTypes.length
+    ? (hubs ?? []).filter((h) => hubTypes.includes(h.type as HubType))
+    : hubs ?? [];
 
   const eventIsFN = (e: (typeof categoryEvents)[number]) =>
     !!e.hub?.indigenous_led || (e.cultural_focus ?? []).some((f) => FN_FOCUS.has(f.toLowerCase()));
-  const hubIsFN = (h: NonNullable<typeof hubs>[number]) => !!h.indigenous_led;
+  const hubIsFN = (h: (typeof filteredHubs)[number]) => !!h.indigenous_led;
 
   const fnEvents = categoryEvents.filter(eventIsFN);
-  const fnHubs = (hubs ?? []).filter(hubIsFN);
+  const fnHubs = filteredHubs.filter(hubIsFN);
 
   const baseEvents = firstNations ? fnEvents : categoryEvents;
+  const baseHubs = firstNations ? fnHubs : filteredHubs;
   const featured = baseEvents.slice(0, 5);
   const comingUp = baseEvents.slice(5, 13);
 
@@ -118,17 +128,33 @@ export default function DiscoverScreen() {
   const hasForYou = !firstNations && forYouEvents.length > 0;
 
   const likedHubs = activeInterests.length
-    ? (hubs ?? []).filter((h) => matches([...(h.categories ?? []), ...(h.tags ?? [])]))
+    ? filteredHubs.filter((h) => matches([...(h.categories ?? []), ...(h.tags ?? [])]))
     : [];
-  const hubsYouMightLike = (
-    firstNations ? fnHubs : likedHubs.length ? likedHubs : hubs ?? []
-  ).slice(0, 10);
+  const hubResults = (likedHubs.length && !firstNations ? likedHubs : baseHubs).slice(0, 8);
+  const activeFilterCount =
+    (query ? 1 : 0) +
+    (location.state ? 1 : 0) +
+    (location.councilId ? 1 : 0) +
+    interests.length +
+    categories.length +
+    hubTypes.length +
+    (firstNations ? 1 : 0);
 
   const showFnSection = !firstNations && (fnEvents.length > 0 || fnHubs.length > 0);
   const featuredWidth = Math.min(width - 56, 440);
 
   const toggleCategory = (c: EventType) =>
     setCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  const toggleHubType = (type: HubType) =>
+    setHubTypes((cur) => (cur.includes(type) ? cur.filter((x) => x !== type) : [...cur, type]));
+  const clearFilters = () => {
+    setSearch("");
+    setLocation(ANYWHERE);
+    setInterests([]);
+    setCategories([]);
+    setHubTypes([]);
+    setFirstNations(false);
+  };
 
   return (
     <Screen contentClassName="pt-6 md:pt-8">
@@ -144,8 +170,8 @@ export default function DiscoverScreen() {
           {profile?.full_name ? `Welcome back, ${profile.full_name.split(" ")[0]}.` : "Culture, nearby."}
         </Text>
         <Text variant="lead" className="mt-4 max-w-[520px] text-white/90">
-          Discover events and communities tuned to what you love — with First Nations voices at the
-          centre.
+          Discover events, hubs, organisers and community spaces in one place — with First Nations
+          voices at the centre.
         </Text>
         <View className="mt-7 flex-row flex-wrap gap-3">
           <Button
@@ -155,6 +181,16 @@ export default function DiscoverScreen() {
             leftIcon={<Icon name="sparkle" size={16} color={colors.ink} />}
             onPress={() => router.push("/onboarding")}
           />
+          <Button
+            label="Create hub"
+            variant="primary"
+            onPress={() => router.push("/create/hub")}
+          />
+        </View>
+        <View className="mt-7 flex-row border-t border-white/20 pt-4">
+          <Metric label="Events shown" value={eventsLoading ? "…" : String(baseEvents.length)} />
+          <Metric label="Hubs shown" value={hubsLoading ? "…" : String(baseHubs.length)} />
+          <Metric label="States" value={String(AUSTRALIAN_STATES.length)} />
         </View>
       </View>
 
@@ -185,7 +221,18 @@ export default function DiscoverScreen() {
             selected={categories as string[]}
             onChange={(next) => setCategories(next as EventType[])}
           />
+          <MultiSelectFilter
+            label="Hub type"
+            icon="grid"
+            options={HUB_TYPES as readonly string[]}
+            labels={HUB_TYPE_LABELS as Record<string, string>}
+            selected={hubTypes as string[]}
+            onChange={(next) => setHubTypes(next as HubType[])}
+          />
           <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
+          {activeFilterCount > 0 ? (
+            <Button label="Clear filters" variant="outline" size="sm" onPress={clearFilters} />
+          ) : null}
         </View>
       </View>
 
@@ -226,6 +273,59 @@ export default function DiscoverScreen() {
                 >
                   {EVENT_TYPE_LABELS[type]}
                 </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* Browse by hub purpose — merged from Explore */}
+      <View className="mt-section gap-4">
+        <View className="flex-row items-end justify-between gap-3">
+          <View className="gap-1">
+            <Text variant="overline" tone="pink">
+              Explore hubs
+            </Text>
+            <Text variant="title">Browse by purpose</Text>
+          </View>
+          <Button label="My hubs" variant="outline" size="sm" onPress={() => router.push("/my-hubs")} />
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerClassName="gap-3 pr-4"
+          className="-mx-gutter px-gutter"
+        >
+          {HUB_TYPES.map((type) => {
+            const on = hubTypes.includes(type);
+            return (
+              <Pressable
+                key={type}
+                onPress={() => toggleHubType(type)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: on }}
+                className={cn(
+                  "w-[220px] gap-2 rounded-2xl border p-4",
+                  on ? "border-ink bg-ink" : "border-linen bg-card active:bg-sand",
+                )}
+              >
+                <View className="flex-row items-center gap-2">
+                  <View
+                    className={cn(
+                      "h-9 w-9 items-center justify-center rounded-xl",
+                      on ? "bg-paper/15" : "bg-sand",
+                    )}
+                  >
+                    <Icon name="grid" size={17} color={on ? colors.paper : colors.inkMuted} />
+                  </View>
+                  <Text
+                    variant="label"
+                    numberOfLines={2}
+                    className={cn("flex-1 font-heading", on ? "text-paper" : "text-ink")}
+                  >
+                    {HUB_TYPE_LABELS[type]}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
@@ -332,13 +432,16 @@ export default function DiscoverScreen() {
         </View>
       ) : null}
 
-      {/* Hubs you might like — horizontal discovery carousel */}
+      {/* Hubs — merged Explore results */}
       <View className="mt-section gap-5">
         <SectionHeader
-          eyebrow="Communities"
-          title="Hubs you might like"
-          onSeeAll={() => router.push("/explore")}
-          showSeeAll={hubsYouMightLike.length > 0}
+          eyebrow={
+            activeFilterCount > 0
+              ? `${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}`
+              : "Communities"
+          }
+          title={query ? "Matching hubs" : "Hubs to explore"}
+          showSeeAll={false}
         />
         {hubsLoading ? (
           <Card>
@@ -352,18 +455,18 @@ export default function DiscoverScreen() {
               Could not load communities.
             </Text>
           </Card>
-        ) : hubsYouMightLike.length > 0 ? (
-          <Carousel>
-            {hubsYouMightLike.map((hub) => (
-              <View key={hub.slug} className="w-[300px]">
+        ) : hubResults.length > 0 ? (
+          <View className="gap-4 md:flex-row md:flex-wrap">
+            {hubResults.map((hub) => (
+              <View key={hub.slug} className="md:w-[calc(50%-8px)]">
                 <HubCard hub={hub} />
               </View>
             ))}
-          </Carousel>
+          </View>
         ) : (
           <EmptyCard
-            title="No communities here yet"
-            body="Be the first to create a hub for your community."
+            title="No hubs match that yet"
+            body="Try clearing a filter, or create the first hub for this community."
             action="Create a hub"
             onPress={() => router.push("/create/hub")}
           />
@@ -385,6 +488,19 @@ function Carousel({ children }: { children: React.ReactNode }) {
     >
       {children}
     </ScrollView>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <View className="min-w-[100px] flex-1 py-1 pr-3">
+      <Text variant="title" tone="white">
+        {value}
+      </Text>
+      <Text variant="caption" className="mt-0.5 text-white/75">
+        {label}
+      </Text>
+    </View>
   );
 }
 

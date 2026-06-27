@@ -63,6 +63,7 @@ features/
   hubs/ events/ profiles/ reference/   queries/mutations + cards
 lib/
   supabase/                client.ts, database.types.ts (hand-authored)
+  navigation.ts            shared app map for top nav, mobile tabs and footer
   validation/              zod schemas (auth, hub, event, profile)
   constants.ts             enums/labels (single source of truth, mirrors SQL enums)
   theme.ts, query.ts, storage.ts, utils/cn.ts
@@ -139,6 +140,16 @@ warm-black `ink`; accents `ochre`, `eucalyptus`, `terracotta`). Tokens live in
 
 9. **Cultural priority.** Keep Welcome to Country / custodian acknowledgement
    prominent on hub pages. Don't bury it behind a tab or remove it for layout.
+
+10. **Navigation map.** TopBar, BottomTabBar and Footer all read from
+    `lib/navigation.ts`. Add routes there when a new primary surface should
+    appear in the shell; avoid hardcoding parallel nav lists in components.
+
+11. **Hub branding images.** Hub logo/icon and top cover image both live in the
+    `hubs.images` jsonb array. Use `lib/hubImages.ts` to read/write the typed
+    entries: `type: "logo"` for the square hub icon, `type: "cover"` for the
+    wide top hub image. Do not replace the whole array manually unless you mean
+    to remove the other image types.
 
 ---
 

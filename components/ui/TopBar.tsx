@@ -14,14 +14,7 @@ import { useSignOut } from "@/features/auth/api";
 import { useUnreadCount } from "@/features/notifications/api";
 import { useWeather, type Weather } from "@/features/weather/api";
 import { useMobileLayout } from "@/lib/useMobileLayout";
-
-/** Primary navigation links shown inline (wide) or in the menu (narrow). */
-const NAV: { label: string; href: Href; path: string; authOnly?: boolean }[] = [
-  { label: "Home", href: "/", path: "/" },
-  { label: "Explore", href: "/explore", path: "/explore" },
-  { label: "Calendar", href: "/calendar", path: "/calendar" },
-  { label: "My Hubs", href: "/my-hubs", path: "/my-hubs", authOnly: true },
-];
+import { PRIMARY_NAV, isActivePath } from "@/lib/navigation";
 
 const BAR_HEIGHT = 66;
 
@@ -84,8 +77,8 @@ export function TopBar() {
     }
   }
 
-  const isActive = (path: string) => (path === "/" ? pathname === "/" : pathname.startsWith(path));
-  const links = NAV.filter((n) => !n.authOnly || isAuthenticated);
+  const isActive = (match: string) => isActivePath(pathname, match);
+  const links = PRIMARY_NAV.filter((n) => !n.authOnly || isAuthenticated);
 
   return (
     <View style={{ paddingTop: insets.top }} className="border-b border-linen bg-paper/95">
@@ -114,7 +107,7 @@ export function TopBar() {
               <NavLink
                 key={n.label}
                 label={n.label}
-                active={isActive(n.path)}
+                active={isActive(n.match)}
                 onPress={() => router.push(n.href)}
               />
             ))}
@@ -206,8 +199,8 @@ export function TopBar() {
                       <MenuRow
                         key={n.label}
                         label={n.label}
-                        icon={navIcon(n.path)}
-                        active={isActive(n.path)}
+                        icon={n.icon}
+                        active={isActive(n.match)}
                         onPress={() => go(n.href)}
                       />
                     ))}
@@ -247,14 +240,6 @@ export function TopBar() {
       </Modal>
     </View>
   );
-}
-
-function navIcon(path: string): IconName {
-  if (path === "/") return "home";
-  if (path.startsWith("/explore")) return "compass";
-  if (path.startsWith("/calendar")) return "calendar";
-  if (path.startsWith("/my-hubs")) return "grid";
-  return "chevron-right";
 }
 
 function NavLink({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {

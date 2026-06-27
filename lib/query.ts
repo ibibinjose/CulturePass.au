@@ -20,6 +20,7 @@ export const qk = {
   hub: (slug: string) => ["hub", slug] as const,
   myHubs: ["my-hubs"] as const,
   hubEvents: (hubId: string) => ["hub-events", hubId] as const,
+  myHubEvents: (hubId: string) => ["my-hub-events", hubId] as const,
   events: (filters?: object) => ["events", filters ?? {}] as const,
   eventStateCounts: ["event-state-counts"] as const,
   event: (id: string) => ["event", id] as const,

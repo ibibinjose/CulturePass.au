@@ -60,8 +60,8 @@ export function EventCard({ event }: { event: EventCardData }) {
 
   return (
     <Card onPress={() => router.push(`/event/${event.id}`)} padded={false} className="overflow-hidden">
-      {/* Cover */}
-      <View className="relative aspect-[16/10] bg-sand">
+      {/* Cover — 1:1 square */}
+      <View className="relative aspect-square bg-sand">
         {coverUrl ? (
           <Image
             source={{ uri: coverUrl }}
@@ -76,18 +76,6 @@ export function EventCard({ event }: { event: EventCardData }) {
             </Text>
           </View>
         )}
-
-        {/* Date chip */}
-        {start ? (
-          <View className="absolute left-3 top-3 items-center rounded-xl bg-paper/95 px-3 py-1.5 shadow-subtle">
-            <Text variant="overline" tone="pink">
-              {dateFormatter.format(start)}
-            </Text>
-            <Text className="font-heading text-sm leading-tight text-ink">
-              {timeFormatter.format(start)}
-            </Text>
-          </View>
-        ) : null}
 
         {/* Save / bookmark */}
         <Pressable
@@ -120,6 +108,17 @@ export function EventCard({ event }: { event: EventCardData }) {
           {event.title}
         </Text>
 
+        {/* Date & time */}
+        {start ? (
+          <View className="flex-row items-center gap-1.5">
+            <Icon name="calendar" size={14} color={colors.inkFaint} />
+            <Text variant="caption" tone="faint" numberOfLines={1} className="flex-1">
+              {dateFormatter.format(start)} · {timeFormatter.format(start)}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Location */}
         {place ? (
           <View className="flex-row items-center gap-1.5">
             <Icon name="map-pin" size={14} color={colors.inkFaint} />

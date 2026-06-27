@@ -15,6 +15,8 @@ interface ImagePickerProps {
   folderPath: string;
   label: string;
   helperText: string;
+  aspect?: [number, number];
+  previewAspectRatio?: number;
 }
 
 export function ImagePickerComponent({
@@ -24,6 +26,8 @@ export function ImagePickerComponent({
   folderPath,
   label,
   helperText,
+  aspect = [1, 1],
+  previewAspectRatio,
 }: ImagePickerProps) {
   const [previewUri, setPreviewUri] = useState<string | null>(currentImageUrl || null);
   const [uploading, setUploading] = useState(false);
@@ -39,7 +43,7 @@ export function ImagePickerComponent({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
-      aspect: [1, 1],
+      aspect,
       quality: 0.7,
     });
 
@@ -62,7 +66,7 @@ export function ImagePickerComponent({
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      aspect: [1, 1],
+      aspect,
       quality: 0.7,
     });
 
@@ -134,7 +138,8 @@ export function ImagePickerComponent({
         <View className="gap-3">
           <RNImage
             source={{ uri: previewUri }}
-            className="aspect-square w-full max-w-[280px] self-center rounded-2xl"
+            style={{ aspectRatio: previewAspectRatio ?? aspect[0] / aspect[1] }}
+            className="w-full max-w-[360px] self-center rounded-2xl"
             resizeMode="cover"
           />
           <View className="flex-row flex-wrap gap-2">
@@ -159,7 +164,7 @@ export function ImagePickerComponent({
               Choose from library
             </Text>
             <Text variant="caption" tone="faint">
-              PNG or JPG · square works best
+              PNG or JPG
             </Text>
           </Pressable>
           <Button label="Take photo" variant="outline" size="sm" onPress={takePhoto} disabled={uploading} className="self-start" />
