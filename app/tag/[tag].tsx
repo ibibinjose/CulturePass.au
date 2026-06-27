@@ -37,7 +37,7 @@ export default function TagScreen() {
       <BackButton fallbackHref="/" className="mb-4" />
 
       {/* Header Banner */}
-      <View className="mb-8 rounded-3xl bg-pink-500 border border-pink-600 p-8 shadow-subtle">
+      <View className="mb-8 rounded-3xl bg-pink-700 border border-pink-600 p-8 shadow-subtle">
         <Text variant="overline" className="text-white/80">
           Tag Directory
         </Text>
@@ -45,7 +45,7 @@ export default function TagScreen() {
           #{decodedTag}
         </Text>
         <Text variant="bodyLarge" className="text-white/90 mt-2 leading-6 max-w-prose">
-          Explore upcoming events and active communities hosting meetups, workshops, and activities tagged with #{decodedTag}.
+          Discover upcoming events and active communities hosting meetups, workshops, and activities tagged with #{decodedTag}.
         </Text>
       </View>
 

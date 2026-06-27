@@ -289,6 +289,35 @@ export function useToggleHubFollow() {
     },
     onSuccess: (_, { hubId }) => {
       qc.invalidateQueries({ queryKey: qk.hubFollows(hubId) });
+      qc.invalidateQueries({ queryKey: ["my-followed-hubs"] });
+    },
+  });
+}
+
+export function useMyFollowedHubs() {
+  return useQuery({
+    queryKey: ["my-followed-hubs"],
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+      if (!profileId) return [];
+
+      const { data: follows, error: followError } = await supabase
+        .from("hub_follows")
+        .select("hub_id")
+        .eq("profile_id", profileId);
+
+      if (followError) throw followError;
+      if (!follows || follows.length === 0) return [];
+
+      const hubIds = follows.map((f) => f.hub_id);
+
+      const { data: hubs, error: hubsError } = await supabase
+        .from("hubs")
+        .select(HUB_CARD_COLUMNS)
+        .in("id", hubIds);
+
+      if (hubsError) throw hubsError;
+      return hubs;
     },
   });
 }

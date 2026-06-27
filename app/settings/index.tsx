@@ -48,7 +48,12 @@ function Settings() {
       {/* Identity card */}
       <Card className="mt-8" onPress={() => profile && router.push(`/profile/${profile.id}`)}>
         <View className="flex-row items-center gap-4">
-          <Avatar name={profile?.full_name} uri={profile?.avatar_url} size={56} />
+          <Avatar
+            name={profile?.full_name}
+            uri={profile?.avatar_url}
+            size={56}
+            hubLogoUri={profile?.hubs?.[0]?.images?.find((img: any) => img?.type === "logo")?.url}
+          />
           <View className="flex-1">
             <Text variant="subheading">{profile?.full_name || "Your profile"}</Text>
             <Text variant="caption" tone="faint" numberOfLines={1}>

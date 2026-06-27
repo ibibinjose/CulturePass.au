@@ -64,7 +64,7 @@ function Inbox() {
           <Text variant="caption" tone="muted">
             Open a hub and tap “Message organiser” to start a conversation.
           </Text>
-          <Button label="Explore hubs" variant="secondary" size="sm" onPress={() => router.push("/")} />
+          <Button label="Discover hubs" variant="secondary" size="sm" onPress={() => router.push("/")} />
         </Card>
       )}
     </Screen>

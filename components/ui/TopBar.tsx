@@ -89,7 +89,11 @@ function HamburgerButton({ hasUnread, unread, onPress }: HamburgerButtonProps) {
 
 /** Desktop ActionCluster sub-component. */
 interface ActionClusterProps {
-  profile?: { full_name?: string | null; avatar_url?: string | null } | null;
+  profile?: {
+    full_name?: string | null;
+    avatar_url?: string | null;
+    hubs?: { id: string; name: string; slug: string; images: any }[] | null;
+  } | null;
   unread: number;
   hasUnread: boolean;
   onBell: () => void;
@@ -133,7 +137,13 @@ function ActionCluster({
         </Text>
       </Pressable>
       <Pressable onPress={onAvatar} hitSlop={8} accessibilityLabel="Account menu" className="active:opacity-85">
-        <Avatar name={profile?.full_name} uri={profile?.avatar_url} size={36} ring />
+        <Avatar
+          name={profile?.full_name}
+          uri={profile?.avatar_url}
+          size={36}
+          ring
+          hubLogoUri={profile?.hubs?.[0]?.images?.find((img: any) => img?.type === "logo")?.url}
+        />
       </Pressable>
     </View>
   );

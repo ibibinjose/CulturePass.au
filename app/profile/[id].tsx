@@ -80,7 +80,13 @@ export default function PublicProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel={isMe ? "Edit profile picture" : "View profile picture"}
         >
-          <Avatar name={profile.full_name} uri={profile.avatar_url} size={100} ring />
+          <Avatar
+            name={profile.full_name}
+            uri={profile.avatar_url}
+            size={100}
+            ring
+            hubLogoUri={primaryHub?.images?.find((img: any) => img?.type === "logo")?.url}
+          />
         </Pressable>
         <View className="items-center gap-2">
           <View className="flex-row items-center justify-center gap-2">

@@ -15,6 +15,7 @@ export interface EventFilters {
   /** Inclusive upper bound on start_time (ISO). */
   to?: string;
   tag?: string;
+  ids?: string[];
 }
 
 export function useEvents(filters: EventFilters = {}) {
@@ -38,6 +39,7 @@ export function useEvents(filters: EventFilters = {}) {
       if (filters.from) query = query.gte("start_time", filters.from);
       if (filters.to) query = query.lte("start_time", filters.to);
       if (filters.tag) query = query.contains("tags", [filters.tag]);
+      if (filters.ids && filters.ids.length > 0) query = query.in("id", filters.ids);
 
       const { data, error } = await query;
       if (error) throw error;

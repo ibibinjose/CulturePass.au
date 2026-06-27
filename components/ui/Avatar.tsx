@@ -10,6 +10,7 @@ interface AvatarProps {
   /** Adds a paper ring — used when an avatar overlaps imagery (hub headers). */
   ring?: boolean;
   className?: string;
+  hubLogoUri?: string | null;
 }
 
 function initials(name?: string | null) {
@@ -20,19 +21,24 @@ function initials(name?: string | null) {
 }
 
 /** Circular avatar: image when present, otherwise warm initials. */
-export function Avatar({ name, uri, size = 48, ring = false, className }: AvatarProps) {
+export function Avatar({
+  name,
+  uri,
+  size = 48,
+  ring = false,
+  className,
+  hubLogoUri,
+}: AvatarProps) {
   const style = { width: size, height: size, borderRadius: size / 2 };
   const ringClass = ring ? "border-[3px] border-paper" : "border border-linen";
+  const badgeSize = Math.max(16, Math.round(size * 0.28));
+  const badgeStyle = { width: badgeSize, height: badgeSize, borderRadius: badgeSize / 4 };
 
-  if (uri) {
-    return (
-      <View className={cn("overflow-hidden bg-sand", ringClass, className)} style={style}>
-        <Image source={{ uri }} style={{ width: size, height: size }} contentFit="cover" />
-      </View>
-    );
-  }
-
-  return (
+  const avatarContent = uri ? (
+    <View className={cn("overflow-hidden bg-sand", ringClass, className)} style={style}>
+      <Image source={{ uri }} style={{ width: size, height: size }} contentFit="cover" />
+    </View>
+  ) : (
     <View
       style={style}
       className={cn("items-center justify-center bg-ochre-100", ringClass, className)}
@@ -42,4 +48,20 @@ export function Avatar({ name, uri, size = 48, ring = false, className }: Avatar
       </Text>
     </View>
   );
+
+  if (hubLogoUri) {
+    return (
+      <View style={{ width: size, height: size }} className="relative">
+        {avatarContent}
+        <View
+          style={badgeStyle}
+          className="absolute -bottom-1 -right-1 overflow-hidden bg-white border border-linen shadow-subtle justify-center items-center"
+        >
+          <Image source={{ uri: hubLogoUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+        </View>
+      </View>
+    );
+  }
+
+  return avatarContent;
 }

@@ -11,12 +11,12 @@ type Size = "sm" | "md" | "lg";
 // action; pink the secondary; green drives "create / get started" actions.
 const CONTAINER: Record<Variant, string> = {
   primary: "bg-gold-500 border-2 border-ink active:bg-gold-600",
-  secondary: "bg-pink-500 border-2 border-ink active:bg-pink-600",
+  secondary: "bg-pink-700 border-2 border-ink active:bg-pink-600",
   outline: "bg-card border-2 border-ink active:bg-sand",
   ghost: "bg-transparent active:bg-sand",
   danger: "bg-danger border-2 border-ink active:bg-danger/90",
   whatsapp: "bg-green-500 border-2 border-ink active:bg-green-600",
-  pink: "bg-pink-500 border-2 border-ink active:bg-pink-600",
+  pink: "bg-pink-700 border-2 border-ink active:bg-pink-600",
 };
 
 const LABEL: Record<Variant, string> = {

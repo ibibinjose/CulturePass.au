@@ -48,7 +48,7 @@ export default function TicketSuccessScreen() {
               onPress={() => router.replace(`/event/${order.event_id}`)}
             />
           ) : (
-            <Button label="Explore events" variant="outline" onPress={() => router.replace("/")} />
+            <Button label="Discover events" variant="outline" onPress={() => router.replace("/")} />
           )}
         </View>
       </Card>
