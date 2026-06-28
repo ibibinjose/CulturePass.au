@@ -1,11 +1,13 @@
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Button } from "@/components/ui/Button";
-import { BackButton } from "@/components/ui/BackButton";
-import { Card } from "@/components/ui/Card";
+import {
+  BackButton,
+  Button,
+  Card,
+  Screen,
+  Text,
+} from "@/components/ui";
 import { HubCard } from "@/features/hubs/HubCard";
 import { useHubs } from "@/features/hubs/api";
 import { EventCard } from "@/features/events/EventCard";
@@ -124,11 +126,11 @@ export default function StateScreen() {
           </View>
         ) : (
           <Card className="items-start gap-3">
-            <Text variant="subheading">No hubs in {stateCode} yet</Text>
+            <Text variant="subheading">No pages in {stateCode} yet</Text>
             <Text variant="caption" tone="muted">
               Create one to get your community started.
             </Text>
-            <Button label="Create a hub" variant="secondary" onPress={() => router.push("/create/hub")} />
+            <Button label="Create a page" variant="secondary" onPress={() => router.push("/create/hub")} />
           </Card>
         )}
       </View>

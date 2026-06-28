@@ -49,9 +49,9 @@ export const FOOTER_GROUPS: AppFooterGroup[] = [
   {
     title: "Create",
     links: [
-      { label: "Create a hub", href: "/create/hub" },
+      { label: "Create a page", href: "/create/hub" },
       { label: "Professional profile", href: "/create/professional" },
-      { label: "My hubs", href: "/my-hubs" },
+      { label: "My pages", href: "/my-hubs" },
     ],
   },
   {

@@ -2,15 +2,17 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { BackButton } from "@/components/ui/BackButton";
-import { Field } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Card";
-import { OptionCard } from "@/components/ui/OptionCard";
-import { SocialLinksField } from "@/components/ui/SocialLinksField";
+import {
+  BackButton,
+  Button,
+  Card,
+  Field,
+  Input,
+  OptionCard,
+  Screen,
+  SocialLinksField,
+  Text,
+} from "@/components/ui";
 import {
   PROFESSIONAL_CATEGORIES,
   PROFESSIONAL_CATEGORY_LABELS,

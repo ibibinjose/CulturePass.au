@@ -1,5 +1,7 @@
 import { View } from "react-native";
-import { Text } from "@/components/ui/Text";
+import {
+  Text,
+} from "@/components/ui";
 import { cn } from "@/lib/utils/cn";
 
 /**

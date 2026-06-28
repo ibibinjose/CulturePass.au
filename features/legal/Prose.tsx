@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { BackButton } from "@/components/ui/BackButton";
+import {
+  BackButton,
+  Screen,
+  Text,
+} from "@/components/ui";
 
 /** Page shell for a legal/info document: back, eyebrow, title, "last updated". */
 export function LegalScreen({

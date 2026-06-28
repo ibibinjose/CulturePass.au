@@ -229,7 +229,7 @@ export function TopBar() {
           {profile ? (
             <>
               <MenuRow label="Profile" icon="user" onPress={() => go(`/profile/${profile.id}`)} />
-              <MenuRow label="My Hubs" icon="grid" onPress={() => go("/my-hubs")} />
+              <MenuRow label="My Pages" icon="grid" onPress={() => go("/my-hubs")} />
             </>
           ) : null}
           <MenuRow label="My tickets" icon="ticket" onPress={() => go("/tickets")} />

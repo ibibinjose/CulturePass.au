@@ -13,6 +13,7 @@ import {
   ShareButton,
   Icon,
   Avatar,
+  SectionHeader,
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import {
@@ -486,19 +487,6 @@ function EventSkeleton() {
         </Card>
       </View>
     </Screen>
-  );
-}
-
-function SectionHeader({ eyebrow, title }: { eyebrow?: string; title: string }) {
-  return (
-    <View className="gap-1">
-      {eyebrow ? (
-        <Text variant="overline" tone="pink">
-          {eyebrow}
-        </Text>
-      ) : null}
-      <Text variant="heading">{title}</Text>
-    </View>
   );
 }
 

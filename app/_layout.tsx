@@ -19,8 +19,10 @@ import {
 import { queryClient } from "@/lib/query";
 import { colors } from "@/lib/theme";
 import { AuthProvider } from "@/features/auth/AuthProvider";
-import { TopBar } from "@/components/ui/TopBar";
-import { BottomTabBar } from "@/components/ui/BottomTabBar";
+import {
+  BottomTabBar,
+  TopBar,
+} from "@/components/ui";
 import { OnboardingGate } from "@/features/onboarding/OnboardingGate";
 import { NotificationsRealtime } from "@/features/notifications/NotificationsRealtime";
 

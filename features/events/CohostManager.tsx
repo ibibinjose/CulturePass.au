@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
-import { Icon } from "@/components/ui/Icon";
+import {
+  Avatar,
+  Badge,
+  Icon,
+  Input,
+  Text,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
@@ -118,7 +120,7 @@ export function CohostManager({ eventId, hostHubId }: CohostManagerProps) {
                           {r.subtitle}
                         </Text>
                       </View>
-                      <Badge label={r.kind === "hub" ? "Hub" : "Person"} variant="outline" />
+                      <Badge label={r.kind === "hub" ? "Page" : "Person"} variant="outline" />
                     </Pressable>
 
                     {/* Role chooser for the selected result */}

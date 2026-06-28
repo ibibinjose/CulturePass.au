@@ -1,6 +1,6 @@
 export { Text } from "./Text";
 export { Icon, type IconName } from "./Icon";
-export { Button } from "./Button";
+export { Button, type ButtonProps } from "./Button";
 export { BackButton } from "./BackButton";
 export { Card } from "./Card";
 export { Input } from "./Input";
@@ -26,3 +26,8 @@ export { Toggle } from "./Toggle";
 export { ListRow } from "./ListRow";
 export { TagInput } from "./TagInput";
 export { ImagePickerComponent } from "./ImagePicker";
+export { Carousel } from "./Carousel";
+export { SectionHeader } from "./SectionHeader";
+export { EmptyCard } from "./EmptyCard";
+export { Stepper } from "./Stepper";
+export { DatePicker } from "./DatePicker";

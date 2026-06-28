@@ -2,17 +2,19 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { BackButton } from "@/components/ui/BackButton";
-import { Field } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Card";
-import { TagInput } from "@/components/ui/TagInput";
-import { ImagePickerComponent } from "@/components/ui/ImagePicker";
-import { SocialLinksField } from "@/components/ui/SocialLinksField";
-import { Toggle } from "@/components/ui/Toggle";
+import {
+  BackButton,
+  Button,
+  Card,
+  Field,
+  ImagePickerComponent,
+  Input,
+  Screen,
+  SocialLinksField,
+  TagInput,
+  Text,
+  Toggle,
+} from "@/components/ui";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { profileSchema } from "@/lib/validation/profile";
 import { pruneLinks } from "@/lib/social";

@@ -1,9 +1,11 @@
 import { Linking, View } from "react-native";
 
-import { Card } from "@/components/ui/Card";
-import { Divider } from "@/components/ui/Divider";
-import { ListRow } from "@/components/ui/ListRow";
-import { Icon } from "@/components/ui/Icon";
+import {
+  Card,
+  Divider,
+  Icon,
+  ListRow,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { COMPANY } from "@/lib/company";
 import { LegalScreen, Section, Para } from "@/features/legal/Prose";

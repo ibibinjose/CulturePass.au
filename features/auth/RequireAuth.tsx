@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import { Redirect } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
+import {
+  Screen,
+  Text,
+} from "@/components/ui";
 import { useAuth } from "./AuthProvider";
 
 /** Gate a screen behind authentication: redirect to sign-in when signed out. */

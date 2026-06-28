@@ -62,9 +62,9 @@ function Inbox() {
           </View>
           <Text variant="subheading">No messages yet</Text>
           <Text variant="caption" tone="muted">
-            Open a hub and tap “Message organiser” to start a conversation.
+            Open a page and tap “Message organiser” to start a conversation.
           </Text>
-          <Button label="Discover hubs" variant="secondary" size="sm" onPress={() => router.push("/")} />
+          <Button label="Discover pages" variant="secondary" size="sm" onPress={() => router.push("/")} />
         </Card>
       )}
     </Screen>
@@ -87,7 +87,7 @@ function ConversationRow({
     conversation.hub?.images?.[0]?.url ??
     null;
 
-  const name = iAmMember ? conversation.hub?.name ?? "Hub" : conversation.member?.full_name || "Member";
+  const name = iAmMember ? conversation.hub?.name ?? "Page" : conversation.member?.full_name || "Member";
   const role = iAmMember ? "Organiser" : "Member";
   const uri = iAmMember ? hubLogo : conversation.member?.avatar_url ?? null;
 

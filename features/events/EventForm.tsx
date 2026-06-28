@@ -1,17 +1,20 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { View, ScrollView, Pressable } from "react-native";
 
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button, type ButtonProps } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Card";
-import { OptionCard } from "@/components/ui/OptionCard";
-import { TagInput } from "@/components/ui/TagInput";
-import { ImagePickerComponent } from "@/components/ui/ImagePicker";
-import { Toggle } from "@/components/ui/Toggle";
-import { DatePicker } from "@/components/ui/DatePicker";
-import { Icon } from "@/components/ui/Icon";
+import {
+  Button,
+  Card,
+  DatePicker,
+  Field,
+  Icon,
+  ImagePickerComponent,
+  Input,
+  OptionCard,
+  TagInput,
+  Text,
+  Toggle,
+  type ButtonProps,
+} from "@/components/ui";
 import { CohostManager } from "@/features/events/CohostManager";
 import { useMyHubs } from "@/features/hubs/api";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -116,7 +119,7 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
         
         {/* Hub selector when user has multiple hubs and creating a new event */}
         {isAuthenticated && myHubs && myHubs.length > 1 && !initial.hub_id ? (
-          <Field label="Hosting Hub">
+          <Field label="Hosting Page">
             <View className="gap-3">
               {myHubs.map((hub) => (
                 <OptionCard
@@ -192,7 +195,7 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
           <Field label="Start Time" className="flex-1">
             <DatePicker
               value={form.start_time}
-              onChange={(start_time) => set({ start_time })}
+              onChange={(start_time: string | undefined) => set({ start_time })}
               label=""
               mode="datetime"
             />
@@ -200,7 +203,7 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
           <Field label="End Time" className="flex-1">
             <DatePicker
               value={form.end_time}
-              onChange={(end_time) => set({ end_time })}
+              onChange={(end_time: string | undefined) => set({ end_time })}
               label=""
               mode="datetime"
             />

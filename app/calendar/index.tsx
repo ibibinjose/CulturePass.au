@@ -2,12 +2,15 @@ import { useMemo, useState, type ComponentProps } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Icon, type IconName } from "@/components/ui/Icon";
+import {
+  Badge,
+  Button,
+  Card,
+  Icon,
+  Screen,
+  Text,
+  type IconName,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { EventCard } from "@/features/events/EventCard";
 import { useEvents } from "@/features/events/api";

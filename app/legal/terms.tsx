@@ -1,4 +1,6 @@
-import { Text } from "@/components/ui/Text";
+import {
+  Text,
+} from "@/components/ui";
 import { COMPANY } from "@/lib/company";
 import { LegalScreen, Section, Para, Bullet } from "@/features/legal/Prose";
 

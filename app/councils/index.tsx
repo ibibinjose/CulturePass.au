@@ -2,14 +2,16 @@ import { useState } from "react";
 import { Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input as SearchInput } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Footer } from "@/components/ui/Footer";
-import { Icon } from "@/components/ui/Icon";
-import { Badge } from "@/components/ui/Badge";
+import {
+  Badge,
+  Button,
+  Card,
+  Footer,
+  Icon,
+  Input as SearchInput,
+  Screen,
+  Text,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useCouncils } from "@/features/reference/api";

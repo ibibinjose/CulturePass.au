@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Pressable } from "react-native";
 import { Link, useRouter } from "expo-router";
 
-import { Field } from "@/components/ui/Field";
-import { PasswordInput } from "@/components/ui/PasswordInput";
-import { Button } from "@/components/ui/Button";
-import { Text } from "@/components/ui/Text";
+import {
+  Button,
+  Field,
+  PasswordInput,
+  Text,
+} from "@/components/ui";
 import { AuthShell } from "@/features/auth/AuthShell";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useUpdatePassword } from "@/features/auth/api";

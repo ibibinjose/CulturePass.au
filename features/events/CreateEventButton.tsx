@@ -1,5 +1,7 @@
 import { useRouter } from "expo-router";
-import { Button } from "@/components/ui/Button";
+import {
+  Button,
+} from "@/components/ui";
 import { useMyProfile } from "@/features/profiles/api";
 
 interface CreateEventButtonProps {

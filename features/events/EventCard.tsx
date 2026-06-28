@@ -2,10 +2,12 @@ import { Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 
-import { Card } from "@/components/ui/Card";
-import { Text } from "@/components/ui/Text";
-import { Badge } from "@/components/ui/Badge";
-import { Icon } from "@/components/ui/Icon";
+import {
+  Badge,
+  Card,
+  Icon,
+  Text,
+} from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { colors } from "@/lib/theme";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";

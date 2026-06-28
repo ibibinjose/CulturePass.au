@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { BackButton } from "@/components/ui/BackButton";
+import {
+  BackButton,
+  Screen,
+  Text,
+} from "@/components/ui";
 import { eventDraftSchema, eventPublishSchema } from "@/lib/validation/event";
 import { useCreateEvent } from "@/features/events/api";
 import { EventForm, emptyEventForm, type EventFormValues } from "@/features/events/EventForm";

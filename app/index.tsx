@@ -4,15 +4,22 @@ import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { supabase } from "@/lib/supabase/client";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Footer } from "@/components/ui/Footer";
-import { Icon } from "@/components/ui/Icon";
-import { LocationPicker, ANYWHERE } from "@/components/ui/LocationPicker";
-import { MultiSelectFilter } from "@/components/ui/MultiSelectFilter";
+import {
+  Screen,
+  Text,
+  Input,
+  Button,
+  Card,
+  Footer,
+  Icon,
+  LocationPicker,
+  ANYWHERE,
+  MultiSelectFilter,
+  Carousel,
+  SectionHeader,
+  EmptyCard,
+} from "@/components/ui";
+import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useHubs } from "@/features/hubs/api";
@@ -302,46 +309,53 @@ export default function DiscoverScreen() {
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
       
-      {/* Luma-style Typographical Header */}
-      <View className="gap-2">
-        <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight">
-          Discover {locationLabel}
-        </Text>
-        <Text className="font-sans text-xs text-ink-faint">
-          Curated events and active community calendars across the country.
-        </Text>
-      </View>
-
-      {/* Unified Search & Location Bar (Luma style) */}
-      <View className="mt-4 flex-col md:flex-row md:items-center border border-linen bg-card rounded-2xl md:rounded-full px-4 py-2 gap-2 shadow-subtle">
-        <View className="flex-1 flex-row items-center">
-          <Input
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search events, hubs or organisers..."
-            returnKeyType="search"
-            autoCorrect={false}
-            leftIcon={<Icon name="search" size={16} color={colors.inkFaint} />}
-            containerClassName="border-0 bg-transparent h-9 px-0 flex-1"
-            className="text-sm font-sans"
-          />
+      {/* Luma-style Typographical Header & Search Block */}
+      <View className="flex-col md:flex-row md:items-center justify-between gap-4 border-b border-linen/40 pb-5">
+        <View className="gap-1 min-w-[200px] flex-1">
+          <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight font-bold">
+            Discover {locationLabel}
+          </Text>
+          <Text className="font-sans text-xs text-ink-faint">
+            Curated events and active community calendars.
+          </Text>
         </View>
 
-        {/* Vertical divider */}
-        <View className="hidden md:block w-[1px] h-6 bg-linen/70 mx-1" />
+        {/* Repositioned Search & Location Bar */}
+        <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-4 h-11 gap-2 shadow-subtle w-full md:w-[460px] lg:w-[500px]">
+          <View className="flex-1 flex-row items-center">
+            <Input
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search events, hubs..."
+              returnKeyType="search"
+              autoCorrect={false}
+              leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
+              containerClassName="border-0 bg-transparent h-9 px-0 flex-1"
+              className="text-xs font-sans"
+            />
+          </View>
 
-        {/* Location selector */}
-        <View className="flex-row items-center self-start md:self-auto">
-          <LocationPicker
-            value={location}
-            onChange={setLocation}
-            className="h-9 border-0 bg-transparent px-0 active:bg-transparent"
-          />
+          {/* Vertical divider */}
+          <View className="w-[1px] h-5 bg-linen/70 mx-1" />
+
+          {/* Location selector */}
+          <View className="flex-row items-center">
+            <LocationPicker
+              value={location}
+              onChange={setLocation}
+              className="h-9 border-0 bg-transparent px-0 active:bg-transparent"
+            />
+          </View>
         </View>
       </View>
 
       {/* Clean Horizontal Filter Bar */}
-      <View className="flex-row flex-wrap items-center gap-1.5 mt-3">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ alignItems: "center", gap: 6, paddingRight: 20 }}
+        className="-mx-gutter px-gutter mt-3"
+      >
         <MultiSelectFilter
           label="Interests"
           icon="sparkle"
@@ -358,7 +372,7 @@ export default function DiscoverScreen() {
           onChange={(next) => setCategories(next as EventType[])}
         />
         <MultiSelectFilter
-          label="Hub type"
+          label="Page type"
           icon="grid"
           options={HUB_TYPES as readonly string[]}
           labels={HUB_TYPE_LABELS as Record<string, string>}
@@ -370,7 +384,7 @@ export default function DiscoverScreen() {
         {activeFilterCount > 0 ? (
           <Button label="Clear filters" variant="outline" size="sm" className="h-8 px-2.5 rounded-lg" onPress={clearFilters} />
         ) : null}
-      </View>
+      </ScrollView>
 
       {/* Minimal Category tags */}
       <ScrollView
@@ -701,7 +715,7 @@ export default function DiscoverScreen() {
                   <EmptyCard
                     title="No hubs matching"
                     body="Try modifying your state or category filters."
-                    action="Create a hub"
+                    action="Create a page"
                     onPress={() => router.push("/create/hub")}
                   />
                 )}
@@ -907,80 +921,5 @@ export default function DiscoverScreen() {
 
       <Footer className="mt-12 border-t border-linen pt-8" />
     </Screen>
-  );
-}
-
-function Carousel({ children }: { children: React.ReactNode }) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerClassName="gap-3 pr-4"
-      className="-mx-gutter px-gutter"
-    >
-      {children}
-    </ScrollView>
-  );
-}
-
-function FirstNationsToggle({ active, onPress }: { active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      className={cn(
-        "h-8 flex-row items-center gap-1.5 self-start rounded-full border px-3",
-        active ? "border-country-black bg-country-black" : "border-linen/70 bg-card active:bg-sand",
-      )}
-    >
-      <View className="flex-row gap-0.5">
-        <View className="h-1.5 w-1.5 rounded-pill bg-country-red" />
-        <View className="h-1.5 w-1.5 rounded-pill bg-country-ochre" />
-        <View className={cn("h-1.5 w-1.5 rounded-pill", active ? "bg-paper" : "bg-ink")} />
-      </View>
-      <Text className={cn("font-heading text-[10px] uppercase tracking-wide", active ? "text-paper" : "text-ink")}>
-        First Nations
-      </Text>
-    </Pressable>
-  );
-}
-
-function SectionHeader({
-  eyebrow,
-  title,
-}: {
-  eyebrow: string;
-  title: string;
-}) {
-  return (
-    <View className="gap-0.5">
-      <Text variant="overline" tone="pink" className="text-2xs font-heading tracking-widest text-pink-600">
-        {eyebrow}
-      </Text>
-      <Text className="font-display text-lg text-ink tracking-tight">{title}</Text>
-    </View>
-  );
-}
-
-function EmptyCard({
-  title,
-  body,
-  action,
-  onPress,
-}: {
-  title: string;
-  body: string;
-  action: string;
-  onPress: () => void;
-}) {
-  return (
-    <Card className="items-start gap-2 p-5 border border-linen rounded-2xl bg-card">
-      <Text className="font-heading text-sm text-ink">{title}</Text>
-      <Text className="font-sans text-xs text-ink-muted leading-5">
-        {body}
-      </Text>
-      <Button label={action} variant="whatsapp" size="sm" className="h-8 px-3 rounded-lg mt-1" onPress={onPress} />
-    </Card>
   );
 }

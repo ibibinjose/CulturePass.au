@@ -4,8 +4,7 @@ import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { supabase } from "@/lib/supabase/client";
 
-import { Screen, Text, Input, Button, Card, Footer, Icon, Divider, Badge } from "@/components/ui";
-import { LocationPicker } from "@/components/ui/LocationPicker";
+import { Screen, Text, Input, Button, Card, Footer, Icon, Divider, Badge, LocationPicker } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useHubs } from "@/features/hubs/api";
@@ -621,7 +620,7 @@ export default function MyCouncilScreen() {
                     ) : (
                       <EmptyCard
                         title="No venues registered"
-                        body="Create a hub profile for a local gallery, theatre, studio, or community space!"
+                        body="Create a page for a local gallery, theatre, studio, or community space!"
                         action="Register space"
                         onPress={() => router.push("/create/hub")}
                       />

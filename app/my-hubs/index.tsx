@@ -58,19 +58,19 @@ export default function MyHubsScreen() {
       <View className="mb-6 flex-row items-center justify-between border-b border-linen pb-5">
         <View className="gap-1 flex-1">
           <Text variant="overline" tone="pink">
-            Hub Manager
+            Page Manager
           </Text>
           <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight">
-            My Hubs
+            My Pages
           </Text>
           <Text className="font-sans text-xs text-ink-faint mt-1">
             {count > 0
-              ? `You own and manage ${count} ${count === 1 ? "hub" : "hubs"}. Update branding, locations, and publish local events.`
-              : "Register and manage public hubs, brand assets, and events from one place."}
+              ? `You own and manage ${count} ${count === 1 ? "page" : "pages"}. Update branding, locations, and publish local events.`
+              : "Register and manage public pages, brand assets, and events from one place."}
           </Text>
         </View>
         <Button
-          label="Create hub"
+          label="Create page"
           variant="primary"
           size="sm"
           onPress={() => router.push("/create/hub")}
@@ -86,7 +86,7 @@ export default function MyHubsScreen() {
         ) : isError ? (
           <Card className="w-full p-6 border border-danger/25 bg-terracotta-50/50">
             <Text variant="caption" tone="muted">
-              Couldn’t load your hubs. Please pull down to refresh or try again later.
+              Couldn’t load your pages. Please pull down to refresh or try again later.
             </Text>
           </Card>
         ) : count > 0 ? (
@@ -103,12 +103,12 @@ export default function MyHubsScreen() {
         ) : (
           <Card className="w-full p-8 items-center gap-2 border border-dashed border-linen bg-sand/20">
             <Icon name="grid" size={32} color={colors.inkFaint} />
-            <Text variant="subheading" className="font-display tracking-tight text-center">No hubs created yet</Text>
+            <Text variant="subheading" className="font-display tracking-tight text-center">No pages created yet</Text>
             <Text variant="caption" tone="muted" className="text-center max-w-sm">
-              Publish a public hub for your gallery, local collective, creative business, or community sports club.
+              Publish a public page for your gallery, local collective, creative business, or community sports club.
             </Text>
             <Button
-              label="Create your first hub"
+              label="Create your first page"
               variant="secondary"
               size="sm"
               className="mt-4"

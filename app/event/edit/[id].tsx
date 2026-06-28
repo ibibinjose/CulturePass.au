@@ -2,11 +2,13 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Button } from "@/components/ui/Button";
-import { BackButton } from "@/components/ui/BackButton";
-import { Card } from "@/components/ui/Card";
+import {
+  BackButton,
+  Button,
+  Card,
+  Screen,
+  Text,
+} from "@/components/ui";
 import { eventDraftSchema, eventPublishSchema } from "@/lib/validation/event";
 import { useEvent, useUpdateEvent, useDeleteEvent } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";

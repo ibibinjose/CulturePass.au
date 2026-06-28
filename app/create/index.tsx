@@ -1,10 +1,13 @@
 import { Pressable, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { BackButton } from "@/components/ui/BackButton";
-import { Icon, type IconName } from "@/components/ui/Icon";
+import {
+  BackButton,
+  Icon,
+  Screen,
+  Text,
+  type IconName,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
 
 export default function CreateChooser() {
@@ -19,7 +22,7 @@ export default function CreateChooser() {
         What would you like to create?
       </Text>
       <Text variant="lead" className="mt-3">
-        Events belong to a hub. Start by creating a hub, then publish events from it.
+        Events belong to a page. Start by creating a page, then publish events from it.
       </Text>
 
       <View className="mt-8 gap-4">
@@ -27,13 +30,13 @@ export default function CreateChooser() {
           icon="calendar"
           tone="pink"
           title="Host an event"
-          description="Publish an event from one of your hubs so people can discover, save and attend it."
+          description="Publish an event from one of your pages so people can discover, save and attend it."
           href="/my-hubs"
         />
         <CreateOption
           icon="grid"
           tone="eucalyptus"
-          title="Create a hub"
+          title="Create a page"
           description="A page for a community, council, organisation, club, venue, business or wellness practice."
           href="/create/hub"
         />
@@ -81,9 +84,9 @@ function CreateOption({
     <Pressable
       onPress={() => router.push(href)}
       accessibilityRole="button"
-      className="flex-row items-center gap-4 rounded-2xl border border-linen bg-card p-5 active:bg-sand"
+      className="flex-row items-center gap-4 rounded-2xl border border-linen bg-card p-5 active:scale-[0.98] active:bg-sand/40 active:border-linen/80 transition-all duration-150"
     >
-      <View className={`h-12 w-12 items-center justify-center rounded-2xl ${TONES[tone]}`}>
+      <View className={`h-12 w-12 items-center justify-center rounded-xl border border-linen/30 ${TONES[tone]}`}>
         <Icon name={icon} size={22} color={TONE_ICON[tone]} />
       </View>
       <View className="flex-1 gap-1">

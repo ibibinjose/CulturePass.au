@@ -2,14 +2,16 @@ import { useEffect, useState, useCallback } from "react";
 import { Pressable, useWindowDimensions, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Footer } from "@/components/ui/Footer";
-import { Icon } from "@/components/ui/Icon";
-import { Badge } from "@/components/ui/Badge";
+import {
+  Badge,
+  Button,
+  Card,
+  Footer,
+  Icon,
+  Input,
+  Screen,
+  Text,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { supabase } from "@/lib/supabase/client";

@@ -2,18 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Switch, View, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { BackButton } from "@/components/ui/BackButton";
-import { Field } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Card";
-import { Chip } from "@/components/ui/Chip";
-import { OptionCard } from "@/components/ui/OptionCard";
-import { Stepper } from "@/components/ui/Stepper";
-import { TagInput } from "@/components/ui/TagInput";
-import { ImagePickerComponent } from "@/components/ui/ImagePicker";
+import {
+  BackButton,
+  Button,
+  Card,
+  Chip,
+  Field,
+  ImagePickerComponent,
+  Input,
+  OptionCard,
+  Screen,
+  Stepper,
+  TagInput,
+  Text,
+} from "@/components/ui";
 
 import {
   HUB_TYPES,

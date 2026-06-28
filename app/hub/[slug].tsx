@@ -159,7 +159,7 @@ export default function HubScreen() {
   ].filter(Boolean) as { key: string; icon: IconName; title: string; value: string; onPress?: () => void }[];
 
   const tabs: { key: TabKey; label: string }[] = [
-    { key: "events", label: eventCount > 0 ? `Events (${eventCount})` : "Events" },
+    { key: "events", label: eventCount > 0 ? `All Events (${eventCount})` : "All Events" },
     { key: "about", label: "About" },
   ];
   if (isMobile) {
@@ -167,18 +167,6 @@ export default function HubScreen() {
   }
 
   const activeTab = tab === "details" && !isMobile ? "events" : tab;
-
-  const stats = [
-    { key: "events", value: eventCount, label: "Events", onPress: () => setTab("events") },
-    { key: "likes", value: likeStatus?.count ?? 0, label: "Likes" },
-    { key: "followers", value: followStatus?.count ?? 0, label: "Followers" },
-    topics.length > 0
-      ? { key: "topics", value: topics.length, label: "Topics", onPress: () => setTab("about") }
-      : null,
-    partners.length > 0
-      ? { key: "partners", value: partners.length, label: "Partners", onPress: () => setTab("about") }
-      : null,
-  ].filter(Boolean) as { key: string; value: number; label: string; onPress?: () => void }[];
 
   return (
     <Screen maxWidth="content" contentClassName="pt-0 pb-10">
@@ -233,7 +221,7 @@ export default function HubScreen() {
 
       {/* Unified Header Identity & Actions Block */}
       <View className="flex-col md:flex-row md:items-end justify-between gap-5 mt-[-44px] pb-6 border-b border-linen/60 z-10">
-        <View className="flex-row items-end gap-4 min-w-0 flex-1">
+        <View className="flex-row items-center gap-4 min-w-0 flex-1">
           <Pressable
             onPress={() => {
               if (isOwnerOrEditor) router.push(`/hub/edit/${hub.slug}`);
@@ -340,14 +328,24 @@ export default function HubScreen() {
             </Text>
           ) : null}
 
-          {/* Stats strip — shared across mobile & desktop */}
-          <View className="flex-row items-stretch rounded-2xl border border-linen bg-card">
-            {stats.map((s, i) => (
-              <View key={s.key} className="flex-1 flex-row items-stretch">
-                {i > 0 ? <View className="w-px self-stretch bg-linen/70 my-3" /> : null}
-                <Stat value={s.value} label={s.label} onPress={s.onPress} />
-              </View>
-            ))}
+          {/* Mobile-only Stats strip */}
+          <View className="flex-row justify-between rounded-xl border border-linen bg-card p-3 lg:hidden">
+            <View className="items-center flex-1">
+              <Text className="font-sans text-sm font-bold text-ink">{eventCount}</Text>
+              <Text className="text-[9px] font-heading uppercase text-ink-faint mt-0.5">Events</Text>
+            </View>
+            <View className="items-center flex-1 border-l border-linen/60">
+              <Text className="font-sans text-sm font-bold text-ink">{likeStatus?.count ?? 0}</Text>
+              <Text className="text-[9px] font-heading uppercase text-ink-faint mt-0.5">Likes</Text>
+            </View>
+            <View className="items-center flex-1 border-l border-linen/60">
+              <Text className="font-sans text-sm font-bold text-ink">{followStatus?.count ?? 0}</Text>
+              <Text className="text-[9px] font-heading uppercase text-ink-faint mt-0.5">Followers</Text>
+            </View>
+            <View className="items-center flex-1 border-l border-linen/60">
+              <Text className="font-sans text-sm font-bold text-ink">{topics.length}</Text>
+              <Text className="text-[9px] font-heading uppercase text-ink-faint mt-0.5">Topics</Text>
+            </View>
           </View>
 
           {/* Welcome to Country / Respect Board */}
@@ -375,7 +373,7 @@ export default function HubScreen() {
             })}
           </View>
 
-          {/* Tab content */}
+          {/* Tab Content */}
           <View className="pt-1">
             {activeTab === "events" ? (
               <EventsTab
@@ -392,10 +390,48 @@ export default function HubScreen() {
               <DetailsTab rows={detailRows} />
             )}
           </View>
+
+          {/* Mobile-only Details section */}
+          {isMobile && detailRows.length > 0 && activeTab !== "details" && (
+            <>
+              <Divider className="opacity-40 my-2" />
+              <View className="gap-3.5">
+                <Text className="text-xs font-heading uppercase tracking-widest text-ink-muted">
+                  Details
+                </Text>
+                <DetailsTab rows={detailRows} />
+              </View>
+            </>
+          )}
         </View>
 
-        {/* Right Column: Contact Details & Tools (Desktop Sidebar) */}
+        {/* Right Column: Stats Card & Contact Details (Desktop Sidebar) */}
         <View className="hidden lg:flex gap-5 lg:w-[324px] w-full">
+
+          {/* Stats Overview Card (smaller) */}
+          <Card className="gap-4 border border-linen bg-card rounded-3xl p-5">
+            <Text className="text-[10px] font-heading uppercase tracking-widest text-pink-600">
+              Overview
+            </Text>
+            <View className="gap-3">
+              <View className="flex-row items-baseline gap-1.5">
+                <Text className="font-sans text-sm font-bold text-ink">{eventCount}</Text>
+                <Text className="text-[10px] font-heading uppercase text-ink-muted">Events</Text>
+              </View>
+              <View className="flex-row items-baseline gap-1.5">
+                <Text className="font-sans text-sm font-bold text-ink">{likeStatus?.count ?? 0}</Text>
+                <Text className="text-[10px] font-heading uppercase text-ink-muted">Likes</Text>
+              </View>
+              <View className="flex-row items-baseline gap-1.5">
+                <Text className="font-sans text-sm font-bold text-ink">{followStatus?.count ?? 0}</Text>
+                <Text className="text-[10px] font-heading uppercase text-ink-muted">Followers</Text>
+              </View>
+              <View className="flex-row items-baseline gap-1.5">
+                <Text className="font-sans text-sm font-bold text-ink">{topics.length}</Text>
+                <Text className="text-[10px] font-heading uppercase text-ink-muted">Topics</Text>
+              </View>
+            </View>
+          </Card>
 
           {/* Contact & location card */}
           {detailRows.length > 0 ? (
@@ -620,9 +656,6 @@ function AboutTab({
 
       {topics.length > 0 ? (
         <View className="gap-3">
-          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
-            Topics
-          </Text>
           <View className="flex-row flex-wrap gap-2">
             {topics.map((topic) => (
               <Pressable
@@ -699,21 +732,6 @@ function VerifiedCheck() {
     <View className="h-5 w-5 items-center justify-center rounded-full bg-eucalyptus-500">
       <Icon name="check" size={11} color={colors.paper} strokeWidth={2.6} />
     </View>
-  );
-}
-
-function Stat({ value, label, onPress }: { value: number; label: string; onPress?: () => void }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      className={cn("flex-1 items-center py-3.5", onPress && "active:opacity-60")}
-    >
-      <Text className="font-display text-xl md:text-2xl font-bold text-ink">{value}</Text>
-      <Text className="text-[10px] font-heading uppercase tracking-wide text-ink-faint mt-1">
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 

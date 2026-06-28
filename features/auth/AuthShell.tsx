@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Card } from "@/components/ui/Card";
-import { Icon } from "@/components/ui/Icon";
-import { BrandLockup } from "@/components/ui/BrandLockup";
+import {
+  BrandLockup,
+  Card,
+  Icon,
+  Screen,
+  Text,
+} from "@/components/ui";
 import { colors } from "@/lib/theme";
 
 interface AuthShellProps {
