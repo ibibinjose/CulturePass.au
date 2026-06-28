@@ -1,0 +1,95 @@
+---
+title: "Quickstart"
+description: "Install dependencies, start Supabase locally, and run the CulturePass app on web, iOS, or Android."
+---
+
+This page walks you through getting a local CulturePass environment running end-to-end: install dependencies, configure environment variables, boot the Supabase stack, and launch the app.
+
+## Prerequisites
+
+Install these before you start:
+
+- **Node.js** 20 or newer.
+- **npm** (ships with Node).
+- **Supabase CLI** — used to run a local Postgres + Auth + Storage stack and to generate database types.
+- **Docker** — the Supabase CLI uses Docker to run the local stack.
+- **Expo tooling** for the platform you want to target:
+  - Web works with just a modern browser.
+  - iOS requires macOS with Xcode installed.
+  - Android requires Android Studio with an emulator (or a physical device with USB debugging).
+
+## 1. Install dependencies
+
+From the repo root:
+
+```bash
+npm install
+```
+
+## 2. Configure environment
+
+Copy the example file and fill in your Supabase credentials:
+
+```bash
+cp .env.example .env
+```
+
+For local development, the Supabase URL and anon key are printed by `supabase start` (see below). For a deployed environment, use the credentials from your Supabase project dashboard.
+
+## 3. Start the local Supabase stack
+
+The Supabase CLI runs Postgres, Auth, Storage, and Studio in Docker:
+
+```bash
+supabase start
+```
+
+The first run pulls Docker images and takes a few minutes. When it finishes, the CLI prints local URLs and keys — copy the `API URL` and `anon key` into your `.env`.
+
+Apply migrations and seed reference data (Australian states and NSW councils):
+
+```bash
+supabase db reset
+```
+
+Re-run `supabase db reset` any time you pull new migrations or want a clean local database.
+
+## 4. Run the app
+
+Pick a target platform:
+
+```bash
+npm run web        # browser
+npm run ios        # iOS simulator (macOS only)
+npm run android    # Android emulator or connected device
+```
+
+`npm run web` is the fastest feedback loop for most UI work.
+
+## 5. Regenerate database types
+
+After changing the database schema (adding a migration, altering a table), regenerate the TypeScript types so the app stays in sync:
+
+```bash
+npm run db:types
+```
+
+This runs `supabase gen types typescript --local` and writes the result into the app's Supabase types module. Commit the regenerated file alongside the migration that caused the change.
+
+## Useful scripts
+
+| Script | What it does |
+| --- | --- |
+| `npm run web` / `ios` / `android` | Start the Expo app on the chosen platform. |
+| `npm run lint` | Run ESLint across the codebase. |
+| `npm run typecheck` | Run `tsc --noEmit`. |
+| `npm run db:start` | Start the local Supabase stack. |
+| `npm run db:reset` | Apply migrations and seed the local database. |
+| `npm run db:types` | Regenerate TypeScript types from the local schema. |
+| `npm run db:diff` | Diff local schema against migrations. |
+| `npm run functions:serve` | Run Supabase Edge Functions locally. |
+
+## Next steps
+
+- Read the [Project structure](/project-structure) tour to find your way around the codebase.
+- Read the [Design system](/design-system) before changing any UI or cultural surface.

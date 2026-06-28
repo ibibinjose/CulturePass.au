@@ -1,0 +1,106 @@
+---
+title: "Design system & cultural respect"
+description: "Design tokens, type scale, and the rules for First Nations colours, Acknowledgement of Country, and Welcome to Country."
+---
+
+CulturePass uses a Swiss-minimalist language over a warm Australian palette — cream paper, ochre, eucalyptus green, soft terracotta — set in Inter. Restraint rules: ink on paper is the default and accents are sparing. This page covers the tokens, the type scale, and the rules that govern cultural surfaces.
+
+## Where tokens live
+
+Design tokens are defined twice, in lockstep:
+
+- **`tailwind.config.js`** — the source of truth for Tailwind / NativeWind classes (`bg-paper`, `text-ink`, `border-linen`, …).
+- **`lib/theme.ts`** — a raw JS mirror of the same tokens for places where Tailwind classes aren't available (animated values, native APIs).
+
+Always update both together. If you only change `tailwind.config.js`, the JS surfaces drift.
+
+## Colour tokens
+
+### Surfaces and ink
+
+| Token | Use |
+| --- | --- |
+| `paper` | App background (signature warm cream). |
+| `sand` | Subtle raised surface, chips. |
+| `linen` | Warm hairline borders and dividers. |
+| `card` | Crisp white card surface over paper. |
+| `ink` | Default text — a warm near-black, never pure black. |
+| `ink.muted` / `ink.faint` | Secondary text and placeholders. |
+| `night`, `night.soft`, `night.line`, `night.muted` | Rich warm-dark surfaces for inverted editorial sections (hero, footer). |
+
+### Accents
+
+Use accents sparingly and intentionally.
+
+- **`ochre.*`** — primary warm accent (earth, sunlit stone). `ochre.500` is the default brand accent.
+- **`eucalyptus.*`** — calm secondary green (bush, sage).
+- **`terracotta.*`** — soft expressive accent. Use sparingly.
+- **`pink.*`, `teal.*`, `gold.*`, `green.*`** — bright marketing accents for the hero, tiles, footer, and brand surfaces. **Never use these on cultural surfaces.**
+
+### Functional
+
+- `success` for confirmation states.
+- `warning` for caution.
+- `danger` for destructive actions and errors.
+
+### `country.*` — reserved First Nations palette
+
+The `country.*` ramp (`country.red`, `country.ochre`, `country.black`) is **reserved strictly for sanctioned First Nations surfaces** — Welcome to Country, Acknowledgement of Country, and the Indigenous-led badge. It is not a decorative palette.
+
+Do not use `country.*`:
+
+- As background, border, or accent on regular UI.
+- In marketing tiles, hero sections, or generic call-to-actions.
+- On any surface that hasn't been authored or reviewed for cultural context.
+
+If you need a warm accent for something else, reach for `ochre.*` or `terracotta.*` instead.
+
+## Type scale
+
+Inter is the only family, used in four collision-free weights so each maps cleanly to a static face under NativeWind:
+
+| Class | Weight | Use |
+| --- | --- | --- |
+| `font-sans` | Inter Regular (400) | Body copy. |
+| `font-ui` | Inter Medium (500) | UI labels, buttons. |
+| `font-heading` | Inter SemiBold (600) | Section headings. |
+| `font-display` | Inter Bold (700) | Editorial display type. |
+
+The scale itself is editorial Swiss — tight negative tracking on the big display sizes, a calm reading rhythm below, ranging from `2xs` (11px) through `7xl` (92px). See `tailwind.config.js` for the exact line-heights and letter-spacings; prefer the named size classes (`text-base`, `text-xl`, `text-display-…`) over ad-hoc values.
+
+## Spacing, radii, shadows
+
+- A 4pt grid with generous large steps (`section`, `section-lg`) for airy editorial layouts.
+- Standard horizontal gutter: `gutter` (20px) on mobile, `gutter-lg` (32px) on web.
+- Rounded corners default to 12px (`rounded`), with larger steps up to `rounded-3xl` and a `rounded-pill`.
+- Shadows are soft, low, warm-tinted: `shadow-subtle`, `shadow-card`, `shadow-raised`, `shadow-float`.
+
+## Cultural respect
+
+Three rules sit at the centre of every cultural surface.
+
+### Acknowledgement of Country
+
+Acknowledgement of Country is shown app-wide via the `AcknowledgementBar` component. It is part of the chrome — do not hide, remove, or restyle it without coordinating with the cultural review process.
+
+### Welcome to Country
+
+Welcome to Country is presented prominently on hub profile pages and is **only ever content a hub has supplied and is authorised to share**. Never auto-generate, paraphrase, or AI-fill a Welcome to Country. If a hub hasn't supplied one, do not render a placeholder — leave the surface absent.
+
+### Traditional Custodian attributions
+
+The `traditional_custodians` columns ship empty. They are populated **only from verified, properly-sourced First Nations data** — never auto-generated, never guessed from coordinates, never inferred from council boundaries.
+
+When you add a feature that touches any of these surfaces — a new hub field, a notification template, a share card — assume the cultural surface stays exactly as designed unless a reviewer has signed off on the change.
+
+## Component primitives
+
+Reach for the design-system primitives in `components/ui/` (`Text`, `Button`, `Card`, …) rather than raw React Native views. They wire up the type ramp, spacing, and theming for you, and they keep all three platforms looking the same.
+
+For cultural surfaces, use the sanctioned components in `components/cultural/`:
+
+- `AcknowledgementBar`
+- `WelcomeToCountry`
+- `IndigenousLedBadge`
+
+If you find yourself rebuilding one of these from primitives, stop and use the sanctioned component instead.
