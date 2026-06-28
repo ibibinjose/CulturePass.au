@@ -11,6 +11,8 @@ import { colors } from "@/lib/theme";
 import { EVENT_TYPE_LABELS } from "@/lib/constants";
 import type { EventCardData } from "@/features/events/EventCard";
 import { useSavedEvents } from "@/features/events/useSavedEvents";
+import { useEventLikes, useToggleEventLike } from "@/features/events/api";
+import { useMyProfile } from "@/features/profiles/api";
 
 const dateFmt = new Intl.DateTimeFormat("en-AU", {
   weekday: "short",
@@ -24,8 +26,24 @@ const dateFmt = new Intl.DateTimeFormat("en-AU", {
 /** Large image-forward banner card for the "Featured / Happening soon" rail. */
 export function FeaturedEventCard({ event }: { event: EventCardData }) {
   const router = useRouter();
-  const saved = useSavedEvents((s) => s.ids.includes(event.id));
-  const toggleSaved = useSavedEvents((s) => s.toggle);
+  const { data: profile } = useMyProfile();
+  const isLoggedIn = !!profile;
+
+  const localSaved = useSavedEvents((s) => s.ids.includes(event.id));
+  const localToggle = useSavedEvents((s) => s.toggle);
+
+  const { data: dbLikes } = useEventLikes(event.id);
+  const dbToggle = useToggleEventLike();
+
+  const saved = isLoggedIn ? (dbLikes?.liked ?? false) : localSaved;
+
+  const handleToggleLike = () => {
+    if (isLoggedIn) {
+      dbToggle.mutate({ eventId: event.id, liked: saved });
+    } else {
+      localToggle(event.id);
+    }
+  };
 
   const cover = event.images?.find((i) => i.type === "cover")?.url ?? event.images?.[0]?.url ?? null;
   const start = event.start_time ? new Date(event.start_time) : null;
@@ -51,7 +69,7 @@ export function FeaturedEventCard({ event }: { event: EventCardData }) {
 
         {/* Save */}
         <Pressable
-          onPress={() => toggleSaved(event.id)}
+          onPress={handleToggleLike}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={saved ? "Remove from saved" : "Save event"}

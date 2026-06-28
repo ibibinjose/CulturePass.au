@@ -13,6 +13,8 @@ import { colors } from "@/lib/theme";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
 import type { HubImage } from "@/lib/supabase/database.types";
 import { useSavedEvents } from "@/features/events/useSavedEvents";
+import { useEventLikes, useToggleEventLike } from "@/features/events/api";
+import { useMyProfile } from "@/features/profiles/api";
 
 export interface EventCardData {
   id: string;
@@ -56,8 +58,24 @@ export interface EventCardProps {
 
 export function EventCard({ event, variant = "box" }: EventCardProps) {
   const router = useRouter();
-  const saved = useSavedEvents((s) => s.ids.includes(event.id));
-  const toggleSaved = useSavedEvents((s) => s.toggle);
+  const { data: profile } = useMyProfile();
+  const isLoggedIn = !!profile;
+
+  const localSaved = useSavedEvents((s) => s.ids.includes(event.id));
+  const localToggle = useSavedEvents((s) => s.toggle);
+
+  const { data: dbLikes } = useEventLikes(event.id);
+  const dbToggle = useToggleEventLike();
+
+  const saved = isLoggedIn ? (dbLikes?.liked ?? false) : localSaved;
+
+  const handleToggleLike = () => {
+    if (isLoggedIn) {
+      dbToggle.mutate({ eventId: event.id, liked: saved });
+    } else {
+      localToggle(event.id);
+    }
+  };
 
   const place = [event.location_city, event.location_state].filter(Boolean).join(", ");
   const coverUrl =
@@ -101,7 +119,7 @@ export function EventCard({ event, variant = "box" }: EventCardProps) {
                 {event.hub?.indigenous_led ? <IndigenousLedBadge /> : null}
               </View>
               <Pressable
-                onPress={() => toggleSaved(event.id)}
+                onPress={handleToggleLike}
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={saved ? "Remove from saved" : "Save event"}
@@ -189,7 +207,7 @@ export function EventCard({ event, variant = "box" }: EventCardProps) {
 
         {/* Save / bookmark */}
         <Pressable
-          onPress={() => toggleSaved(event.id)}
+          onPress={handleToggleLike}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={saved ? "Remove from saved" : "Save event"}

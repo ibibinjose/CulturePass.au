@@ -37,6 +37,11 @@ export function Footer({ className }: { className?: string }) {
               across this continent, and pays respect to Elders past and present. Sovereignty was never
               ceded. Always was, always will be Aboriginal land.
             </Text>
+            
+            {/* Large Brand Logo */}
+            <View className="mt-3 self-start opacity-75">
+              <Pinwheel size={80} />
+            </View>
           </View>
 
           {/* Right Block: Brand & Links */}
