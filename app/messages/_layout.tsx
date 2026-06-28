@@ -9,6 +9,9 @@ export default function MessagesLayout() {
         contentStyle: { backgroundColor: colors.paper },
         animation: "slide_from_right",
       }}
-    />
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="[id]" />
+    </Stack>
   );
 }
