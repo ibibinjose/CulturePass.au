@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Root CloudFormation stack for CulturePass.au infrastructure. It orchestrates nested stacks for authentication,
+  data storage, API, storage, and IAM.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment.
+  Region:
+    Type: String
+    Default: ap-southeast-2
+    Description: AWS region.
+
+Resources:
+  AuthStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${AWS::StackName}-templates/auth-stack.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        Region: !Ref Region
+
+  DataStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${AWS::StackName}-templates/data-stack.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        Region: !Ref Region
+
+  ApiStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${AWS::StackName}-templates/api-stack.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        Region: !Ref Region
+
+  StorageStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${AWS::StackName}-templates/storage-stack.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        Region: !Ref Region
+
+  IamStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "https://s3.amazonaws.com/${AWS::StackName}-templates/iam-stack.yaml"
+      Parameters:
+        Environment: !Ref Environment
+        Region: !Ref Region
+
+Outputs:
+  AuthStackOutput:
+    Description: Auth stack outputs
+    Value: !GetAtt AuthStack.Outputs
+  DataStackOutput:
+    Description: Data stack outputs
+    Value: !GetAtt DataStack.Outputs
+  ApiStackOutput:
+    Description: API stack outputs
+    Value: !GetAtt ApiStack.Outputs
+  StorageStackOutput:
+    Description: Storage stack outputs
+    Value: !GetAtt StorageStack.Outputs
+  IamStackOutput:
+    Description: IAM stack outputs
+    Value: !GetAtt IamStack.Outputs
