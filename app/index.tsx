@@ -12,7 +12,6 @@ import {
   Card,
   Footer,
   Icon,
-  type IconName,
   LocationPicker,
   ANYWHERE,
   MultiSelectFilter,
@@ -89,19 +88,7 @@ function groupEventsByDate(eventsList: any[]) {
   return groups;
 }
 
-const CATEGORY_ICONS: Record<EventType, string> = {
-  event: "calendar",
-  activity: "compass",
-  workshop: "edit",
-  art: "palette",
-  movie: "film",
-  dining: "food",
-  shopping: "bag",
-  offer: "star",
-  classes_gym: "dumbbell",
-  travel: "globe",
-  other: "grid",
-};
+
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -351,46 +338,45 @@ export default function DiscoverScreen() {
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
       
-      {/* Eventbrite-Style Hero Banner */}
-      <View className="rounded-3xl border border-linen bg-sand/15 p-6 md:p-10 gap-5 mt-2">
-        <View className="gap-2 max-w-xl">
-          <Text className="font-display text-3xl md:text-5xl text-ink font-extrabold tracking-tight leading-none">
-            Find your next experience
-          </Text>
-          <Text className="font-sans text-xs md:text-sm text-ink-muted">
-            Explore curated cultural events, local gatherings, and active community groups in {locationLabel}.
-          </Text>
+      {/* Swiss Editorial Hero Header */}
+      <View className="gap-3 pt-4 pb-2">
+        <Text variant="overline" tone="pink" className="font-bold tracking-[2px]">CulturePass Australia</Text>
+        <Text className="font-display text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold tracking-tighter leading-[1.05]">
+          Find your next{"\n"}experience.
+        </Text>
+        <Text className="font-sans text-sm text-ink-muted max-w-prose mt-1">
+          Explore curated cultural events, local gatherings, and active community groups in {locationLabel}.
+        </Text>
+      </View>
+
+      {/* High-Contrast Search & Location block */}
+      <View className="flex-row items-center border-2 border-ink bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-11 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-4">
+        <View className="flex-1 flex-row items-center h-full">
+          <Input
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search events..."
+            returnKeyType="search"
+            autoCorrect={false}
+            leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
+            containerClassName="border-0 bg-transparent h-full px-0 flex-1"
+            className="text-xs md:text-sm font-sans"
+          />
         </View>
 
-        {/* Floating Search & Location bar */}
-        <View className="flex-row items-center border border-linen bg-card rounded-full px-3 md:px-4 h-11 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-2">
-          <View className="flex-1 flex-row items-center h-full">
-            <Input
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search events..."
-              returnKeyType="search"
-              autoCorrect={false}
-              leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
-              containerClassName="border-0 bg-transparent h-full px-0 flex-1"
-              className="text-xs md:text-sm font-sans"
-            />
-          </View>
+        {/* Vertical divider */}
+        <View className="w-[1px] h-5 md:h-6 bg-ink/20 mx-0.5" />
 
-          {/* Vertical divider */}
-          <View className="w-[1px] h-5 md:h-6 bg-linen/70 mx-0.5" />
-
-          {/* Location picker */}
-          <View className="flex-row items-center h-full pr-0.5">
-            <View className="mr-1">
-              <Icon name="map-pin" size={13} color={colors.inkFaint} />
-            </View>
-            <LocationPicker
-              value={location}
-              onChange={setLocation}
-              className="h-full border-0 bg-transparent px-0 active:bg-transparent"
-            />
+        {/* Location picker */}
+        <View className="flex-row items-center h-full pr-0.5">
+          <View className="mr-1">
+            <Icon name="map-pin" size={13} color={colors.inkFaint} />
           </View>
+          <LocationPicker
+            value={location}
+            onChange={setLocation}
+            className="h-full border-0 bg-transparent px-0 active:bg-transparent"
+          />
         </View>
       </View>
 
@@ -431,40 +417,28 @@ export default function DiscoverScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Eventbrite-Style Circular Category Browser */}
+      {/* Swiss Text-Only Category navigation list */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="gap-6 px-gutter py-2.5"
+        contentContainerClassName="gap-2 px-gutter py-2"
         className="-mx-gutter px-gutter mt-5"
       >
         {EVENT_TYPES.map((type) => {
           const on = categories.includes(type);
-          const icon = CATEGORY_ICONS[type] || "calendar";
           return (
             <Pressable
               key={type}
               onPress={() => toggleCategory(type)}
-              className="items-center gap-2 active:scale-95 transition-transform duration-100"
+              className={cn(
+                "rounded-full border px-4 py-2 active:opacity-85",
+                on ? "border-ink bg-ink" : "border-linen/70 bg-card"
+              )}
             >
-              <View
-                className={cn(
-                  "h-14 w-14 rounded-full items-center justify-center border-2 shadow-sm",
-                  on
-                    ? "bg-ink border-ink"
-                    : "bg-card border-linen active:bg-sand"
-                )}
-              >
-                <Icon
-                  name={icon as IconName}
-                  size={22}
-                  color={on ? colors.paper : colors.ink}
-                />
-              </View>
               <Text
                 className={cn(
-                  "text-[10px] font-heading text-center tracking-tight",
-                  on ? "text-ink font-semibold" : "text-ink-muted"
+                  "text-[10px] font-heading uppercase tracking-[1px] text-center",
+                  on ? "text-paper font-semibold" : "text-ink"
                 )}
               >
                 {EVENT_TYPE_LABELS[type]}
@@ -477,16 +451,16 @@ export default function DiscoverScreen() {
       {/* Home Switcher Tabs */}
       <View className="flex-row gap-6 border-b border-linen mt-6 mb-4">
         <Pressable onPress={() => setHomeTab("discover")} className="items-center">
-          <Text className={cn("pb-2 font-heading text-sm", homeTab === "discover" ? "text-ink font-semibold" : "text-ink-faint")}>
+          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "discover" ? "text-ink font-semibold" : "text-ink-faint")}>
             Discover Feed
           </Text>
-          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "discover" ? "bg-ochre-500" : "bg-transparent")} />
+          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "discover" ? "bg-pink-500" : "bg-transparent")} />
         </Pressable>
         <Pressable onPress={() => setHomeTab("council")} className="items-center">
-          <Text className={cn("pb-2 font-heading text-sm", homeTab === "council" ? "text-ink font-semibold" : "text-ink-faint")}>
+          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "council" ? "text-ink font-semibold" : "text-ink-faint")}>
             My Council
           </Text>
-          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "council" ? "bg-ochre-500" : "bg-transparent")} />
+          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "council" ? "bg-pink-500" : "bg-transparent")} />
         </Pressable>
       </View>
 
@@ -494,7 +468,7 @@ export default function DiscoverScreen() {
         <>
           {/* Curated featured slider */}
           {featured.length > 0 ? (
-            <View className="mt-4 gap-4">
+            <View className="mt-6 gap-4">
               <SectionHeader
                 eyebrow={firstNations ? "First Nations voices" : "Featured"}
                 title="Editor's picks"
@@ -511,15 +485,12 @@ export default function DiscoverScreen() {
 
           {/* First Nations acknowledgement banner */}
           {showFnSection ? (
-            <View className="mt-8 rounded-3xl border border-country-ochre/25 bg-country-ochre/5 p-5 gap-3">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-row items-center gap-1.5">
-                  <View className="h-1.5 w-1.5 rounded-full bg-country-red" />
-                  <View className="h-1.5 w-1.5 rounded-full bg-country-ochre" />
-                  <Text className="text-[10px] font-heading uppercase tracking-widest text-country-red">
-                    First Nations Spotlight
-                  </Text>
-                </View>
+            <View className="mt-8 rounded-3xl border-2 border-country-red bg-card p-5 gap-4 shadow-card">
+              <View className="flex-row items-center gap-1.5 border-b border-linen pb-3">
+                <View className="h-2 w-2 rounded-full bg-country-ochre" />
+                <Text variant="overline" className="text-country-red font-bold tracking-[2px]">
+                  First Nations Spotlight
+                </Text>
               </View>
               <Carousel>
                 {fnEvents.slice(0, 6).map((event) => (
@@ -538,17 +509,22 @@ export default function DiscoverScreen() {
                     <Pressable
                       key={hub.slug}
                       onPress={() => router.push(`/hub/${hub.slug}`)}
-                      className="w-[280px] bg-card border border-linen p-3 rounded-2xl flex-row items-center gap-3"
+                      className="w-[280px] bg-card border border-linen p-3 rounded-2xl flex-row items-center gap-3 active:opacity-75"
                     >
                       {logoUrl ? (
                         <Image source={{ uri: logoUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} />
                       ) : (
-                        <View className="h-9 w-9 rounded-full bg-sand items-center justify-center" />
+                        <View className="h-9 w-9 rounded-full bg-sand items-center justify-center">
+                          <Text className="font-heading text-sm text-ink-muted">
+                            {hub.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
                       )}
                       <View className="flex-1 min-w-0">
                         <Text className="text-xs font-heading text-ink truncate">{hub.name}</Text>
                         <Text className="text-[10px] text-ink-faint truncate">{HUB_TYPE_LABELS[hub.type]}</Text>
                       </View>
+                      <Icon name="chevron-right" size={12} color={colors.inkMuted} />
                     </Pressable>
                   );
                 })}
@@ -579,15 +555,11 @@ export default function DiscoverScreen() {
               {/* Eventbrite-Style Grid listing */}
               {comingUp.length > 0 ? (
                 <View className="gap-6">
-                  <View className="flex-row items-center justify-between border-b border-linen pb-2">
-                    <Text className="font-display text-lg text-ink tracking-tight">Upcoming events</Text>
-                    <Button
-                      label="Calendar view"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 px-2"
-                      onPress={() => router.push("/calendar")}
-                    />
+                  <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3 mt-2">
+                    <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Upcoming events</Text>
+                    <Pressable onPress={() => router.push("/calendar")} className="active:opacity-75">
+                      <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">Calendar view</Text>
+                    </Pressable>
                   </View>
 
                   <View className="flex-row flex-wrap gap-5 mt-2">
@@ -612,23 +584,19 @@ export default function DiscoverScreen() {
             {/* Right Column: Calendars & Hubs List (Luma Style) */}
             <View className="w-full lg:w-[320px] gap-6">
               <View className="gap-3">
-                <View className="flex-row items-end justify-between border-b border-linen pb-2">
-                  <Text className="font-display text-lg text-ink tracking-tight">Active hubs</Text>
-                  <Button
-                    label="My hubs"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2"
-                    onPress={() => router.push("/my-hubs")}
-                  />
+                <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3">
+                  <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Active hubs</Text>
+                  <Pressable onPress={() => router.push("/my-hubs")} className="active:opacity-75">
+                    <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">My hubs</Text>
+                  </Pressable>
                 </View>
 
                 {/* Quick Hub Purpose scroll */}
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerClassName="gap-1.5 pr-4"
-                  className="-mx-gutter px-gutter"
+                  contentContainerClassName="gap-2 pr-4 pt-1"
+                  className="-mx-gutter px-gutter mt-2"
                 >
                   {HUB_TYPES.map((type) => {
                     const on = hubTypes.includes(type);
@@ -637,11 +605,11 @@ export default function DiscoverScreen() {
                         key={type}
                         onPress={() => toggleHubType(type)}
                         className={cn(
-                          "rounded px-2.5 py-1 border active:opacity-85",
+                          "rounded-full border px-3 py-1.5 active:opacity-85",
                           on ? "border-ink bg-ink" : "border-linen/70 bg-card"
                         )}
                       >
-                        <Text className={cn("text-[10px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
+                        <Text className={cn("text-[9px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
                           {HUB_TYPE_LABELS[type].split(" ")[0]}
                         </Text>
                       </Pressable>
@@ -655,7 +623,7 @@ export default function DiscoverScreen() {
                 ) : hubsError ? (
                   <Card className="p-4 items-center"><Text variant="caption" tone="muted">Could not load hubs.</Text></Card>
                 ) : hubResults.length > 0 ? (
-                  <View className="gap-1">
+                  <View className="gap-1 mt-2">
                     {hubResults.map((hub) => {
                       const images = (hub.images ?? []).filter((img: any) => img && img.url);
                       const logoUrl =
@@ -746,16 +714,15 @@ export default function DiscoverScreen() {
               <Text variant="caption" tone="faint" className="mt-3">Fetching local council coordinates...</Text>
             </Card>
           ) : councilDetails ? (
-            <View className="mt-4 gap-6">
-              {/* Council details card */}
-              <View className="rounded-3xl border border-linen bg-card p-6 gap-4">
+            <View className="mt-4 gap-6">              {/* Council details card */}
+              <View className="rounded-3xl border-2 border-ink bg-card p-6 gap-4 shadow-card">
                 <View className="flex-row items-center gap-2">
                   <Icon name="map-pin" size={16} color={colors.pink} />
-                  <Text variant="overline" tone="pink" className="text-2xs font-heading tracking-widest text-pink-600">
+                  <Text variant="overline" tone="pink" className="text-2xs font-bold tracking-widest text-pink-600">
                     Local Government Area
                   </Text>
                 </View>
-                <Text className="font-display text-3xl text-ink tracking-tight">
+                <Text className="font-display text-3xl text-ink tracking-tight font-extrabold">
                   {councilDetails.name}
                 </Text>
                 
@@ -771,17 +738,17 @@ export default function DiscoverScreen() {
 
                 <View className="flex-row gap-8 mt-1 border-t border-linen/30 pt-4">
                   <View>
-                    <Text className="font-display text-xl text-ink">{(councilEvents ?? []).length}</Text>
-                    <Text className="text-[10px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Events Active</Text>
+                    <Text variant="title" className="font-display font-extrabold text-ink">{(councilEvents ?? []).length}</Text>
+                    <Text className="text-[9px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Events Active</Text>
                   </View>
                   <View>
-                    <Text className="font-display text-xl text-ink">{(councilHubs ?? []).length}</Text>
-                    <Text className="text-[10px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Hubs Affiliated</Text>
+                    <Text variant="title" className="font-display font-extrabold text-ink">{(councilHubs ?? []).length}</Text>
+                    <Text className="text-[9px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Hubs Affiliated</Text>
                   </View>
                   {councilDetails.population ? (
                     <View>
-                      <Text className="font-display text-xl text-ink">{councilDetails.population.toLocaleString()}</Text>
-                      <Text className="text-[10px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Estimated Pop.</Text>
+                      <Text variant="title" className="font-display font-extrabold text-ink">{councilDetails.population.toLocaleString()}</Text>
+                      <Text className="text-[9px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Estimated Pop.</Text>
                     </View>
                   ) : null}
                 </View>
