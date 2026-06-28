@@ -315,8 +315,6 @@ export default function EventScreen() {
           {/* Event Title & Eyebrows */}
           <View className="gap-2 mt-2">
             <View className="flex-row items-center gap-2 flex-wrap">
-              <Text variant="overline" tone="pink" className="font-bold tracking-[1.5px]">{EVENT_TYPE_LABELS[event.type as EventType]}</Text>
-              <Text className="text-ink-faint/30">•</Text>
               <Text variant="overline" className="text-ink-muted tracking-[1.2px]">{statusLabel}</Text>
               {event.status === "published" && event.start_time ? (
                 <>
@@ -324,6 +322,8 @@ export default function EventScreen() {
                   <CountdownTimer startTime={event.start_time} />
                 </>
               ) : null}
+              <Text className="text-ink-faint/30">•</Text>
+              <Text variant="overline" tone="faint" className="tracking-[1px]">{EVENT_TYPE_LABELS[event.type as EventType]}</Text>
             </View>
             <Text variant="displayLarge" className="font-display text-4xl md:text-5xl lg:text-6xl text-ink tracking-tighter leading-none mt-1">
               {event.title}
@@ -691,13 +691,13 @@ function CountdownTimer({ startTime }: { startTime: string }) {
   const nowActive = timeLeft === "Happening now!";
 
   return (
-    <View className="flex-row items-center gap-1">
+    <View className="flex-row items-center gap-1.5">
       {nowActive ? (
         <View className="h-1.5 w-1.5 rounded-full bg-green-500" />
       ) : (
-        <Icon name="clock" size={11} color={colors.inkMuted} />
+        <Icon name="sparkle" size={12} color={colors.pink} />
       )}
-      <Text variant="overline" className="text-ink font-bold tracking-[1.2px]">
+      <Text variant="overline" tone="pink" className="font-bold tracking-[1.2px]">
         {timeLeft}
       </Text>
     </View>
