@@ -363,27 +363,27 @@ export default function DiscoverScreen() {
         </View>
 
         {/* Floating Search & Location bar */}
-        <View className="flex-col md:flex-row items-stretch md:items-center border border-linen bg-card rounded-2xl md:rounded-full px-4 py-2 md:py-0 h-auto md:h-14 gap-3 shadow-subtle w-full max-w-3xl mt-2">
-          <View className="flex-1 flex-row items-center h-10 md:h-full">
+        <View className="flex-row items-center border border-linen bg-card rounded-full px-3 md:px-4 h-11 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-2">
+          <View className="flex-1 flex-row items-center h-full">
             <Input
               value={search}
               onChangeText={setSearch}
-              placeholder="Search events, organizers..."
+              placeholder="Search events..."
               returnKeyType="search"
               autoCorrect={false}
-              leftIcon={<Icon name="search" size={16} color={colors.inkFaint} />}
+              leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
               containerClassName="border-0 bg-transparent h-full px-0 flex-1"
-              className="text-sm font-sans"
+              className="text-xs md:text-sm font-sans"
             />
           </View>
 
           {/* Vertical divider */}
-          <View className="hidden md:block w-[1px] h-6 bg-linen/70 mx-1" />
+          <View className="w-[1px] h-5 md:h-6 bg-linen/70 mx-0.5" />
 
           {/* Location picker */}
-          <View className="flex-row items-center h-10 md:h-full pr-1">
-            <View className="mr-1.5">
-              <Icon name="map-pin" size={14} color={colors.inkFaint} />
+          <View className="flex-row items-center h-full pr-0.5">
+            <View className="mr-1">
+              <Icon name="map-pin" size={13} color={colors.inkFaint} />
             </View>
             <LocationPicker
               value={location}

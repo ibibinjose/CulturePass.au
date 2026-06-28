@@ -89,8 +89,7 @@ export default function CommunitiesScreen() {
             ) : null}
           </View>
 
-          {/* Repositioned Search bar */}
-          <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-4 h-11 gap-2 shadow-subtle w-full md:w-[280px] lg:w-[320px]">
+          <View className="flex-row items-center border border-linen bg-card rounded-full px-3 md:px-4 h-11 gap-2 shadow-subtle w-full md:w-[280px] lg:w-[320px]">
             <Input
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -100,7 +99,7 @@ export default function CommunitiesScreen() {
               clearButtonMode="while-editing"
               leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
               containerClassName="border-0 bg-transparent h-10 px-0 flex-1"
-              className="text-sm font-sans"
+              className="text-xs md:text-sm font-sans"
             />
             {query ? (
               <Pressable onPress={() => setSearchQuery("")} hitSlop={10} className="h-6 w-6 items-center justify-center rounded-full active:bg-sand">

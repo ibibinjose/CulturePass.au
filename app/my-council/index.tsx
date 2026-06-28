@@ -536,6 +536,8 @@ export default function MyCouncilScreen() {
                 onChangeText={setSearchQuery}
                 leftIcon={<Icon name="search" size={15} color={colors.inkMuted} />}
                 clearButtonMode="while-editing"
+                containerClassName="h-10 md:h-12 rounded-full border-linen/80"
+                className="text-xs md:text-sm font-sans"
               />
 
               {/* Segmented Pill Tabs */}

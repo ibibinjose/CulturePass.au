@@ -38,7 +38,7 @@ export function useMyProfile() {
         .from("hubs")
         .select("id, name, slug, images")
         .eq("owner_id", profile.id)
-        .eq("status", "active");
+        .eq("status", "published");
 
       return {
         ...profile,
@@ -67,7 +67,7 @@ export function useProfile(id: string | undefined) {
         .from("hubs")
         .select("id, name, slug, images")
         .eq("owner_id", profile.id)
-        .eq("status", "active");
+        .eq("status", "published");
 
       return {
         ...profile,
