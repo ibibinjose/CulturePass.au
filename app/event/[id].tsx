@@ -41,21 +41,7 @@ import {
   type EventType,
 } from "@/lib/constants";
 
-const dateTimeFormatter = new Intl.DateTimeFormat("en-AU", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-});
-
-const timeFormatter = new Intl.DateTimeFormat("en-AU", {
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-});
+import { getEventTimezone } from "@/lib/utils/timezone";
 
 export default function EventScreen() {
   const router = useRouter();
@@ -192,9 +178,37 @@ export default function EventScreen() {
   const coverUrl = event.images?.find((image) => image.type === "cover")?.url ?? event.images?.[0]?.url ?? null;
   const start = event.start_time ? new Date(event.start_time) : null;
   const end = event.end_time ? new Date(event.end_time) : null;
-  const when = start ? dateTimeFormatter.format(start) : "Date to be announced";
+  const eventTimezone = getEventTimezone(event.location_state);
+  const when = start
+    ? new Intl.DateTimeFormat("en-AU", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: eventTimezone,
+        timeZoneName: "short",
+      }).format(start)
+    : "Date to be announced";
   const timeRange = start
-    ? `${timeFormatter.format(start)}${end ? ` - ${timeFormatter.format(end)}` : ""}`
+    ? `${new Intl.DateTimeFormat("en-AU", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: eventTimezone,
+      }).format(start)}${
+        end
+          ? ` - ${new Intl.DateTimeFormat("en-AU", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+              timeZone: eventTimezone,
+              timeZoneName: "short",
+            }).format(end)}`
+          : ""
+      }`
     : "Time to be announced";
   const price = event.is_free ? "Free" : event.price ? `$${event.price}` : "Ticketed";
   const statusLabel =
