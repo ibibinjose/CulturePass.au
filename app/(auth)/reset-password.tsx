@@ -2,10 +2,12 @@ import { useState } from "react";
 import { Pressable } from "react-native";
 import { Link } from "expo-router";
 
-import { Field } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Text } from "@/components/ui/Text";
+import {
+  Button,
+  Field,
+  Input,
+  Text,
+} from "@/components/ui";
 import { AuthShell } from "@/features/auth/AuthShell";
 import { useResetPassword } from "@/features/auth/api";
 import { resetRequestSchema } from "@/lib/validation/auth";

@@ -19,7 +19,12 @@ import {
 import { queryClient } from "@/lib/query";
 import { colors } from "@/lib/theme";
 import { AuthProvider } from "@/features/auth/AuthProvider";
-import { TopBar } from "@/components/ui/TopBar";
+import {
+  BottomTabBar,
+  TopBar,
+} from "@/components/ui";
+import { OnboardingGate } from "@/features/onboarding/OnboardingGate";
+import { NotificationsRealtime } from "@/features/notifications/NotificationsRealtime";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -66,26 +71,45 @@ export default function RootLayout() {
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="create/event"
+                    name="hub/edit"
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="hub/edit/[slug]"
+                    name="event"
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="event/[id]"
+                    name="my-hubs"
                     options={{ animation: "slide_from_bottom" }}
                   />
                   <Stack.Screen
-                    name="my-hubs/index"
+                    name="my-council/index"
                     options={{ animation: "slide_from_bottom" }}
+                  />
+                  <Stack.Screen
+                    name="councils/index"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
+                    name="communities/index"
+                    options={{ animation: "slide_from_right" }}
+                  />
+                  <Stack.Screen
+                    name="admin/index"
+                    options={{ animation: "slide_from_right" }}
                   />
                   <Stack.Screen name="l" options={{ animation: "fade" }} />
                   <Stack.Screen name="card" options={{ animation: "fade" }} />
                   <Stack.Screen name="tickets" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="legal" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="notifications" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="messages" options={{ animation: "slide_from_right" }} />
+                  <Stack.Screen name="onboarding" options={{ animation: "fade" }} />
                 </Stack>
               </View>
+              <BottomTabBar />
+              <OnboardingGate />
+              <NotificationsRealtime />
             </View>
           </AuthProvider>
         </QueryClientProvider>

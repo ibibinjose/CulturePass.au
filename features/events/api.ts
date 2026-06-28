@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { qk } from "@/lib/query";
+import { getCurrentProfileId } from "@/features/auth/api";
 import type { Database } from "@/lib/supabase/database.types";
 
 export interface EventFilters {
@@ -13,6 +14,8 @@ export interface EventFilters {
   from?: string;
   /** Inclusive upper bound on start_time (ISO). */
   to?: string;
+  tag?: string;
+  ids?: string[];
 }
 
 export function useEvents(filters: EventFilters = {}) {
@@ -23,7 +26,7 @@ export function useEvents(filters: EventFilters = {}) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images)
         `)
         .eq("status", "published")
         .order("start_time", { ascending: true });
@@ -35,6 +38,8 @@ export function useEvents(filters: EventFilters = {}) {
       if (filters.search) query = query.ilike("title", `%${filters.search}%`);
       if (filters.from) query = query.gte("start_time", filters.from);
       if (filters.to) query = query.lte("start_time", filters.to);
+      if (filters.tag) query = query.contains("tags", [filters.tag]);
+      if (filters.ids && filters.ids.length > 0) query = query.in("id", filters.ids);
 
       const { data, error } = await query;
       if (error) throw error;
@@ -74,11 +79,31 @@ export function useHubEvents(hubId: string) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images)
         `)
         .eq("hub_id", hubId)
         .eq("status", "published")
         .order("start_time", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!hubId,
+  });
+}
+
+export function useMyHubEvents(hubId: string) {
+  return useQuery({
+    queryKey: qk.myHubEvents(hubId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("events")
+        .select(`
+          *,
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id, images)
+        `)
+        .eq("hub_id", hubId)
+        .order("start_time", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -94,7 +119,7 @@ export function useEvent(id: string) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, owner_id, images)
         `)
         .eq("id", id)
         .maybeSingle();
@@ -118,6 +143,7 @@ export function useCreateEvent() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: qk.events({ hubId: data.hub_id }) });
       qc.invalidateQueries({ queryKey: qk.hubEvents(data.hub_id) });
+      qc.invalidateQueries({ queryKey: qk.myHubEvents(data.hub_id) });
     },
   });
 }
@@ -145,6 +171,7 @@ export function useUpdateEvent() {
       qc.invalidateQueries({ queryKey: qk.event(data.id) });
       qc.invalidateQueries({ queryKey: qk.events({ hubId: data.hub_id }) });
       qc.invalidateQueries({ queryKey: qk.hubEvents(data.hub_id) });
+      qc.invalidateQueries({ queryKey: qk.myHubEvents(data.hub_id) });
     },
   });
 }
@@ -158,9 +185,171 @@ export function useDeleteEvent() {
     },
     onSuccess: (_, { id, hubId }) => {
       qc.removeQueries({ queryKey: qk.event(id) });
-      if (hubId) qc.invalidateQueries({ queryKey: qk.hubEvents(hubId) });
+      if (hubId) {
+        qc.invalidateQueries({ queryKey: qk.hubEvents(hubId) });
+        qc.invalidateQueries({ queryKey: qk.myHubEvents(hubId) });
+      }
       // Prefix-match invalidates every ["events", …] filtered list.
       qc.invalidateQueries({ queryKey: ["events"] });
+    },
+  });
+}
+
+export function useEventSubscriptionStatus(eventId: string) {
+  return useQuery({
+    queryKey: qk.eventRsvps(eventId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+      if (!profileId) return { subscribed: false, status: null };
+
+      const { data, error } = await supabase
+        .from("event_rsvps")
+        .select("status")
+        .eq("event_id", eventId)
+        .eq("profile_id", profileId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return {
+        subscribed: !!data,
+        status: data?.status ?? null,
+      };
+    },
+    enabled: !!eventId,
+  });
+}
+
+export function useToggleEventSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, subscribed }: { eventId: string; subscribed: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to subscribe to an event");
+
+      if (subscribed) {
+        const { error } = await supabase
+          .from("event_rsvps")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("event_rsvps")
+          .insert({ event_id: eventId, profile_id: profileId, status: "going" });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      qc.invalidateQueries({ queryKey: qk.eventRsvps(eventId) });
+      qc.invalidateQueries({ queryKey: qk.event(eventId) });
+    },
+  });
+}
+
+export function useEventLikes(eventId: string) {
+  return useQuery({
+    queryKey: qk.eventLikes(eventId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+
+      // Fetch total count.
+      const { count, error: countError } = await supabase
+        .from("event_likes")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", eventId);
+
+      if (countError) throw countError;
+
+      let liked = false;
+      if (profileId) {
+        const { data, error: likeError } = await supabase
+          .from("event_likes")
+          .select("id")
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId)
+          .maybeSingle();
+        if (likeError) throw likeError;
+        liked = !!data;
+      }
+
+      return { count: count ?? 0, liked };
+    },
+    enabled: !!eventId,
+  });
+}
+
+export function useToggleEventLike() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, liked }: { eventId: string; liked: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to like an event");
+
+      if (liked) {
+        const { error } = await supabase
+          .from("event_likes")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("event_likes")
+          .insert({ event_id: eventId, profile_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      qc.invalidateQueries({ queryKey: qk.eventLikes(eventId) });
+    },
+  });
+}
+
+export function useEventSaveStatus(eventId: string) {
+  return useQuery({
+    queryKey: qk.eventSaves(eventId),
+    queryFn: async () => {
+      const profileId = await getCurrentProfileId().catch(() => null);
+      if (!profileId) return { saved: false };
+
+      const { data, error } = await supabase
+        .from("event_saves")
+        .select("id")
+        .eq("event_id", eventId)
+        .eq("profile_id", profileId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return { saved: !!data };
+    },
+    enabled: !!eventId,
+  });
+}
+
+export function useToggleEventSave() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ eventId, saved }: { eventId: string; saved: boolean }) => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) throw new Error("Must be signed in to save an event");
+
+      if (saved) {
+        const { error } = await supabase
+          .from("event_saves")
+          .delete()
+          .eq("event_id", eventId)
+          .eq("profile_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("event_saves")
+          .insert({ event_id: eventId, profile_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { eventId }) => {
+      qc.invalidateQueries({ queryKey: qk.eventSaves(eventId) });
     },
   });
 }

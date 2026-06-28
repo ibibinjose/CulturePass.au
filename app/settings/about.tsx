@@ -1,15 +1,15 @@
-import { Linking, View } from "react-native";
-import { useRouter } from "expo-router";
+import { View } from "react-native";
+import { useRouter, type Href } from "expo-router";
 import Constants from "expo-constants";
 
-import { Screen, Text, Button, Card, ListRow, Divider } from "@/components/ui";
+import { Screen, Text, BackButton, Card, ListRow, Divider } from "@/components/ui";
 import { AcknowledgementBar } from "@/components/cultural/AcknowledgementBar";
+import { COMPANY } from "@/lib/company";
 
-const SITE = "https://culturepass.au";
-const LINKS = [
-  { title: "Privacy policy", url: `${SITE}/privacy` },
-  { title: "Terms of use", url: `${SITE}/terms` },
-  { title: "Contact & support", url: `${SITE}/support` },
+const LINKS: { title: string; href: Href }[] = [
+  { title: "Privacy policy", href: "/legal/privacy" },
+  { title: "Terms of use", href: "/legal/terms" },
+  { title: "Contact & support", href: "/legal/contact" },
 ];
 
 export default function AboutScreen() {
@@ -17,41 +17,38 @@ export default function AboutScreen() {
   const version = Constants.expoConfig?.version ?? "1.0.0";
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton fallbackHref="/settings" className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         About
       </Text>
       <Text variant="title" className="mt-2">
         CulturePass Australia
       </Text>
-      <Text variant="body" tone="muted" className="mt-3">
+      <Text variant="lead" className="mt-3">
         Discover communities, events and cultural experiences across Australia —
         grounded in respect for First Nations peoples. Unity in diversity.
       </Text>
 
       <AcknowledgementBar className="mt-8" />
 
-      <Text variant="overline" tone="faint" className="mb-1 mt-8">
+      <Text variant="overline" tone="pink" className="mb-2 mt-8">
         Legal
       </Text>
-      <Card className="px-5 py-1">
+      <Card padded={false} className="px-5">
         {LINKS.map((link, i) => (
           <View key={link.title}>
             {i > 0 ? <Divider /> : null}
-            <ListRow title={link.title} onPress={() => Linking.openURL(link.url)} />
+            <ListRow title={link.title} onPress={() => router.push(link.href)} />
           </View>
         ))}
       </Card>
 
-      <View className="mt-8 items-center">
+      <View className="mt-8 items-center gap-1">
+        <Text variant="caption" tone="faint">
+          {COMPANY.legalName}
+        </Text>
         <Text variant="caption" tone="faint">
           Version {version}
         </Text>

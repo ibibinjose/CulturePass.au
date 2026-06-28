@@ -1,0 +1,87 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudFormation stack for CulturePassAustralia static site, CDN, Cognito, and DynamoDB.
+Resources:
+  # S3 bucket for static assets
+  StaticSiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-static-site'
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+  # CloudFront distribution
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3OriginPrimary
+            DomainName: !GetAtt StaticSiteBucket.DomainName
+            S3OriginConfig: {}
+        Enabled: true
+        DefaultCacheBehavior:
+          TargetOriginId: S3OriginPrimary
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+        DefaultRootObject: index.html
+        PriceClass: PriceClass_All
+        HttpVersion: http2
+        Aliases: []
+  # Cognito User Pool
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: CulturePassUserPool
+      AutoVerifiedAttributes:
+        - email
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: CulturePassAppClient
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+  # DynamoDB table (example)
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Events
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+Outputs:
+  BucketName:
+    Description: Name of the S3 bucket for static assets
+    Value: !Ref StaticSiteBucket
+  CloudFrontDomain:
+    Description: CloudFront distribution domain name
+    Value: !GetAtt SiteDistribution.DomainName
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Description: Cognito App Client ID
+    Value: !Ref UserPoolClient

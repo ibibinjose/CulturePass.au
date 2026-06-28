@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, Card, Field, PasswordInput, Divider } from "@/components/ui";
+import { Screen, Text, Button, BackButton, Card, Field, PasswordInput, Divider } from "@/components/ui";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useUpdatePassword } from "@/features/auth/api";
@@ -64,16 +64,10 @@ function Account() {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton fallbackHref="/settings" className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Account
       </Text>
       <Text variant="title" className="mt-2">

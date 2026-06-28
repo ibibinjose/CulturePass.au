@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { View } from "react-native";
-import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, Card, ListRow, Toggle, Divider } from "@/components/ui";
+import { Screen, Text, BackButton, Card, ListRow, Toggle, Divider } from "@/components/ui";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { useMyProfile, useUpdateMyProfile, type Profile } from "@/features/profiles/api";
 import { parsePreferences, type ProfilePreferences } from "@/lib/validation/profile";
@@ -55,7 +54,6 @@ const ROWS: { key: NotificationKey; title: string; subtitle: string }[] = [
 ];
 
 function Notifications({ profile }: { profile: Profile }) {
-  const router = useRouter();
   const update = useUpdateMyProfile();
   const [prefs, setPrefs] = useState<ProfilePreferences>(() => parsePreferences(profile.preferences));
   const [banner, setBanner] = useState<string | null>(null);
@@ -71,26 +69,20 @@ function Notifications({ profile }: { profile: Profile }) {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton fallbackHref="/settings" className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Notifications
       </Text>
       <Text variant="title" className="mt-2">
         Notifications
       </Text>
-      <Text variant="body" tone="muted" className="mt-3">
+      <Text variant="lead" className="mt-3">
         Choose which emails you’d like to receive.
       </Text>
 
-      <Text variant="overline" tone="faint" className="mb-1 mt-8">
+      <Text variant="overline" tone="pink" className="mb-1 mt-8">
         Email
       </Text>
       <Card className="px-5 py-1">

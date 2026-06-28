@@ -133,6 +133,32 @@ export const CULTURAL_FOCUS_OPTIONS = [
   "Elders",
 ] as const;
 
+// Interests a member picks during onboarding and edits on their profile. These
+// power the personalised Discover feed (matched against an event's
+// `cultural_focus`/`tags` and a hub's `categories`/`tags`). Superset of the
+// cultural-focus tags with a few broader lifestyle themes.
+export const INTEREST_OPTIONS = [
+  "Indigenous",
+  "Multicultural",
+  "Reconciliation",
+  "Language",
+  "Art & Craft",
+  "Music & Dance",
+  "Food",
+  "Storytelling",
+  "Country & Land",
+  "Youth",
+  "Elders",
+  "Workshops",
+  "Wellness",
+  "Markets & Shopping",
+  "Film",
+  "Sport & Fitness",
+  "Travel",
+  "Family",
+] as const;
+export type Interest = (typeof INTEREST_OPTIONS)[number];
+
 // Australian states & territories (mirrors the seed; used for offline UI).
 export const AUSTRALIAN_STATES = [
   { code: "NSW", name: "New South Wales" },

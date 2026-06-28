@@ -27,7 +27,7 @@ const requiredIsoDateTime = z
 
 export const eventDraftSchema = z
   .object({
-    hub_id: z.string().uuid(),
+    hub_id: z.string().uuid({ message: "Select a hosting hub" }),
     type: z.enum(EVENT_TYPES).default("event"),
     title: z.string().trim().max(140).optional(),
     description: z.string().trim().max(5000).optional(),
@@ -65,7 +65,7 @@ export type EventDraftInput = z.input<typeof eventDraftSchema>;
  */
 export const eventPublishSchema = z
   .object({
-    hub_id: z.string().uuid(),
+    hub_id: z.string().uuid({ message: "Select a hosting hub" }),
     type: z.enum(EVENT_TYPES),
     title: z.string().trim().min(3, "Give the event a title").max(140),
     description: z.string().trim().max(5000).optional(),

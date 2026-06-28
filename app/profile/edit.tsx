@@ -2,16 +2,19 @@ import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Card";
-import { TagInput } from "@/components/ui/TagInput";
-import { ImagePickerComponent } from "@/components/ui/ImagePicker";
-import { SocialLinksField } from "@/components/ui/SocialLinksField";
-import { Toggle } from "@/components/ui/Toggle";
+import {
+  BackButton,
+  Button,
+  Card,
+  Field,
+  ImagePickerComponent,
+  Input,
+  Screen,
+  SocialLinksField,
+  TagInput,
+  Text,
+  Toggle,
+} from "@/components/ui";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { profileSchema } from "@/lib/validation/profile";
 import { pruneLinks } from "@/lib/social";
@@ -148,14 +151,8 @@ export default function EditProfileScreen() {
 
   if (!profile) {
     return (
-      <Screen maxWidth="form" contentClassName="pt-10">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          className="mb-6 self-start"
-          onPress={() => router.back()}
-        />
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton className="mb-4" />
         <Text variant="title" className="mt-6">
           Sign in required
         </Text>
@@ -172,22 +169,16 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
-      <Button
-        label="← Back"
-        variant="ghost"
-        size="sm"
-        className="mb-6 self-start"
-        onPress={() => router.back()}
-      />
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton className="mb-5" />
 
-      <Text variant="overline" tone="ochre">
+      <Text variant="overline" tone="pink">
         Profile
       </Text>
       <Text variant="title" className="mt-2">
         Edit your profile
       </Text>
-      <Text variant="body" tone="muted" className="mt-3">
+      <Text variant="lead" className="mt-3">
         Update your personal information and privacy settings.
       </Text>
 

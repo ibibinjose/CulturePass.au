@@ -2,11 +2,13 @@ import { useState } from "react";
 import { Pressable } from "react-native";
 import { Link, useRouter } from "expo-router";
 
-import { Field } from "@/components/ui/Field";
-import { Input } from "@/components/ui/Input";
-import { PasswordInput } from "@/components/ui/PasswordInput";
-import { Button } from "@/components/ui/Button";
-import { Text } from "@/components/ui/Text";
+import {
+  Button,
+  Field,
+  Input,
+  PasswordInput,
+  Text,
+} from "@/components/ui";
 import { AuthShell } from "@/features/auth/AuthShell";
 import { useSignIn } from "@/features/auth/api";
 import { signInSchema } from "@/lib/validation/auth";
@@ -55,7 +57,7 @@ export default function SignInScreen() {
           <Link href="/sign-up" asChild>
             <Pressable hitSlop={8}>
               <Text variant="label">
-                New here? <Text variant="label" tone="ochre">Create an account</Text>
+                New here? <Text variant="label" tone="pink">Create an account</Text>
               </Text>
             </Pressable>
           </Link>

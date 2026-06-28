@@ -40,13 +40,21 @@ npm run db:types           # supabase gen types typescript --local > lib/supabas
 ```
 app/                      # expo-router routes (file-based)
   _layout.tsx             # providers, fonts, root stack
-  index.tsx               # homepage — search + Explore by State + featured hubs
-  explore/index.tsx       # discovery with filters (type, Indigenous-led)
+  index.tsx               # personalized discovery home — search, filters, featured events + hubs
+  explore/index.tsx       # hub/event discovery with filters
+  calendar/index.tsx      # month view + upcoming event list
   state/[code].tsx        # hubs by state/territory
   hub/[slug].tsx          # hub profile page (prominent Welcome to Country)
+  event/[id].tsx          # event detail + tickets/share/save
+  messages/               # authenticated chat inbox + thread
+  notifications/          # authenticated notification centre
+  tickets/                # authenticated ticket wallet + checkout result routes
+  settings/               # account, privacy, notifications, about
+  onboarding/             # interest/location preference setup
   create/
     index.tsx             # chooser: Hub vs Professional Profile
     hub.tsx               # 5-step hub creation wizard (auto-saving draft)
+    event.tsx             # event creation flow
     professional.tsx      # Professional Public Profile form
 
 components/
@@ -61,6 +69,7 @@ features/
 
 lib/
   constants.ts            # controlled vocabularies + labels (single source of truth)
+  navigation.ts           # shared app map for top nav, mobile tabs and footer
   theme.ts                # raw JS design tokens (mirror of tailwind.config.js)
   query.ts                # TanStack Query client + query keys
   storage.ts              # cross-platform KV (wizard drafts)
@@ -102,6 +111,8 @@ See [docs/SCHEMA.md](docs/SCHEMA.md) for the full model and security design.
 
 ## Status
 
-Backend schema + seed, design system, homepage, discovery, hub profile, and both
-creation flows are in place. Authentication UI (sign-in/up) is the next step —
-creation/publish actions are already gated and will work the moment auth lands.
+Backend schema + seed, design system, auth, discovery, calendar, hub/event
+profiles, creation flows, messaging, notifications, tickets, onboarding and
+settings are in place. The app shell shares one navigation map via
+[lib/navigation.ts](lib/navigation.ts) so the top bar, mobile tabs and footer
+stay aligned as routes evolve.

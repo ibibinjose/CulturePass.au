@@ -2,7 +2,11 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { Button, type ButtonProps } from "./Button";
+import { Icon } from "./Icon";
+import { colors } from "@/lib/theme";
 import { shareContent, copyText, shareUrl } from "@/lib/share";
+
+const SOLID = new Set(["primary", "secondary", "danger", "whatsapp"]);
 
 interface ShareButtonProps {
   /** In-app path to share, e.g. "/l/profile/123". */
@@ -25,12 +29,14 @@ export function ShareButton({
   size = "sm",
   className,
 }: ShareButtonProps) {
+  const iconColor = SOLID.has(variant ?? "outline") ? colors.paper : colors.ink;
   return (
     <Button
       label={label}
       variant={variant}
       size={size}
       className={className}
+      leftIcon={<Icon name="share" size={size === "sm" ? 15 : 17} color={iconColor} />}
       accessibilityLabel={`Share ${title ?? "link"}`}
       onPress={() => shareContent({ url: shareUrl(path), title, message })}
     />

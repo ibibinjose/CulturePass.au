@@ -47,7 +47,9 @@ export function DatePicker({
 
   return (
     <View className="gap-2">
-      <Text variant="label">{label}</Text>
+      <Text variant="label" className="font-heading">
+        {label}
+      </Text>
       <input
         type={INPUT_TYPE[mode]}
         value={toInputValue(value, mode)}
@@ -57,11 +59,11 @@ export function DatePicker({
         style={{
           fontFamily: "inherit",
           fontSize: 16,
-          padding: "12px 14px",
-          borderRadius: 12,
-          border: "1px solid #E7E0D6",
+          padding: "13px 16px",
+          borderRadius: 14,
+          border: "1px solid #E6DAC6",
           backgroundColor: "#FFFFFF",
-          color: "#1C1A17",
+          color: "#1A1510",
         }}
       />
     </View>

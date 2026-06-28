@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Input } from "./Input";
 import { Text } from "./Text";
+import { Icon } from "./Icon";
+import { colors } from "@/lib/theme";
 
 interface TagInputProps {
   value: string[];
@@ -35,9 +37,11 @@ export function TagInput({ value, onChange, placeholder }: TagInputProps) {
         </View>
         <Pressable
           onPress={add}
-          className="h-12 items-center justify-center rounded-lg border border-linen bg-card px-4 active:bg-sand"
+          accessibilityRole="button"
+          accessibilityLabel="Add"
+          className="h-12 w-12 items-center justify-center rounded-xl bg-ink active:bg-ink/90"
         >
-          <Text variant="label">Add</Text>
+          <Icon name="plus" size={20} color={colors.paper} strokeWidth={2.2} />
         </Pressable>
       </View>
 
@@ -47,14 +51,14 @@ export function TagInput({ value, onChange, placeholder }: TagInputProps) {
             <Pressable
               key={tag}
               onPress={() => onChange(value.filter((t) => t !== tag))}
-              className="flex-row items-center gap-2 rounded-pill bg-sand px-3 py-1.5 active:opacity-70"
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${tag}`}
+              className="flex-row items-center gap-1.5 rounded-pill bg-sand px-3.5 py-2 active:opacity-70"
             >
               <Text variant="label" className="text-sm text-ink-muted">
                 {tag}
               </Text>
-              <Text variant="label" className="text-sm text-ink-faint">
-                ✕
-              </Text>
+              <Icon name="close" size={13} color={colors.inkFaint} strokeWidth={2.2} />
             </Pressable>
           ))}
         </View>

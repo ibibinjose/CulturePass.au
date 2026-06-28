@@ -1,6 +1,8 @@
 import { Pressable, View } from "react-native";
 import { cn } from "@/lib/utils/cn";
+import { colors } from "@/lib/theme";
 import { Text } from "./Text";
+import { Icon } from "./Icon";
 
 interface OptionCardProps {
   title: string;
@@ -12,7 +14,8 @@ interface OptionCardProps {
 
 /**
  * Selectable card used in choosers (hub type, professional category, etc.).
- * Selection is shown with an ink border + soft ochre wash — no loud fills.
+ * Selection reads as an ink border + soft ochre wash and a filled tick — no
+ * loud fills.
  */
 export function OptionCard({ title, description, selected, onPress, className }: OptionCardProps) {
   return (
@@ -21,7 +24,7 @@ export function OptionCard({ title, description, selected, onPress, className }:
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       className={cn(
-        "rounded-lg border p-4",
+        "rounded-2xl border p-5",
         selected ? "border-ink bg-ochre-50" : "border-linen bg-card active:bg-sand",
         className,
       )}
@@ -37,11 +40,11 @@ export function OptionCard({ title, description, selected, onPress, className }:
         </View>
         <View
           className={cn(
-            "mt-1 h-5 w-5 rounded-pill border-2",
+            "mt-0.5 h-6 w-6 items-center justify-center rounded-pill border-2",
             selected ? "border-ink bg-ink" : "border-linen",
           )}
         >
-          {selected ? <View className="m-auto h-1.5 w-1.5 rounded-pill bg-paper" /> : null}
+          {selected ? <Icon name="check" size={13} color={colors.paper} strokeWidth={2.4} /> : null}
         </View>
       </View>
     </Pressable>

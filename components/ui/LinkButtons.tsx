@@ -1,6 +1,8 @@
 import { Linking, Pressable, View } from "react-native";
 
 import { Text } from "./Text";
+import { Icon } from "./Icon";
+import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 
 export interface LinkItem {
@@ -19,16 +21,19 @@ export function LinkButtons({ items, className }: { items: LinkItem[]; className
           key={`${item.label}-${item.href}`}
           onPress={() => Linking.openURL(item.href)}
           accessibilityRole="link"
-          className="rounded-xl border border-linen bg-card px-5 py-4 active:bg-sand"
+          className="flex-row items-center gap-3 rounded-2xl border border-linen bg-card px-5 py-4 active:bg-sand"
         >
-          <Text variant="label" className="text-center text-ink">
-            {item.label}
-          </Text>
-          {item.sublabel ? (
-            <Text variant="caption" tone="faint" className="mt-0.5 text-center">
-              {item.sublabel}
+          <View className="flex-1">
+            <Text variant="label" className="font-heading text-ink">
+              {item.label}
             </Text>
-          ) : null}
+            {item.sublabel ? (
+              <Text variant="caption" tone="faint" className="mt-0.5">
+                {item.sublabel}
+              </Text>
+            ) : null}
+          </View>
+          <Icon name="arrow-up-right" size={18} color={colors.inkFaint} />
         </Pressable>
       ))}
     </View>

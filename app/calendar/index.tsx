@@ -2,11 +2,16 @@ import { useMemo, useState, type ComponentProps } from "react";
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
+import {
+  Badge,
+  Button,
+  Card,
+  Icon,
+  Screen,
+  Text,
+  type IconName,
+} from "@/components/ui";
+import { colors } from "@/lib/theme";
 import { EventCard } from "@/features/events/EventCard";
 import { useEvents } from "@/features/events/api";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
@@ -55,6 +60,7 @@ const EVENT_BADGE: Partial<Record<EventType, ComponentProps<typeof Badge>["varia
 
 export default function CalendarScreen() {
   const router = useRouter();
+  const [viewMode, setViewMode] = useState<"box" | "list">("box");
   const todayKey = keyForDate(new Date());
   const [cursor, setCursor] = useState(() => startOfMonth(new Date()));
   const [selected, setSelected] = useState<string | null>(todayKey);
@@ -121,13 +127,11 @@ export default function CalendarScreen() {
   return (
     <Screen contentClassName="pt-8">
       <View className="flex-row items-end justify-between gap-4">
-        <View>
-          <Text variant="overline" tone="faint">
+        <View className="gap-1">
+          <Text variant="overline" tone="pink">
             Calendar
           </Text>
-          <Text variant="title" className="mt-2">
-            What’s on
-          </Text>
+          <Text variant="title">What’s on</Text>
         </View>
         <View className="flex-row gap-2">
           <Button label="Today" variant="outline" size="sm" onPress={goToday} />
@@ -145,9 +149,9 @@ export default function CalendarScreen() {
         <View className="gap-4 lg:w-[340px]">
           <Card className="gap-4 p-4">
             <View className="flex-row items-center justify-between">
-              <NavButton label="‹" onPress={() => goMonth(-1)} accessibilityLabel="Previous month" />
+              <NavButton icon="chevron-left" onPress={() => goMonth(-1)} accessibilityLabel="Previous month" />
               <Text variant="subheading">{monthFormatter.format(cursor)}</Text>
-              <NavButton label="›" onPress={() => goMonth(1)} accessibilityLabel="Next month" />
+              <NavButton icon="chevron-right" onPress={() => goMonth(1)} accessibilityLabel="Next month" />
             </View>
 
             <View className="flex-row">
@@ -172,7 +176,7 @@ export default function CalendarScreen() {
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}
                       className={cn(
-                        "aspect-square items-center justify-center rounded-md border",
+                        "aspect-square items-center justify-center rounded-xl border",
                         active
                           ? "border-ink bg-ink"
                           : isToday
@@ -268,12 +272,43 @@ export default function CalendarScreen() {
               />
             ) : (
               <Button
-                label="Explore"
+                label="Discover"
                 variant="outline"
                 size="sm"
-                onPress={() => router.push("/explore")}
+                onPress={() => router.push("/")}
               />
             )}
+          </View>
+
+          {/* View Layout Toggle */}
+          <View className="flex-row items-center justify-between border-t border-linen/30 pt-3">
+            <Text variant="overline" tone="muted">View layout</Text>
+            <View className="flex-row items-center gap-1 bg-sand/50 p-0.5 rounded-xl border border-linen/40">
+              <Pressable
+                onPress={() => setViewMode("box")}
+                className={cn(
+                  "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
+                  viewMode === "box" ? "bg-card shadow-subtle border border-linen/20" : ""
+                )}
+              >
+                <Icon name="grid" size={13} color={viewMode === "box" ? colors.ink : colors.inkMuted} />
+                <Text variant="caption" className={cn("text-xs font-heading", viewMode === "box" ? "text-ink" : "text-ink-muted")}>
+                  Box
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setViewMode("list")}
+                className={cn(
+                  "px-3 py-1 rounded-lg flex-row items-center gap-1.5",
+                  viewMode === "list" ? "bg-card shadow-subtle border border-linen/20" : ""
+                )}
+              >
+                <Icon name="menu" size={13} color={viewMode === "list" ? colors.ink : colors.inkMuted} />
+                <Text variant="caption" className={cn("text-xs font-heading", viewMode === "list" ? "text-ink" : "text-ink-muted")}>
+                  List
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           {isLoading ? (
@@ -289,9 +324,18 @@ export default function CalendarScreen() {
               </Text>
             </Card>
           ) : listedEvents.length > 0 ? (
-            <View className="gap-4">
+            <View className={cn("gap-4", viewMode === "box" ? "md:flex-row md:flex-wrap" : "flex-column")}>
               {listedEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
+                <View
+                  key={event.id}
+                  className={cn(
+                    viewMode === "box"
+                      ? "w-full md:w-[calc(50%-8px)]"
+                      : "w-full"
+                  )}
+                >
+                  <EventCard event={event} variant={viewMode} />
+                </View>
               ))}
             </View>
           ) : (
@@ -320,11 +364,11 @@ export default function CalendarScreen() {
 }
 
 function NavButton({
-  label,
+  icon,
   onPress,
   accessibilityLabel,
 }: {
-  label: string;
+  icon: IconName;
   onPress: () => void;
   accessibilityLabel: string;
 }) {
@@ -334,9 +378,9 @@ function NavButton({
       hitSlop={8}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      className="h-9 w-9 items-center justify-center rounded-pill border border-linen active:bg-sand"
+      className="h-10 w-10 items-center justify-center rounded-pill border border-linen bg-card active:bg-sand"
     >
-      <Text className="font-heading text-lg leading-none text-ink">{label}</Text>
+      <Icon name={icon} size={18} color={colors.ink} />
     </Pressable>
   );
 }

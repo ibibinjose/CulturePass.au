@@ -9,19 +9,13 @@ import {
   Badge,
   LinkButtons,
   ShareBar,
+  Pinwheel,
   type LinkItem,
 } from "@/components/ui";
 import { useEvent } from "@/features/events/api";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
 
-const whenFmt = new Intl.DateTimeFormat("en-AU", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "numeric",
-  minute: "2-digit",
-  hour12: true,
-});
+import { getEventTimezone } from "@/lib/utils/timezone";
 
 /** Link-in-bio (linktree-style) page for an event. */
 export default function EventLinkInBio() {
@@ -54,7 +48,19 @@ export default function EventLinkInBio() {
   const hub = Array.isArray(hubRel) ? hubRel[0] : hubRel;
   const coverUrl = event.images?.[0]?.url ?? null;
   const place = [event.location_city, event.location_state].filter(Boolean).join(", ");
-  const when = event.start_time ? whenFmt.format(new Date(event.start_time)) : null;
+  const eventTimezone = getEventTimezone(event.location_state);
+  const when = event.start_time
+    ? new Intl.DateTimeFormat("en-AU", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: eventTimezone,
+        timeZoneName: "short",
+      }).format(new Date(event.start_time))
+    : null;
 
   const items: LinkItem[] = [];
   if (event.ticket_url) items.push({ label: "Get tickets", href: event.ticket_url });
@@ -124,9 +130,12 @@ export default function EventLinkInBio() {
         message={event.description ?? undefined}
       />
 
-      <Text variant="overline" tone="faint" className="mt-10 text-center">
-        Powered by CulturePass Australia
-      </Text>
+      <View className="mt-10 items-center gap-2">
+        <Pinwheel size={22} />
+        <Text variant="overline" tone="faint" className="text-center">
+          Powered by CulturePass Australia
+        </Text>
+      </View>
     </Screen>
   );
 }

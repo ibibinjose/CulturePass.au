@@ -9,6 +9,7 @@ import {
   Avatar,
   Badge,
   ShareBar,
+  Pinwheel,
 } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { useHub } from "@/features/hubs/api";
@@ -69,8 +70,8 @@ export default function HubBusinessCard() {
 
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
-      <Card className="items-center gap-4 p-6">
-        <Avatar name={hub.name} uri={logoUrl} size={96} />
+      <Card elevated className="items-center gap-4 p-7">
+        <Avatar name={hub.name} uri={logoUrl} size={100} ring />
         <View className="items-center gap-2">
           <Text variant="title" className="text-center">
             {hub.name}
@@ -88,7 +89,7 @@ export default function HubBusinessCard() {
           <View className="flex-row flex-wrap justify-center gap-x-4 gap-y-1">
             {contacts.map((c) => (
               <Pressable key={c.label} onPress={() => Linking.openURL(c.href)} hitSlop={6}>
-                <Text variant="label" tone="ochre">
+                <Text variant="label" tone="pink">
                   {c.label}
                 </Text>
               </Pressable>
@@ -117,6 +118,13 @@ export default function HubBusinessCard() {
         className="mt-3"
         onPress={() => router.push(`/hub/${hub.slug}`)}
       />
+
+      <View className="mt-10 items-center gap-2">
+        <Pinwheel size={22} />
+        <Text variant="overline" tone="faint" className="text-center">
+          Powered by CulturePass Australia
+        </Text>
+      </View>
     </Screen>
   );
 }

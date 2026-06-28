@@ -24,10 +24,10 @@ export function SocialLinksField({ value, onChange, className }: SocialLinksFiel
     <View className={cn("gap-4", className)}>
       {SOCIAL_PLATFORMS.map((p) => (
         <View key={p.key}>
-          <Text variant="label" className="mb-1.5">
+          <Text variant="label" className="mb-1.5 font-heading">
             {p.label}
           </Text>
-          <View className="h-12 flex-row items-center overflow-hidden rounded-lg border border-linen bg-card">
+          <View className="h-12 flex-row items-center overflow-hidden rounded-xl border border-linen bg-card focus-within:border-ink">
             <Text className="pl-4 font-sans text-base text-ink-faint">{p.prefix}</Text>
             <TextInput
               value={value[p.key] ?? ""}

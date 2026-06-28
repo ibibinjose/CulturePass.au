@@ -7,7 +7,10 @@ interface AvatarProps {
   name?: string | null;
   uri?: string | null;
   size?: number;
+  /** Adds a paper ring — used when an avatar overlaps imagery (hub headers). */
+  ring?: boolean;
   className?: string;
+  hubLogoUri?: string | null;
 }
 
 function initials(name?: string | null) {
@@ -17,26 +20,48 @@ function initials(name?: string | null) {
   return (first + second).toUpperCase() || "?";
 }
 
-/** Circular avatar: shows the image when present, otherwise warm initials. */
-export function Avatar({ name, uri, size = 48, className }: AvatarProps) {
+/** Circular avatar: image when present, otherwise warm initials. */
+export function Avatar({
+  name,
+  uri,
+  size = 48,
+  ring = false,
+  className,
+  hubLogoUri,
+}: AvatarProps) {
   const style = { width: size, height: size, borderRadius: size / 2 };
+  const ringClass = ring ? "border-[3px] border-paper" : "border border-linen";
+  const badgeSize = Math.max(16, Math.round(size * 0.28));
+  const badgeStyle = { width: badgeSize, height: badgeSize, borderRadius: badgeSize / 4 };
 
-  if (uri) {
-    return (
-      <View className={cn("overflow-hidden border border-linen bg-sand", className)} style={style}>
-        <Image source={{ uri }} style={{ width: size, height: size }} contentFit="cover" />
-      </View>
-    );
-  }
-
-  return (
+  const avatarContent = uri ? (
+    <View className={cn("overflow-hidden bg-sand", ringClass, className)} style={style}>
+      <Image source={{ uri }} style={{ width: size, height: size }} contentFit="cover" />
+    </View>
+  ) : (
     <View
       style={style}
-      className={cn("items-center justify-center border border-linen bg-ochre-50", className)}
+      className={cn("items-center justify-center bg-ochre-100", ringClass, className)}
     >
-      <Text className="font-ui text-ochre-600" style={{ fontSize: Math.round(size * 0.38) }}>
+      <Text className="font-display text-ochre-700" style={{ fontSize: Math.round(size * 0.38) }}>
         {initials(name)}
       </Text>
     </View>
   );
+
+  if (hubLogoUri) {
+    return (
+      <View style={{ width: size, height: size }} className="relative">
+        {avatarContent}
+        <View
+          style={badgeStyle}
+          className="absolute -bottom-1 -right-1 overflow-hidden bg-white border border-linen shadow-subtle justify-center items-center"
+        >
+          <Image source={{ uri: hubLogoUri }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+        </View>
+      </View>
+    );
+  }
+
+  return avatarContent;
 }

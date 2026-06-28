@@ -63,6 +63,7 @@ export interface Database {
           is_metro: boolean;
           coordinates: string | null;
           metadata: Json;
+          logo_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -79,6 +80,7 @@ export interface Database {
           is_metro?: boolean;
           coordinates?: string | null;
           metadata?: Json;
+          logo_url?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["australian_councils"]["Insert"]>;
@@ -105,6 +107,7 @@ export interface Database {
           indigenous_connection: string | null;
           preferred_languages: string[];
           is_public_professional: boolean;
+          is_admin: boolean;
           professional_category: Database["public"]["Enums"]["professional_category"] | null;
           professional_title: string | null;
           public_bio: string | null;
@@ -126,6 +129,7 @@ export interface Database {
           indigenous_connection?: string | null;
           preferred_languages?: string[];
           is_public_professional?: boolean;
+          is_admin?: boolean;
           professional_category?: Database["public"]["Enums"]["professional_category"] | null;
           professional_title?: string | null;
           public_bio?: string | null;
@@ -325,6 +329,171 @@ export interface Database {
           },
         ];
       };
+      event_cohosts: {
+        Row: {
+          id: string;
+          event_id: string;
+          hub_id: string | null;
+          profile_id: string | null;
+          role: Database["public"]["Enums"]["cohost_role"];
+          status: Database["public"]["Enums"]["cohost_status"];
+          invited_by: string;
+          message: string | null;
+          created_at: string;
+          responded_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          hub_id?: string | null;
+          profile_id?: string | null;
+          role?: Database["public"]["Enums"]["cohost_role"];
+          status?: Database["public"]["Enums"]["cohost_status"];
+          invited_by: string;
+          message?: string | null;
+          created_at?: string;
+          responded_at?: string | null;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_cohosts"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "event_cohosts_event_id_fkey";
+            columns: ["event_id"];
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "event_cohosts_hub_id_fkey";
+            columns: ["hub_id"];
+            referencedRelation: "hubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "event_cohosts_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      hub_likes: {
+        Row: {
+          id: string;
+          hub_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          hub_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hub_likes"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "hub_likes_hub_id_fkey";
+            columns: ["hub_id"];
+            referencedRelation: "hubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "hub_likes_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      hub_follows: {
+        Row: {
+          id: string;
+          hub_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          hub_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["hub_follows"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "hub_follows_hub_id_fkey";
+            columns: ["hub_id"];
+            referencedRelation: "hubs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "hub_follows_profile_id_fkey";
+            columns: ["profile_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      profile_follows: {
+        Row: {
+          id: string;
+          follower_id: string;
+          following_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          follower_id: string;
+          following_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profile_follows"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "profile_follows_follower_id_fkey";
+            columns: ["follower_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profile_follows_following_id_fkey";
+            columns: ["following_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      profile_subscriptions: {
+        Row: {
+          id: string;
+          subscriber_id: string;
+          subscribed_to_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          subscriber_id: string;
+          subscribed_to_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profile_subscriptions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "profile_subscriptions_subscriber_id_fkey";
+            columns: ["subscriber_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profile_subscriptions_subscribed_to_id_fkey";
+            columns: ["subscribed_to_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       ticket_orders: {
         Row: {
           id: string;
@@ -372,6 +541,93 @@ export interface Database {
           },
         ];
       };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          type: string;
+          title: string;
+          body: string | null;
+          data: Json;
+          read_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          type?: string;
+          title: string;
+          body?: string | null;
+          data?: Json;
+          read_at?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["notifications"]["Insert"]>;
+      };
+      conversations: {
+        Row: {
+          id: string;
+          hub_id: string;
+          member_id: string;
+          created_at: string;
+          last_message_at: string;
+        };
+        Insert: {
+          id?: string;
+          hub_id: string;
+          member_id: string;
+          created_at?: string;
+          last_message_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["conversations"]["Insert"]>;
+      };
+      messages: {
+        Row: {
+          id: string;
+          conversation_id: string;
+          sender_id: string;
+          body: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          conversation_id: string;
+          sender_id: string;
+          body: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["messages"]["Insert"]>;
+      };
+      event_likes: {
+        Row: {
+          id: string;
+          event_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_likes"]["Insert"]>;
+      };
+      event_saves: {
+        Row: {
+          id: string;
+          event_id: string;
+          profile_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          profile_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_saves"]["Insert"]>;
+      };
     };
     Views: Record<string, never>;
     Functions: {
@@ -417,6 +673,8 @@ export interface Database {
       event_status: "draft" | "published" | "cancelled";
       rsvp_status: "going" | "interested" | "waitlist" | "cancelled";
       ticket_order_status: "pending" | "paid" | "failed" | "refunded" | "cancelled";
+      cohost_role: "cohost" | "venue" | "partner" | "sponsor";
+      cohost_status: "pending" | "accepted" | "declined";
     };
     CompositeTypes: Record<string, never>;
   };
@@ -430,3 +688,13 @@ export type CouncilRow = Database["public"]["Tables"]["australian_councils"]["Ro
 export type StateRow = Database["public"]["Tables"]["australian_states"]["Row"];
 export type HubMemberRow = Database["public"]["Tables"]["hub_members"]["Row"];
 export type EventRsvpRow = Database["public"]["Tables"]["event_rsvps"]["Row"];
+export type HubLikeRow = Database["public"]["Tables"]["hub_likes"]["Row"];
+export type HubFollowRow = Database["public"]["Tables"]["hub_follows"]["Row"];
+export type NotificationRow = Database["public"]["Tables"]["notifications"]["Row"];
+export type ConversationRow = Database["public"]["Tables"]["conversations"]["Row"];
+export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
+export type EventLikeRow = Database["public"]["Tables"]["event_likes"]["Row"];
+export type EventSaveRow = Database["public"]["Tables"]["event_saves"]["Row"];
+export type EventCohostRow = Database["public"]["Tables"]["event_cohosts"]["Row"];
+export type ProfileFollowRow = Database["public"]["Tables"]["profile_follows"]["Row"];
+export type ProfileSubscriptionRow = Database["public"]["Tables"]["profile_subscriptions"]["Row"];

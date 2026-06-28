@@ -1,210 +1,885 @@
-import { useState } from "react";
-import { Pressable, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
+import { Image } from "expo-image";
+import { supabase } from "@/lib/supabase/client";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
-import { Chip } from "@/components/ui/Chip";
-import { AcknowledgementBar } from "@/components/cultural/AcknowledgementBar";
-import { HubCard } from "@/features/hubs/HubCard";
-import { useHubs, useHubStateCounts } from "@/features/hubs/api";
+import {
+  Screen,
+  Text,
+  Input,
+  Button,
+  Card,
+  Footer,
+  Icon,
+  LocationPicker,
+  ANYWHERE,
+  MultiSelectFilter,
+  Carousel,
+  SectionHeader,
+  EmptyCard,
+} from "@/components/ui";
+import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
+import { colors } from "@/lib/theme";
+import { cn } from "@/lib/utils/cn";
+import { useHubs } from "@/features/hubs/api";
 import { EventCard } from "@/features/events/EventCard";
-import { useEvents, useEventStateCounts } from "@/features/events/api";
-import { AUSTRALIAN_STATES } from "@/lib/constants";
+import { FeaturedEventCard } from "@/features/events/FeaturedEventCard";
+import { useEvents } from "@/features/events/api";
+import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
+import { parsePreferences } from "@/lib/validation/profile";
+import { useSavedLocation } from "@/features/reference/useSavedLocation";
+import {
+  EVENT_TYPES,
+  EVENT_TYPE_LABELS,
+  HUB_TYPES,
+  HUB_TYPE_LABELS,
+  INTEREST_OPTIONS,
+  type EventType,
+  type HubType,
+  type StateCode,
+} from "@/lib/constants";
 
-type ResultMode = "all" | "hubs" | "events";
+const FN_FOCUS = new Set([
+  "indigenous",
+  "reconciliation",
+  "language",
+  "country & land",
+  "elders",
+  "storytelling",
+]);
 
-export default function HomeScreen() {
-  const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [mode, setMode] = useState<ResultMode>("all");
-  const query = search.trim();
 
-  const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(
-    query ? { search: query } : {},
-  );
-  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(
-    query ? { search: query } : {},
-  );
-  const { data: hubCounts } = useHubStateCounts();
-  const { data: eventCounts } = useEventStateCounts();
 
-  const featuredHubs = hubs?.slice(0, query ? 6 : 4) ?? [];
-  const featuredEvents = events?.slice(0, query ? 6 : 4) ?? [];
-
-  const showEvents = mode === "all" || mode === "events";
-  const showHubs = mode === "all" || mode === "hubs";
-
-  return (
-    <Screen contentClassName="pt-8">
-      {/* Hero */}
-      <View className="overflow-hidden rounded-2xl border border-linen bg-ink p-6 lg:p-8">
-        <Text variant="overline" tone="inverse">
-          CulturePass Australia
-        </Text>
-        <Text variant="display" tone="inverse" className="mt-3 max-w-[640px]">
-          Culture, nearby.
-        </Text>
-        <Text variant="body" tone="inverse" className="mt-3 max-w-[460px] opacity-75">
-          Discover events, hubs and community across Australia.
-        </Text>
-        <View className="mt-6 flex-row flex-wrap gap-3">
-          <Button label="Find events" variant="secondary" onPress={() => router.push("/explore")} />
-          <Button label="Add a hub" variant="whatsapp" onPress={() => router.push("/create/hub")} />
-        </View>
-      </View>
-
-      {/* Search */}
-      <Card className="mt-6 gap-4">
-        <View className="gap-2 md:flex-row md:items-center">
-          <View className="flex-1">
-            <Input
-              value={search}
-              onChangeText={setSearch}
-              placeholder="Search events, hubs or places"
-              returnKeyType="search"
-              autoCorrect={false}
-            />
-          </View>
-          <Button
-            label="Browse"
-            className="md:w-[160px]"
-            onPress={() => router.push("/explore")}
-          />
-        </View>
-        <View className="flex-row flex-wrap gap-2">
-          <Chip label="All" selected={mode === "all"} onPress={() => setMode("all")} />
-          <Chip label="Communities" selected={mode === "hubs"} onPress={() => setMode("hubs")} />
-          <Chip label="Events" selected={mode === "events"} onPress={() => setMode("events")} />
-        </View>
-      </Card>
-
-      {/* Discovery */}
-      <View className="mt-10 gap-8 lg:flex-row lg:items-start">
-        <View className="flex-1 gap-10">
-          {showEvents ? (
-            <DiscoverySection
-              title={query ? "Matching events" : "Coming up"}
-              loading={eventsLoading}
-              error={eventsError}
-              emptyTitle={query ? "No events match that yet" : "No upcoming events yet"}
-              emptyBody="Events appear here as organisers publish them."
-              actionLabel="Add an event"
-              onAction={() => router.push("/create/event")}
-            >
-              {featuredEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-            </DiscoverySection>
-          ) : null}
-
-          {showHubs ? (
-            <DiscoverySection
-              title={query ? "Matching communities" : "Recently added"}
-              loading={hubsLoading}
-              error={hubsError}
-              emptyTitle={query ? "No communities match that yet" : "No communities yet"}
-              emptyBody="Be the first to create a hub for your community."
-              actionLabel="Create a hub"
-              onAction={() => router.push("/create/hub")}
-            >
-              {featuredHubs.map((hub) => (
-                <HubCard key={hub.slug} hub={hub} />
-              ))}
-            </DiscoverySection>
-          ) : null}
-        </View>
-
-        {/* Explore by state */}
-        <View className="lg:w-[320px]">
-          <Card className="gap-4 bg-sand">
-            <Text variant="subheading">Explore by state</Text>
-            <View className="gap-2">
-              {AUSTRALIAN_STATES.map((state) => {
-                const hubCount = hubCounts?.[state.code] ?? 0;
-                const eventCount = eventCounts?.[state.code] ?? 0;
-                const hasContent = hubCount + eventCount > 0;
-                return (
-                  <Pressable
-                    key={state.code}
-                    onPress={() => router.push(`/state/${state.code}`)}
-                    className="flex-row items-center justify-between gap-3 rounded-lg border border-linen bg-card p-4 active:bg-paper"
-                  >
-                    <Text variant="label" className="text-base">
-                      {state.name}
-                    </Text>
-                    <Text variant="caption" tone={hasContent ? "eucalyptus" : "faint"}>
-                      {hubCount} · {eventCount}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Card>
-        </View>
-      </View>
-
-      <AcknowledgementBar className="mb-6 mt-12" />
-    </Screen>
-  );
+function lowerSet(values: (string | null | undefined)[]): Set<string> {
+  return new Set(values.filter(Boolean).map((v) => (v as string).toLowerCase()));
 }
 
-function DiscoverySection({
-  title,
-  loading,
-  error,
-  emptyTitle,
-  emptyBody,
-  actionLabel,
-  onAction,
-  children,
-}: {
-  title: string;
-  loading: boolean;
-  error: boolean;
-  emptyTitle: string;
-  emptyBody: string;
-  actionLabel: string;
-  onAction: () => void;
-  children: React.ReactNode;
-}) {
-  const hasChildren = Array.isArray(children) ? children.length > 0 : !!children;
+function groupEventsByDate(eventsList: any[]) {
+  const groups: { dateLabel: string; items: any[] }[] = [];
+  eventsList.forEach((e) => {
+    if (!e.start_time) return;
+    const dateObj = new Date(e.start_time);
+    
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+    
+    let dateLabel = "";
+    if (dateObj.toDateString() === today.toDateString()) {
+      dateLabel = "Today";
+    } else if (dateObj.toDateString() === tomorrow.toDateString()) {
+      dateLabel = "Tomorrow";
+    } else {
+      dateLabel = new Intl.DateTimeFormat("en-AU", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      }).format(dateObj); // e.g. "Sat, 27 Jun"
+    }
+
+    const existing = groups.find((g) => g.dateLabel === dateLabel);
+    if (existing) {
+      existing.items.push(e);
+    } else {
+      groups.push({ dateLabel, items: [e] });
+    }
+  });
+  return groups;
+}
+
+
+
+export default function DiscoverScreen() {
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const { data: profile } = useMyProfile();
+  const updateProfile = useUpdateMyProfile();
+
+  const [search, setSearch] = useState("");
+  const { location, setLocation } = useSavedLocation();
+  const [interests, setInterests] = useState<string[]>([]);
+  const [categories, setCategories] = useState<EventType[]>([]);
+  const [hubTypes, setHubTypes] = useState<HubType[]>([]);
+  const [firstNations, setFirstNations] = useState(false);
+  const query = search.trim();
+
+  const [homeTab, setHomeTab] = useState<"discover" | "council">("discover");
+  const [detecting, setDetecting] = useState(false);
+  const [councilDetails, setCouncilDetails] = useState<any>(null);
+  const [councilLoading, setCouncilLoading] = useState(false);
+
+  const STATE_NAME_TO_CODE: Record<string, string> = {
+    "new south wales": "NSW",
+    "victoria": "VIC",
+    "queensland": "QLD",
+    "western australia": "WA",
+    "south australia": "SA",
+    "tasmania": "TAS",
+    "australian capital territory": "ACT",
+    "northern territory": "NT",
+  };
+
+  const detectLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+    setDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`
+          );
+          if (!res.ok) throw new Error("reverse-geocode");
+          const geo = await res.json();
+          
+          const stateName = geo.address?.state?.toLowerCase();
+          const county = geo.address?.county || geo.address?.city_district || geo.address?.city;
+          
+          if (!stateName || !county) {
+            throw new Error("incomplete-address");
+          }
+
+          const stateCode = STATE_NAME_TO_CODE[stateName];
+          if (!stateCode) {
+            throw new Error("unsupported-state");
+          }
+
+          const { data: councilsData } = await supabase
+            .from("australian_councils")
+            .select("*")
+            .eq("state_code", stateCode);
+
+          if (!councilsData || councilsData.length === 0) {
+            throw new Error("no-councils-in-state");
+          }
+
+          const cleanCounty = county.toLowerCase().replace("council", "").replace("city of", "").trim();
+          const matchedCouncil = councilsData.find((c) => {
+            const cleanName = c.name.toLowerCase().replace("council", "").replace("city of", "").trim();
+            return cleanName.includes(cleanCounty) || cleanCounty.includes(cleanName);
+          }) || councilsData[0];
+
+          if (!matchedCouncil) {
+            throw new Error("no-matched-council");
+          }
+
+          setLocation({
+            state: stateCode as StateCode,
+            councilId: matchedCouncil.id,
+            label: matchedCouncil.name,
+          });
+        } catch (err) {
+          console.error(err);
+          alert("Could not automatically resolve your local council. Please select manually.");
+        } finally {
+          setDetecting(false);
+        }
+      },
+      (error) => {
+        console.error(error);
+        alert("Permission denied or location unavailable.");
+        setDetecting(false);
+      }
+    );
+  };
+
+  useEffect(() => {
+    if (!location.councilId) {
+      setCouncilDetails(null);
+      return;
+    }
+    let active = true;
+    setCouncilLoading(true);
+    supabase
+      .from("australian_councils")
+      .select("id, name, slug, state_code, is_metro, population, traditional_custodians")
+      .eq("id", location.councilId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (active && data) {
+          setCouncilDetails(data);
+        }
+        if (active) {
+          setCouncilLoading(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [location.councilId]);
+
+  const { data: councilEvents, isLoading: councilEventsLoading } = useEvents({
+    councilId: location.councilId ?? undefined,
+  });
+
+  const { data: councilHubs, isLoading: councilHubsLoading } = useHubs({
+    councilId: location.councilId ?? undefined,
+  });
+
+  const groupedCouncilEvents = groupEventsByDate(councilEvents ?? []);
+
+  // Seed user saved location on startup
+  const seededLocation = useRef(false);
+  useEffect(() => {
+    if (seededLocation.current || !profile) return;
+    seededLocation.current = true;
+    const loc = parsePreferences(profile.preferences).location;
+    if (loc?.state) {
+      setLocation({ state: loc.state as StateCode, councilId: loc.councilId ?? undefined, label: loc.label });
+    }
+  }, [profile, setLocation]);
+
+  // Sync local location selection back to Supabase profile preferences
+  useEffect(() => {
+    if (!profile) return;
+    const currentPrefs = parsePreferences(profile.preferences);
+    const dbLoc = currentPrefs.location;
+    
+    // Check if dbLoc is different from local location
+    const isDifferent =
+      dbLoc?.state !== location.state ||
+      dbLoc?.councilId !== location.councilId ||
+      dbLoc?.label !== location.label;
+
+    if (isDifferent && location.state) {
+      updateProfile.mutate({
+        location: location.label !== "Anywhere" ? location.label : null,
+        preferences: {
+          ...currentPrefs,
+          location: {
+            state: location.state,
+            councilId: location.councilId ?? null,
+            label: location.label,
+          },
+        },
+      });
+    }
+  }, [location, profile, updateProfile]);
+
+  const activeInterests = interests.length > 0 ? interests : profile?.interests ?? [];
+
+  const eventFilters = {
+    ...(query ? { search: query } : {}),
+    ...(location.state ? { state: location.state } : {}),
+    ...(location.councilId ? { councilId: location.councilId } : {}),
+  };
+  const hubFilters = {
+    ...(query ? { search: query } : {}),
+    ...(location.state ? { state: location.state } : {}),
+    ...(hubTypes.length === 1 ? { type: hubTypes[0] } : {}),
+  };
+
+  const { data: events } = useEvents(eventFilters);
+  const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(hubFilters);
+
+  const categoryEvents = categories.length
+    ? (events ?? []).filter((e) => categories.includes(e.type))
+    : events ?? [];
+
+  const interestSet = lowerSet(activeInterests);
+  const matches = (haystack: (string | null | undefined)[]) =>
+    [...lowerSet(haystack)].some((v) => interestSet.has(v));
+  const filteredHubs = hubTypes.length
+    ? (hubs ?? []).filter((h) => hubTypes.includes(h.type as HubType))
+    : hubs ?? [];
+
+  const eventIsFN = (e: any) =>
+    !!e.hub?.indigenous_led || (e.cultural_focus ?? []).some((f: string) => FN_FOCUS.has(f.toLowerCase()));
+  const hubIsFN = (h: any) => !!h.indigenous_led;
+
+  const fnEvents = categoryEvents.filter(eventIsFN);
+  const fnHubs = filteredHubs.filter(hubIsFN);
+
+  const baseEvents = firstNations ? fnEvents : categoryEvents;
+  const baseHubs = firstNations ? fnHubs : filteredHubs;
+  const featured = baseEvents.slice(0, 5);
+  const comingUp = baseEvents.slice(5, 20);
+
+  const forYouEvents = activeInterests.length
+    ? categoryEvents.filter((e) => matches([...(e.cultural_focus ?? []), ...(e.tags ?? [])]))
+    : [];
+  const hasForYou = !firstNations && forYouEvents.length > 0;
+
+  const likedHubs = activeInterests.length
+    ? filteredHubs.filter((h) => matches([...(h.categories ?? []), ...(h.tags ?? [])]))
+    : [];
+  const hubResults = (likedHubs.length && !firstNations ? likedHubs : baseHubs).slice(0, 8);
+  const activeFilterCount =
+    (query ? 1 : 0) +
+    (location.state ? 1 : 0) +
+    (location.councilId ? 1 : 0) +
+    interests.length +
+    categories.length +
+    hubTypes.length +
+    (firstNations ? 1 : 0);
+
+  const showFnSection = !firstNations && (fnEvents.length > 0 || fnHubs.length > 0);
+  const featuredWidth = Math.min(width - 56, 440);
+
+  const toggleCategory = (c: EventType) =>
+    setCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
+  const toggleHubType = (type: HubType) =>
+    setHubTypes((cur) => (cur.includes(type) ? cur.filter((x) => x !== type) : [...cur, type]));
+  const clearFilters = () => {
+    setSearch("");
+    setLocation(ANYWHERE);
+    setInterests([]);
+    setCategories([]);
+    setHubTypes([]);
+    setFirstNations(false);
+  };
+
+  const locationLabel = location.label !== "Anywhere" ? location.label : "Australia";
 
   return (
-    <View className="gap-4">
-      <Text variant="heading">{title}</Text>
-      {loading ? (
-        <Card>
-          <Text variant="caption" tone="faint">
-            Loading…
-          </Text>
-        </Card>
-      ) : error ? (
-        <Card>
-          <Text variant="caption" tone="muted">
-            Could not load this section. Check your connection and try again.
-          </Text>
-        </Card>
-      ) : hasChildren ? (
-        <View className="gap-4">{children}</View>
-      ) : (
-        <Card className="gap-3">
-          <Text variant="subheading">{emptyTitle}</Text>
-          <Text variant="caption" tone="muted">
-            {emptyBody}
-          </Text>
-          <Button
-            label={actionLabel}
-            variant="whatsapp"
-            size="sm"
-            className="self-start"
-            onPress={onAction}
+    <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
+      
+      {/* Swiss Editorial Hero Header */}
+      <View className="gap-3 pt-4 pb-2">
+        <Text variant="overline" tone="pink" className="font-bold tracking-[2px]">CulturePass Australia</Text>
+        <Text className="font-display text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold tracking-tighter leading-[1.05]">
+          Find your next{"\n"}experience.
+        </Text>
+        <Text className="font-sans text-sm text-ink-muted max-w-prose mt-1">
+          Explore curated cultural events, local gatherings, and active community groups in {locationLabel}.
+        </Text>
+      </View>
+
+      {/* High-Contrast Search & Location block */}
+      <View className="flex-row items-center border-2 border-ink bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-11 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-4">
+        <View className="flex-1 flex-row items-center h-full">
+          <Input
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search events..."
+            returnKeyType="search"
+            autoCorrect={false}
+            leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
+            containerClassName="border-0 bg-transparent h-full px-0 flex-1"
+            className="text-xs md:text-sm font-sans"
           />
-        </Card>
+        </View>
+
+        {/* Vertical divider */}
+        <View className="w-[1px] h-5 md:h-6 bg-ink/20 mx-0.5" />
+
+        {/* Location picker */}
+        <View className="flex-row items-center h-full pr-0.5">
+          <View className="mr-1">
+            <Icon name="map-pin" size={13} color={colors.inkFaint} />
+          </View>
+          <LocationPicker
+            value={location}
+            onChange={setLocation}
+            className="h-full border-0 bg-transparent px-0 active:bg-transparent"
+          />
+        </View>
+      </View>
+
+      {/* Clean Horizontal Filter Bar */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ alignItems: "center", gap: 6, paddingRight: 20 }}
+        className="-mx-gutter px-gutter mt-5"
+      >
+        <MultiSelectFilter
+          label="Interests"
+          icon="sparkle"
+          options={INTEREST_OPTIONS as readonly string[]}
+          selected={interests}
+          onChange={setInterests}
+        />
+        <MultiSelectFilter
+          label="Category"
+          icon="filter"
+          options={EVENT_TYPES as readonly string[]}
+          labels={EVENT_TYPE_LABELS as Record<string, string>}
+          selected={categories as string[]}
+          onChange={(next) => setCategories(next as EventType[])}
+        />
+        <MultiSelectFilter
+          label="Page type"
+          icon="grid"
+          options={HUB_TYPES as readonly string[]}
+          labels={HUB_TYPE_LABELS as Record<string, string>}
+          selected={hubTypes as string[]}
+          onChange={(next) => setHubTypes(next as HubType[])}
+        />
+        <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
+        
+        {activeFilterCount > 0 ? (
+          <Button label="Clear filters" variant="outline" size="sm" className="h-8 px-2.5 rounded-lg" onPress={clearFilters} />
+        ) : null}
+      </ScrollView>
+
+      {/* Swiss Text-Only Category navigation list */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerClassName="gap-2 px-gutter py-2"
+        className="-mx-gutter px-gutter mt-5"
+      >
+        {EVENT_TYPES.map((type) => {
+          const on = categories.includes(type);
+          return (
+            <Pressable
+              key={type}
+              onPress={() => toggleCategory(type)}
+              className={cn(
+                "rounded-full border px-4 py-2 active:opacity-85",
+                on ? "border-ink bg-ink" : "border-linen/70 bg-card"
+              )}
+            >
+              <Text
+                className={cn(
+                  "text-[10px] font-heading uppercase tracking-[1px] text-center",
+                  on ? "text-paper font-semibold" : "text-ink"
+                )}
+              >
+                {EVENT_TYPE_LABELS[type]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Home Switcher Tabs */}
+      <View className="flex-row gap-6 border-b border-linen mt-6 mb-4">
+        <Pressable onPress={() => setHomeTab("discover")} className="items-center">
+          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "discover" ? "text-ink font-semibold" : "text-ink-faint")}>
+            Discover Feed
+          </Text>
+          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "discover" ? "bg-pink-500" : "bg-transparent")} />
+        </Pressable>
+        <Pressable onPress={() => setHomeTab("council")} className="items-center">
+          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "council" ? "text-ink font-semibold" : "text-ink-faint")}>
+            My Council
+          </Text>
+          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "council" ? "bg-pink-500" : "bg-transparent")} />
+        </Pressable>
+      </View>
+
+      {homeTab === "discover" ? (
+        <>
+          {/* Curated featured slider */}
+          {featured.length > 0 ? (
+            <View className="mt-6 gap-4">
+              <SectionHeader
+                eyebrow={firstNations ? "First Nations voices" : "Featured"}
+                title="Editor's picks"
+              />
+              <Carousel>
+                {featured.map((event) => (
+                  <View key={event.id} style={{ width: featuredWidth }}>
+                    <FeaturedEventCard event={event} />
+                  </View>
+                ))}
+              </Carousel>
+            </View>
+          ) : null}
+
+          {/* First Nations acknowledgement banner */}
+          {showFnSection ? (
+            <View className="mt-8 rounded-3xl border-2 border-country-red bg-card p-5 gap-4 shadow-card">
+              <View className="flex-row items-center gap-1.5 border-b border-linen pb-3">
+                <View className="h-2 w-2 rounded-full bg-country-ochre" />
+                <Text variant="overline" className="text-country-red font-bold tracking-[2px]">
+                  First Nations Spotlight
+                </Text>
+              </View>
+              <Carousel>
+                {fnEvents.slice(0, 6).map((event) => (
+                  <View key={event.id} className="w-[280px]">
+                    <EventCard event={event} variant="list" />
+                  </View>
+                ))}
+                {fnHubs.slice(0, 4).map((hub) => {
+                  const images = (hub.images ?? []).filter((img) => img && img.url);
+                  const logoUrl =
+                    images.find((img) => img.type === "logo")?.url ??
+                    images.find((img) => img.type !== "cover")?.url ??
+                    images[0]?.url ??
+                    null;
+                  return (
+                    <Pressable
+                      key={hub.slug}
+                      onPress={() => router.push(`/hub/${hub.slug}`)}
+                      className="w-[280px] bg-card border border-linen p-3 rounded-2xl flex-row items-center gap-3 active:opacity-75"
+                    >
+                      {logoUrl ? (
+                        <Image source={{ uri: logoUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+                      ) : (
+                        <View className="h-9 w-9 rounded-full bg-sand items-center justify-center">
+                          <Text className="font-heading text-sm text-ink-muted">
+                            {hub.name.charAt(0).toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View className="flex-1 min-w-0">
+                        <Text className="text-xs font-heading text-ink truncate">{hub.name}</Text>
+                        <Text className="text-[10px] text-ink-faint truncate">{HUB_TYPE_LABELS[hub.type]}</Text>
+                      </View>
+                      <Icon name="chevron-right" size={12} color={colors.inkMuted} />
+                    </Pressable>
+                  );
+                })}
+              </Carousel>
+            </View>
+          ) : null}
+
+          {/* Main Two-Column Layout */}
+          <View className="mt-8 gap-8 lg:flex-row lg:items-start lg:gap-10">
+            
+            {/* Left Column: Grouped Calendar List (Luma Style) */}
+            <View className="flex-1 gap-6">
+              
+              {/* For You events feed */}
+              {hasForYou ? (
+                <View className="gap-3">
+                  <SectionHeader eyebrow="Tailored to you" title="Recommended" />
+                  <View className="gap-3 md:flex-row md:flex-wrap">
+                    {forYouEvents.slice(0, 4).map((event) => (
+                      <View key={event.id} className="w-full md:w-[calc(50%-6px)]">
+                        <EventCard event={event} />
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Eventbrite-Style Grid listing */}
+              {comingUp.length > 0 ? (
+                <View className="gap-6">
+                  <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3 mt-2">
+                    <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Upcoming events</Text>
+                    <Pressable onPress={() => router.push("/calendar")} className="active:opacity-75">
+                      <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">Calendar view</Text>
+                    </Pressable>
+                  </View>
+
+                  <View className="flex-row flex-wrap gap-5 mt-2">
+                    {comingUp.map((event) => (
+                      <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(50%-10px)]">
+                        <EventCard event={event} />
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <EmptyCard
+                  title="No events found"
+                  body="Try clearing some search filters or changing locations."
+                  action="Add event"
+                  onPress={() => router.push("/create/event")}
+                />
+              )}
+
+            </View>
+
+            {/* Right Column: Calendars & Hubs List (Luma Style) */}
+            <View className="w-full lg:w-[320px] gap-6">
+              <View className="gap-3">
+                <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3">
+                  <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Active hubs</Text>
+                  <Pressable onPress={() => router.push("/my-hubs")} className="active:opacity-75">
+                    <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">My hubs</Text>
+                  </Pressable>
+                </View>
+
+                {/* Quick Hub Purpose scroll */}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerClassName="gap-2 pr-4 pt-1"
+                  className="-mx-gutter px-gutter mt-2"
+                >
+                  {HUB_TYPES.map((type) => {
+                    const on = hubTypes.includes(type);
+                    return (
+                      <Pressable
+                        key={type}
+                        onPress={() => toggleHubType(type)}
+                        className={cn(
+                          "rounded-full border px-3 py-1.5 active:opacity-85",
+                          on ? "border-ink bg-ink" : "border-linen/70 bg-card"
+                        )}
+                      >
+                        <Text className={cn("text-[9px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
+                          {HUB_TYPE_LABELS[type].split(" ")[0]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Hubs Listing */}
+                {hubsLoading ? (
+                  <Card className="p-4 items-center"><Text variant="caption" tone="faint">Loading hubs...</Text></Card>
+                ) : hubsError ? (
+                  <Card className="p-4 items-center"><Text variant="caption" tone="muted">Could not load hubs.</Text></Card>
+                ) : hubResults.length > 0 ? (
+                  <View className="gap-1 mt-2">
+                    {hubResults.map((hub) => {
+                      const images = (hub.images ?? []).filter((img: any) => img && img.url);
+                      const logoUrl =
+                        images.find((img: any) => img.type === "logo")?.url ??
+                        images.find((img: any) => img.type !== "logo")?.url ??
+                        images[0]?.url ??
+                        null;
+                      const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
+
+                      return (
+                        <Pressable
+                          key={hub.slug}
+                          onPress={() => router.push(`/hub/${hub.slug}`)}
+                          className="flex-row items-center gap-3 py-2.5 border-b border-linen/15 active:opacity-75"
+                        >
+                          {logoUrl ? (
+                            <Image
+                              source={{ uri: logoUrl }}
+                              style={{ width: 36, height: 36, borderRadius: 18 }}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <View className="h-9 w-9 items-center justify-center rounded-full bg-sand">
+                              <Text className="font-heading text-sm text-ink-muted">
+                                {hub.name.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          
+                          <View className="flex-1 min-w-0">
+                            <View className="flex-row items-center gap-1">
+                              <Text className="text-xs font-heading text-ink truncate">{hub.name}</Text>
+                              {hub.indigenous_led && (
+                                <View className="h-3 w-3 rounded-full bg-country-ochre items-center justify-center">
+                                  <View className="h-1.5 w-1.5 rounded-full bg-country-red" />
+                                </View>
+                              )}
+                            </View>
+                            <Text className="text-[10px] text-ink-faint mt-0.5 truncate">
+                              {HUB_TYPE_LABELS[hub.type]} · {place || "Australia"}
+                            </Text>
+                          </View>
+                          
+                          <Icon name="arrow-right" size={13} color={colors.inkFaint} />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <EmptyCard
+                    title="No hubs matching"
+                    body="Try modifying your state or category filters."
+                    action="Create a page"
+                    onPress={() => router.push("/create/hub")}
+                  />
+                )}
+              </View>
+            </View>
+
+          </View>
+        </>
+      ) : (
+        <>
+          {/* My Council Board View */}
+          {!location.councilId ? (
+            <Card className="p-8 items-center justify-center gap-4 border border-linen bg-card rounded-3xl mt-4">
+              <View className="h-14 w-14 rounded-full bg-pink-50 items-center justify-center">
+                <Icon name="map-pin" size={24} color={colors.pink} />
+              </View>
+              <View className="items-center gap-1">
+                <Text className="font-display text-xl text-ink text-center">Unlock Local Discoveries</Text>
+                <Text className="font-sans text-xs text-ink-muted text-center max-w-[320px]">
+                  Detect your current council area to view local events, communities, and council resources on your doorstep.
+                </Text>
+              </View>
+              <Button
+                label={detecting ? "Locating..." : "Detect my location"}
+                variant="primary"
+                size="sm"
+                leftIcon={detecting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icon name="map-pin" size={14} color="#FFFFFF" />}
+                onPress={detectLocation}
+                disabled={detecting}
+              />
+            </Card>
+          ) : councilLoading ? (
+            <Card className="p-10 items-center justify-center mt-4">
+              <ActivityIndicator size="large" color={colors.pink} />
+              <Text variant="caption" tone="faint" className="mt-3">Fetching local council coordinates...</Text>
+            </Card>
+          ) : councilDetails ? (
+            <View className="mt-4 gap-6">              {/* Council details card */}
+              <View className="rounded-3xl border-2 border-ink bg-card p-6 gap-4 shadow-card">
+                <View className="flex-row items-center gap-2">
+                  <Icon name="map-pin" size={16} color={colors.pink} />
+                  <Text variant="overline" tone="pink" className="text-2xs font-bold tracking-widest text-pink-600">
+                    Local Government Area
+                  </Text>
+                </View>
+                <Text className="font-display text-3xl text-ink tracking-tight font-extrabold">
+                  {councilDetails.name}
+                </Text>
+                
+                {/* Traditional Custodians Acknowledgement */}
+                {councilDetails.traditional_custodians && councilDetails.traditional_custodians.length > 0 ? (
+                  <View className="flex-row items-center gap-2.5 bg-country-ochre/5 border border-country-ochre/25 p-4 rounded-2xl">
+                    <View className="h-1.5 w-1.5 rounded-full bg-country-red" />
+                    <Text className="text-xs text-country-red font-heading tracking-wide leading-5 flex-1">
+                      We acknowledge the {councilDetails.traditional_custodians.join(" and ")} people, the Traditional Custodians of this land. We pay our respects to Elders past, present and emerging.
+                    </Text>
+                  </View>
+                ) : null}
+
+                <View className="flex-row gap-8 mt-1 border-t border-linen/30 pt-4">
+                  <View>
+                    <Text variant="title" className="font-display font-extrabold text-ink">{(councilEvents ?? []).length}</Text>
+                    <Text className="text-[9px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Events Active</Text>
+                  </View>
+                  <View>
+                    <Text variant="title" className="font-display font-extrabold text-ink">{(councilHubs ?? []).length}</Text>
+                    <Text className="text-[9px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Hubs Affiliated</Text>
+                  </View>
+                  {councilDetails.population ? (
+                    <View>
+                      <Text variant="title" className="font-display font-extrabold text-ink">{councilDetails.population.toLocaleString()}</Text>
+                      <Text className="text-[9px] font-heading uppercase tracking-wider text-ink-muted mt-0.5">Estimated Pop.</Text>
+                    </View>
+                  ) : null}
+                </View>
+              </View>
+
+              {/* Two-column dashboard for local council */}
+              <View className="gap-8 lg:flex-row lg:items-start lg:gap-10">
+                
+                {/* Left Column: Events in the council */}
+                <View className="flex-1 gap-6">
+                  <View className="border-b border-linen pb-2">
+                    <Text className="font-display text-lg text-ink tracking-tight">Events in {councilDetails.name}</Text>
+                  </View>
+
+                  {councilEventsLoading ? (
+                    <Text variant="caption" tone="faint">Loading local calendar...</Text>
+                  ) : councilEvents && councilEvents.length > 0 ? (
+                    <View className="gap-5">
+                      {groupedCouncilEvents.map((group) => (
+                        <View key={group.dateLabel} className="gap-1.5">
+                          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
+                            {group.dateLabel}
+                          </Text>
+                          <View className="gap-0.5">
+                            {group.items.map((event) => {
+                              const coverUrl = event.images?.find((img: any) => img.type === "cover")?.url ?? event.images?.[0]?.url ?? null;
+                              const formattedTime = event.start_time
+                                ? new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(event.start_time))
+                                : "";
+                              return (
+                                <Pressable
+                                  key={event.id}
+                                  onPress={() => router.push(`/event/${event.id}`)}
+                                  className="flex-row items-center gap-4 py-3 border-b border-linen/25 active:opacity-75"
+                                >
+                                  <View className="w-16">
+                                    <Text className="text-xs font-heading text-ink-muted">{formattedTime}</Text>
+                                  </View>
+                                  <View className="h-10 w-10 rounded-lg overflow-hidden bg-sand">
+                                    {coverUrl ? (
+                                      <Image source={{ uri: coverUrl }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                                    ) : (
+                                      <View className="flex-1 items-center justify-center bg-sand">
+                                        <Icon name="calendar" size={14} color={colors.inkFaint} />
+                                      </View>
+                                    )}
+                                  </View>
+                                  <View className="flex-1 min-w-0">
+                                    <Text className="text-sm font-heading text-ink truncate">{event.title}</Text>
+                                    <Text className="text-[11px] text-ink-faint mt-0.5 truncate">
+                                      By {event.hub?.name || "Independent"} · {[event.location_city, event.location_state].filter(Boolean).join(", ")}
+                                    </Text>
+                                  </View>
+                                  <Icon name="arrow-right" size={14} color={colors.inkFaint} />
+                                </Pressable>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <EmptyCard
+                      title="No local events yet"
+                      body="Be the first to list a cultural event in this local government area!"
+                      action="Create event"
+                      onPress={() => router.push(`/create/event?councilId=${councilDetails.id}`)}
+                    />
+                  )}
+                </View>
+
+                {/* Right Column: Hubs in the council */}
+                <View className="w-full lg:w-[320px] gap-6">
+                  <View className="border-b border-linen pb-2">
+                    <Text className="font-display text-lg text-ink tracking-tight">Local active hubs</Text>
+                  </View>
+
+                  {councilHubsLoading ? (
+                    <Text variant="caption" tone="faint">Loading local hubs...</Text>
+                  ) : councilHubs && councilHubs.length > 0 ? (
+                    <View className="gap-1">
+                      {councilHubs.map((hub) => {
+                        const images = (hub.images ?? []).filter((img: any) => img && img.url);
+                        const logoUrl =
+                          images.find((img: any) => img.type === "logo")?.url ??
+                          images.find((img: any) => img.type !== "logo")?.url ??
+                          images[0]?.url ??
+                          null;
+                        return (
+                          <Pressable
+                            key={hub.slug}
+                            onPress={() => router.push(`/hub/${hub.slug}`)}
+                            className="flex-row items-center gap-3 py-2.5 border-b border-linen/15 active:opacity-75"
+                          >
+                            {logoUrl ? (
+                              <Image source={{ uri: logoUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+                            ) : (
+                              <View className="h-9 w-9 items-center justify-center rounded-full bg-sand">
+                                <Text className="font-heading text-sm text-ink-muted">{hub.name.charAt(0).toUpperCase()}</Text>
+                              </View>
+                            )}
+                            <View className="flex-1 min-w-0">
+                              <Text className="text-xs font-heading text-ink truncate">{hub.name}</Text>
+                              <Text className="text-[10px] text-ink-faint mt-0.5 truncate">{HUB_TYPE_LABELS[hub.type]}</Text>
+                            </View>
+                            <Icon name="arrow-right" size={13} color={colors.inkFaint} />
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ) : (
+                    <EmptyCard
+                      title="No local hubs yet"
+                      body="Create a community hub or local organiser profile for this council area!"
+                      action="Create hub"
+                      onPress={() => router.push("/create/hub")}
+                    />
+                  )}
+                </View>
+
+              </View>
+            </View>
+          ) : (
+            <Card className="p-6 items-center mt-4">
+              <Text variant="caption" tone="muted">Selected council not found in database.</Text>
+            </Card>
+          )}
+        </>
       )}
-    </View>
+
+      <Footer className="mt-12 border-t border-linen pt-8" />
+    </Screen>
   );
 }

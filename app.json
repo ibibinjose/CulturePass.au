@@ -1,25 +1,38 @@
 {
   "expo": {
-    "name": "CulturePass Australia",
+    "name": "CulturePass",
     "slug": "culturepass-australia",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "culturepass",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "au.com.culturepass.app"
+      "bundleIdentifier": "au.com.culturepass.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "CulturePass Australia uses your location to show cultural events, creative businesses, and venues in your local area.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "CulturePass Australia uses your location to show cultural events, creative businesses, and venues in your local area."
+      }
     },
     "android": {
       "package": "au.com.culturepass.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FAF6EF"
       }
     },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-router",
@@ -28,6 +41,8 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 220,
           "backgroundColor": "#FAF6EF",
           "resizeMode": "contain"
         }

@@ -2,17 +2,21 @@ import { useMemo, useState } from "react";
 import { Switch, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Card";
-import { Chip } from "@/components/ui/Chip";
-import { OptionCard } from "@/components/ui/OptionCard";
-import { Stepper } from "@/components/ui/Stepper";
-import { TagInput } from "@/components/ui/TagInput";
-import { ImagePickerComponent } from "@/components/ui/ImagePicker";
+import {
+  BackButton,
+  Button,
+  Card,
+  Chip,
+  Field,
+  ImagePickerComponent,
+  Input,
+  OptionCard,
+  Screen,
+  Stepper,
+  TagInput,
+  Text,
+} from "@/components/ui";
+import { colors } from "@/lib/theme";
 
 import {
   HUB_TYPES,
@@ -29,6 +33,7 @@ import {
   HUB_WIZARD_STEPS,
   type HubDraft,
 } from "@/features/hubs/useHubDraftStore";
+import { getHubImage, setHubImage } from "@/lib/hubImages";
 
 export default function CreateHubWizard() {
   const router = useRouter();
@@ -69,16 +74,11 @@ export default function CreateHubWizard() {
   }
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
+    <Screen maxWidth="form" contentClassName="pt-6">
       <View className="mb-6 flex-row items-center justify-between">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          onPress={() => (step === 0 ? router.back() : back())}
-        />
-        <Text variant="overline" tone="ochre">
-          New Hub
+        <BackButton onPress={() => (step === 0 ? router.back() : back())} />
+        <Text variant="overline" tone="pink">
+          New Page
         </Text>
       </View>
 
@@ -102,7 +102,7 @@ export default function CreateHubWizard() {
         {isLast ? (
           <>
             <Button
-              label="Publish hub"
+              label="Publish page"
               loading={submitting}
               onPress={() => submit(true)}
             />
@@ -143,7 +143,7 @@ function StepType({ draft, update }: StepProps) {
   return (
     <View className="gap-4">
       <StepHeading
-        title="What kind of hub is this?"
+        title="What kind of page is this?"
         subtitle="Choose the category that fits best. You can refine details later."
       />
       <View className="gap-3">
@@ -165,7 +165,7 @@ function StepType({ draft, update }: StepProps) {
 function StepIdentity({ draft, update }: StepProps) {
   return (
     <View className="gap-6">
-      <StepHeading title="Name & describe your hub" />
+      <StepHeading title="Name & describe your page" />
       <Field label="Name">
         <Input
           value={draft.name}
@@ -193,20 +193,40 @@ function StepIdentity({ draft, update }: StepProps) {
           multiline
         />
       </Field>
-      <Field label="Hub Images" optional>
+      <Field
+        label="Page logo / icon"
+        helper="Used as the compact identity mark on cards and profile headers."
+        optional
+      >
         <ImagePickerComponent
-          currentImageUrl={draft.images?.[0]?.url ?? null}
-          onImageChange={(url) => {
-            if (url) {
-              update({ images: [{ url, type: "cover", alt: "Hub cover image" }] });
-            } else {
-              update({ images: [] });
-            }
-          }}
+          currentImageUrl={getHubImage(draft.images, "logo")}
+          onImageChange={(url) =>
+            update({ images: setHubImage(draft.images, "logo", url, `${draft.name || "Page"} logo`) })
+          }
           imageType="hub"
-          folderPath="hub-images"
-          label="Upload Hub Image"
-          helperText="Add a cover image for your hub"
+          folderPath="hub-logos"
+          label="Upload logo"
+          helperText="A square logo or icon works best."
+          aspect={[1, 1]}
+          previewAspectRatio={1}
+        />
+      </Field>
+      <Field
+        label="Top page image"
+        helper="The wide cover image shown at the top of the page."
+        optional
+      >
+        <ImagePickerComponent
+          currentImageUrl={getHubImage(draft.images, "cover")}
+          onImageChange={(url) =>
+            update({ images: setHubImage(draft.images, "cover", url, `${draft.name || "Page"} cover image`) })
+          }
+          imageType="cover"
+          folderPath="hub-covers"
+          label="Upload top image"
+          helperText="Use a wide image that represents the page or place."
+          aspect={[16, 9]}
+          previewAspectRatio={16 / 9}
         />
       </Field>
     </View>
@@ -228,8 +248,8 @@ function StepPlace({ draft, update }: StepProps) {
   return (
     <View className="gap-6">
       <StepHeading
-        title="Where is your hub based?"
-        subtitle="Location powers discovery and connects your hub to its Country."
+        title="Where is your page based?"
+        subtitle="Location powers discovery and connects your page to its Country."
       />
 
       <Field label="State or territory">
@@ -319,7 +339,7 @@ function StepCulture({ draft, update }: StepProps) {
 
       <Card className="flex-row items-center justify-between gap-4">
         <View className="flex-1">
-          <Text variant="subheading">This hub is Indigenous-led</Text>
+          <Text variant="subheading">This page is Indigenous-led</Text>
           <Text variant="caption" tone="muted" className="mt-1">
             Led and governed by First Nations people.
           </Text>
@@ -327,8 +347,8 @@ function StepCulture({ draft, update }: StepProps) {
         <Switch
           value={draft.indigenous_led}
           onValueChange={(indigenous_led) => update({ indigenous_led })}
-          trackColor={{ true: "#1C1815", false: "#EDE4D6" }}
-          thumbColor="#FAF6EF"
+          trackColor={{ true: colors.ink, false: colors.linen }}
+          thumbColor={colors.paper}
         />
       </Card>
 
@@ -410,12 +430,12 @@ function StepReview({
 
       <Card elevated className="gap-2">
         <View className="flex-row items-center justify-between">
-          <Text variant="overline" tone="faint">
+          <Text variant="overline" tone="pink">
             Summary
           </Text>
           <Button label="Edit" variant="ghost" size="sm" onPress={() => onEditStep(0)} />
         </View>
-        <Text variant="subheading">{draft.name || "Untitled hub"}</Text>
+        <Text variant="subheading">{draft.name || "Untitled page"}</Text>
         <Text variant="caption" tone="muted">
           {draft.type ? HUB_TYPE_LABELS[draft.type] : "No type"} ·{" "}
           {draft.location_state ?? "No location"}
@@ -441,7 +461,7 @@ function StepHeading({ title, subtitle }: { title: string; subtitle?: string }) 
     <View>
       <Text variant="title">{title}</Text>
       {subtitle ? (
-        <Text variant="body" tone="muted" className="mt-3">
+        <Text variant="lead" className="mt-3">
           {subtitle}
         </Text>
       ) : null}

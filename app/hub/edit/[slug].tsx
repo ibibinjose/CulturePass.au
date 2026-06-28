@@ -2,17 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { Switch, View, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen } from "@/components/ui/Screen";
-import { Text } from "@/components/ui/Text";
-import { Input } from "@/components/ui/Input";
-import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
-import { Card } from "@/components/ui/Card";
-import { Chip } from "@/components/ui/Chip";
-import { OptionCard } from "@/components/ui/OptionCard";
-import { Stepper } from "@/components/ui/Stepper";
-import { TagInput } from "@/components/ui/TagInput";
-import { ImagePickerComponent } from "@/components/ui/ImagePicker";
+import {
+  BackButton,
+  Button,
+  Card,
+  Chip,
+  Field,
+  ImagePickerComponent,
+  Input,
+  OptionCard,
+  Screen,
+  Stepper,
+  TagInput,
+  Text,
+} from "@/components/ui";
 
 import {
   HUB_TYPES,
@@ -24,6 +27,7 @@ import { hubDraftSchema, hubPublishSchema } from "@/lib/validation/hub";
 import { useCouncils } from "@/features/reference/api";
 import { useHub, useUpdateHub, useDeleteHub } from "@/features/hubs/api";
 import { useMyProfile } from "@/features/profiles/api";
+import { getHubImage, setHubImage } from "@/lib/hubImages";
 
 export default function EditHubScreen() {
   const router = useRouter();
@@ -97,14 +101,8 @@ export default function EditHubScreen() {
 
   if (!canEdit && !hubLoading) {
     return (
-      <Screen maxWidth="form" contentClassName="pt-10">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          className="mb-6 self-start"
-          onPress={() => router.back()}
-        />
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton fallbackHref="/my-hubs" className="mb-4" />
         <Card>
           <Text variant="subheading">Access Denied</Text>
           <Text variant="caption" tone="muted" className="mt-1">
@@ -198,15 +196,13 @@ export default function EditHubScreen() {
   const canContinue = stepIsValid(step, form);
 
   return (
-    <Screen maxWidth="form" contentClassName="pt-10">
+    <Screen maxWidth="form" contentClassName="pt-6">
       <View className="mb-6 flex-row items-center justify-between">
-        <Button
-          label="← Back"
-          variant="ghost"
-          size="sm"
-          onPress={() => (step === 0 ? router.back() : setStep(step - 1))}
+        <BackButton
+          fallbackHref="/my-hubs"
+          onPress={() => (step === 0 ? (router.canGoBack() ? router.back() : router.replace("/my-hubs")) : setStep(step - 1))}
         />
-        <Text variant="overline" tone="ochre">
+        <Text variant="overline" tone="pink">
           Edit Hub
         </Text>
       </View>
@@ -268,20 +264,41 @@ export default function EditHubScreen() {
             />
           </Field>
 
-          <Field label="Images" optional>
+          <Field
+            label="Hub logo / icon"
+            helper="Used as the compact identity mark on cards and profile headers."
+            optional
+          >
             <ImagePickerComponent
-              currentImageUrl={form.images[0]?.url ?? null}
-              onImageChange={(url) => {
-                if (url) {
-                  set({ images: [{ url, alt: "Hub image" }] });
-                } else {
-                  set({ images: [] });
-                }
-              }}
+              currentImageUrl={getHubImage(form.images, "logo")}
+              onImageChange={(url) =>
+                set({ images: setHubImage(form.images, "logo", url, `${form.name || "Hub"} logo`) })
+              }
               imageType="hub"
-              folderPath="hub-images"
-              label="Upload Hub Image"
-              helperText="Add a cover image for your hub"
+              folderPath="hub-logos"
+              label="Upload logo"
+              helperText="A square logo or icon works best."
+              aspect={[1, 1]}
+              previewAspectRatio={1}
+            />
+          </Field>
+
+          <Field
+            label="Top hub image"
+            helper="The wide cover image shown at the top of the hub page."
+            optional
+          >
+            <ImagePickerComponent
+              currentImageUrl={getHubImage(form.images, "cover")}
+              onImageChange={(url) =>
+                set({ images: setHubImage(form.images, "cover", url, `${form.name || "Hub"} cover image`) })
+              }
+              imageType="cover"
+              folderPath="hub-covers"
+              label="Upload top image"
+              helperText="Use a wide image that represents the hub or place."
+              aspect={[16, 9]}
+              previewAspectRatio={16 / 9}
             />
           </Field>
 
@@ -382,7 +399,7 @@ function StepHeading({ title, subtitle }: { title: string; subtitle?: string }) 
     <View>
       <Text variant="title">{title}</Text>
       {subtitle ? (
-        <Text variant="body" tone="muted" className="mt-3">
+        <Text variant="lead" className="mt-3">
           {subtitle}
         </Text>
       ) : null}

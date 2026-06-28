@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { cn } from "@/lib/utils/cn";
+import { colors } from "@/lib/theme";
 import { Text } from "./Text";
+import { Icon } from "./Icon";
 
 interface ListRowProps {
   title: string;
@@ -17,8 +19,8 @@ interface ListRowProps {
 }
 
 /**
- * One row in a settings list — optional leading icon/avatar, title + subtitle,
- * and either a trailing value, a custom control, or a chevron affordance.
+ * One row in a settings/menu list — optional leading icon/avatar, title +
+ * subtitle, and either a trailing value, a custom control, or a chevron.
  */
 export function ListRow({
   title,
@@ -31,7 +33,7 @@ export function ListRow({
   className,
 }: ListRowProps) {
   const body = (
-    <View className={cn("min-h-[56px] flex-row items-center gap-3 py-3", className)}>
+    <View className={cn("min-h-[60px] flex-row items-center gap-3.5 py-3.5", className)}>
       {left ? <View>{left}</View> : null}
       <View className="flex-1 gap-0.5">
         <Text variant="label" className={cn("text-base", danger && "text-danger")}>
@@ -48,7 +50,7 @@ export function ListRow({
           {value}
         </Text>
       ) : null}
-      {right ?? (onPress ? <Text className="font-sans text-lg text-ink-faint">›</Text> : null)}
+      {right ?? (onPress ? <Icon name="chevron-right" size={18} color={colors.inkFaint} /> : null)}
     </View>
   );
 
