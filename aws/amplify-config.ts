@@ -1,7 +1,5 @@
 // aws/amplify-config.ts
-import { Amplify } from "aws-amplify";
-import { Auth } from "aws-amplify/auth";
-import { API } from "aws-amplify/api";
+import { Amplify, Auth, API } from "aws-amplify";
 
 // Load env vars (Expo automatically prefixes with VITE_ for client side)
 const region = process.env.VITE_AWS_REGION || "us-east-1";
