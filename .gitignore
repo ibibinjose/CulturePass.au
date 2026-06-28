@@ -35,3 +35,6 @@ supabase/.env
 *.log
 .vscode/
 .idea/
+
+# Backups
+*.zip
