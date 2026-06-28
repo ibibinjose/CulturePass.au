@@ -99,6 +99,7 @@ interface EventFormProps {
 export function EventForm({ initial, submitting, error, actions, onSubmit, footer, eventId }: EventFormProps) {
   const [form, setForm] = useState<EventFormValues>(initial);
   const set = (patch: Partial<EventFormValues>) => setForm((f) => ({ ...f, ...patch }));
+  const [councilSearch, setCouncilSearch] = useState("");
 
   const { isAuthenticated } = useAuth();
   const { data: myHubs } = useMyHubs();
@@ -183,7 +184,7 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
             imageType="event"
             folderPath="event-images"
             label="Upload event cover"
-            helperText="Horizontal banner format looks best."
+            helperText="Square 1:1 format looks best."
           />
         </Field>
       </Card>
@@ -223,12 +224,13 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
                 label={s.code}
                 variant={form.location_state === s.code ? "primary" : "outline"}
                 size="sm"
-                onPress={() =>
+                onPress={() => {
                   set({
                     location_state: form.location_state === s.code ? "" : s.code,
                     location_council_id: undefined, // reset council if state changes
-                  })
-                }
+                  });
+                  setCouncilSearch("");
+                }}
               />
             ))}
           </View>
@@ -241,26 +243,46 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
                 Assigning this lets your event appear on the local My Council board.
               </Text>
               {councils && councils.length > 0 ? (
-                <View className="max-h-48 rounded-2xl border border-linen bg-card overflow-hidden">
-                  <ScrollView nestedScrollEnabled className="p-2 gap-1">
-                    {councils.map((c) => {
-                      const selected = form.location_council_id === c.id;
-                      return (
-                        <Pressable
-                          key={c.id}
-                          onPress={() => set({ location_council_id: selected ? undefined : c.id })}
-                          className={cn(
-                            "px-3 py-2 rounded-xl flex-row items-center justify-between active:bg-sand",
-                            selected ? "bg-sand" : "bg-transparent"
-                          )}
-                        >
-                          <Text className="text-xs font-heading text-ink">{c.name}</Text>
-                          {selected && <Icon name="check" size={14} color={colors.pink} />}
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
+                <>
+                  <Input
+                    value={councilSearch}
+                    onChangeText={setCouncilSearch}
+                    placeholder="Search councils…"
+                    className="mb-1"
+                  />
+                  <View className="max-h-48 rounded-2xl border border-linen bg-card overflow-hidden">
+                    <ScrollView nestedScrollEnabled className="p-2 gap-1">
+                      {(() => {
+                        const filtered = councils.filter((c) =>
+                          c.name.toLowerCase().includes(councilSearch.trim().toLowerCase())
+                        );
+                        if (filtered.length === 0) {
+                          return (
+                            <View className="p-3 items-center">
+                              <Text variant="caption" tone="faint">No councils match</Text>
+                            </View>
+                          );
+                        }
+                        return filtered.map((c) => {
+                          const selected = form.location_council_id === c.id;
+                          return (
+                            <Pressable
+                              key={c.id}
+                              onPress={() => set({ location_council_id: selected ? undefined : c.id })}
+                              className={cn(
+                                "px-3 py-2 rounded-xl flex-row items-center justify-between active:bg-sand",
+                                selected ? "bg-sand" : "bg-transparent"
+                              )}
+                            >
+                              <Text className="text-xs font-heading text-ink">{c.name}</Text>
+                              {selected && <Icon name="check" size={14} color={colors.pink} />}
+                            </Pressable>
+                          );
+                        });
+                      })()}
+                    </ScrollView>
+                  </View>
+                </>
               ) : (
                 <Text variant="caption" tone="faint">Loading councils list...</Text>
               )}

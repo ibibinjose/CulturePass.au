@@ -31,3 +31,4 @@ export { SectionHeader } from "./SectionHeader";
 export { EmptyCard } from "./EmptyCard";
 export { Stepper } from "./Stepper";
 export { DatePicker } from "./DatePicker";
+export { RichText } from "./RichText";

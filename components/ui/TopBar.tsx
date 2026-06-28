@@ -46,19 +46,15 @@ function BrandMark({ onPress }: { onPress: () => void }) {
     <Pressable
       onPress={onPress}
       hitSlop={8}
-      className="flex-row items-center gap-2.5 active:opacity-85"
+      className="flex-row items-center gap-2 active:opacity-85"
       accessibilityRole="link"
       accessibilityLabel="CulturePass Australia home"
     >
-      <View className="h-9 w-9 items-center justify-center rounded-2xl bg-white shadow-subtle">
-        <Pinwheel size={26} />
+      <View className="h-8 w-8 items-center justify-center rounded-xl bg-white shadow-subtle">
+        <Pinwheel size={24} />
       </View>
-      <View className="gap-0.5">
-        <Text className="font-display text-lg leading-none text-ink">CulturePass</Text>
-        <Text className="font-heading text-[10px] uppercase leading-none tracking-[2px] text-ink/70">
-          Australia
-        </Text>
-      </View>
+      <Text className="font-display text-lg text-ink">CulturePass</Text>
+      <Text className="font-display text-lg text-pink-500">AU</Text>
     </Pressable>
   );
 }
@@ -78,7 +74,7 @@ function HamburgerButton({ hasUnread, unread, onPress }: HamburgerButtonProps) {
       accessibilityLabel={hasUnread ? `Open menu, ${unread} unread notifications` : "Open menu"}
       className={cn(
         "relative h-10 w-10 items-center justify-center rounded-pill border active:opacity-80",
-        hasUnread ? "border-gold-500 bg-gold-100" : "border-pink-600 bg-pink-600/40 active:bg-pink-600/80",
+        hasUnread ? "border-gold-500 bg-gold-100" : "border-linen bg-card active:bg-sand",
       )}
     >
       <Icon name="menu" size={20} color={hasUnread ? colors.goldDeep : colors.ink} />
@@ -121,11 +117,11 @@ function ActionCluster({
         onPress={onBell}
         hitSlop={8}
         accessibilityLabel={hasUnread ? `Notifications, ${unread} unread` : "Notifications"}
-        className="relative h-10 w-10 items-center justify-center rounded-pill border border-pink-600 bg-pink-600/40 active:bg-pink-600/80"
+        className="relative h-10 w-10 items-center justify-center rounded-pill border border-linen bg-card active:bg-sand"
       >
         <Icon name="bell" size={19} color={colors.ink} />
         {hasUnread ? (
-          <View className="absolute -right-1 -top-1 h-4 min-w-4 items-center justify-center rounded-pill border border-paper bg-gold-500 px-1">
+          <View className="absolute -right-0.5 -top-0.5 h-4 min-w-4 items-center justify-center rounded-pill border border-paper bg-gold-500 px-1">
             <Text className="font-heading text-[10px] leading-none text-ink">
               {unread > 9 ? "9+" : unread}
             </Text>
@@ -135,10 +131,10 @@ function ActionCluster({
       <Pressable
         onPress={onCreate}
         hitSlop={8}
-        className="h-9 flex-row items-center gap-1.5 rounded-pill bg-white px-3.5 active:bg-white/80"
+        className="h-9 flex-row items-center gap-1.5 rounded-pill border border-ink bg-green-500 px-3.5 active:bg-green-600"
       >
-        <Icon name="plus" size={16} color={colors.pink} strokeWidth={2.2} />
-        <Text variant="label" className="font-heading text-pink-600">
+        <Icon name="plus" size={16} color={colors.ink} strokeWidth={2.2} />
+        <Text variant="label" className="font-heading text-ink">
           Create
         </Text>
       </Pressable>
@@ -254,7 +250,7 @@ export function TopBar() {
   return (
     <View
       style={{ paddingTop: insets.top, zIndex: 50 }}
-      className="border-b border-pink-600 shadow-subtle web:bg-pink-500/95 web:backdrop-blur-md web:sticky web:top-0 bg-pink-500 relative overflow-visible"
+      className="border-b border-linen shadow-subtle web:bg-paper/95 web:backdrop-blur-md web:sticky web:top-0 bg-paper relative"
     >
       <View
         style={{ height: BAR_HEIGHT }}
@@ -360,10 +356,21 @@ function NavLink({ label, active, onPress }: { label: string; active: boolean; o
       accessibilityState={{ selected: active }}
       className="items-center gap-1.5 px-3 py-2"
     >
-      <Text variant="label" className={cn("font-heading text-sm", active ? "text-ink" : "text-ink/70 hover:text-ink")}>
+      <Text
+        variant="label"
+        className={cn(
+          "font-heading",
+          active ? "text-ink" : "text-ink-muted hover:text-ink"
+        )}
+      >
         {label}
       </Text>
-      <View className={cn("h-[3px] self-stretch rounded-pill", active ? "bg-gold-500" : "bg-transparent")} />
+      <View
+        className={cn(
+          "h-[3px] self-stretch rounded-pill",
+          active ? "bg-pink-500" : "bg-transparent"
+        )}
+      />
     </Pressable>
   );
 }
