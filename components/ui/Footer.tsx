@@ -47,9 +47,12 @@ export function Footer({ className }: { className?: string }) {
                 <View className="h-7 w-7 items-center justify-center rounded-lg bg-white">
                   <Pinwheel size={20} />
                 </View>
-                <Text className="font-display text-sm text-paper font-semibold">
-                  CulturePass <Text className="text-paper/60">AU</Text>
-                </Text>
+                <View className="gap-0.5">
+                  <Text className="font-display text-sm leading-none text-paper font-semibold">CulturePass</Text>
+                  <Text className="font-heading text-[9px] uppercase leading-none tracking-[1.5px] text-paper/60">
+                    Australia
+                  </Text>
+                </View>
               </View>
               <Text className="text-[10px] font-sans text-paper/50 leading-4">
                 Discover, create and connect through cultural experiences across Australia — with First Nations voices at the centre.

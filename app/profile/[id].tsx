@@ -30,7 +30,10 @@ import { parsePreferences } from "@/lib/validation/profile";
 import { resolveLinks } from "@/lib/social";
 
 export default function PublicProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  // A dynamic [id] segment can collide with an ?id= query param (some share
+  // links carry both), in which case expo-router hands back an array. Normalise.
+  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const router = useRouter();
   const { data: profile, isLoading } = useProfile(id);
   const { data: me } = useMyProfile();
@@ -44,10 +47,14 @@ export default function PublicProfileScreen() {
 
   if (isLoading) {
     return (
-      <Screen maxWidth="form" contentClassName="pt-section">
-        <Text variant="caption" tone="faint">
-          Loading…
-        </Text>
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton className="mb-2" />
+        <View className="items-center gap-4 rounded-3xl border border-linen bg-card p-7">
+          <View className="h-[100px] w-[100px] rounded-full bg-sand" />
+          <View className="h-6 w-44 rounded-md bg-sand" />
+          <View className="h-4 w-28 rounded bg-sand/70" />
+          <View className="mt-2 h-9 w-52 rounded-full bg-sand/60" />
+        </View>
       </Screen>
     );
   }
@@ -70,9 +77,11 @@ export default function PublicProfileScreen() {
   const links = (profile.public_links ?? {}) as Record<string, string>;
   const linkEntries = resolveLinks(links);
   const showLocation = prefs.privacy.show_location && profile.location;
-  const showInterests = prefs.privacy.show_interests && profile.interests.length > 0;
+  const showInterests = prefs.privacy.show_interests && (profile.interests?.length ?? 0) > 0;
   const hubs = profile.hubs ?? [];
   const primaryHub = hubs[0];
+  const primaryHubLogo =
+    primaryHub?.images?.find((img: any) => img?.type === "logo")?.url ?? null;
 
   return (
     <Screen maxWidth="form" contentClassName="pt-6">
@@ -81,49 +90,49 @@ export default function PublicProfileScreen() {
       {/* Identity card */}
       <View className="items-center gap-4 rounded-3xl border border-linen bg-card p-7">
         <Pressable
-          onPress={() => {
-            if (isMe) {
-              router.push("/profile/edit");
-            } else if (profile.avatar_url) {
-              Linking.openURL(profile.avatar_url).catch(() => {});
-            }
-          }}
+          onPress={() => isMe && router.push("/profile/edit")}
+          disabled={!isMe}
           className="active:opacity-90"
-          accessibilityRole="button"
-          accessibilityLabel={isMe ? "Edit profile picture" : "View profile picture"}
+          accessibilityRole={isMe ? "button" : "image"}
+          accessibilityLabel={isMe ? "Edit profile picture" : `${profile.full_name || "Member"} profile picture`}
         >
           <Avatar
             name={profile.full_name}
             uri={profile.avatar_url}
             size={100}
             ring
-            hubLogoUri={primaryHub?.images?.find((img: any) => img?.type === "logo")?.url}
+            hubLogoUri={primaryHubLogo}
           />
         </Pressable>
         <View className="items-center gap-2">
-          <View className="flex-row items-center justify-center gap-2">
-            <Text variant="title" className="text-center">
-              {profile.full_name || "Member"}
-            </Text>
-            {primaryHub ? (
-              <Pressable
-                onPress={() => router.push(`/hub/${primaryHub.slug}`)}
-                className="h-6 w-6 overflow-hidden rounded bg-sand border border-linen/30 active:opacity-80 justify-center items-center"
-                accessibilityRole="link"
-                accessibilityLabel={`View affiliated hub ${primaryHub.name}`}
-              >
-                <Image
-                  source={{ uri: primaryHub.images?.find((img: any) => img?.type === "logo")?.url }}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                />
-              </Pressable>
-            ) : null}
-          </View>
+          <Text variant="title" className="text-center">
+            {profile.full_name || "Member"}
+          </Text>
           {profile.is_public_professional && profile.professional_title ? (
             <Text variant="body" tone="muted" className="text-center">
               {profile.professional_title}
             </Text>
+          ) : null}
+          {primaryHub ? (
+            <Pressable
+              onPress={() => router.push(`/hub/${primaryHub.slug}`)}
+              className="mt-0.5 flex-row items-center gap-1.5 rounded-full border border-linen bg-sand/50 py-1 pl-1 pr-3 active:opacity-80"
+              accessibilityRole="link"
+              accessibilityLabel={`View affiliated page ${primaryHub.name}`}
+            >
+              {primaryHubLogo ? (
+                <View className="h-5 w-5 overflow-hidden rounded-full border border-linen/40 bg-card">
+                  <Image source={{ uri: primaryHubLogo }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                </View>
+              ) : (
+                <View className="h-5 w-5 items-center justify-center rounded-full bg-pink-50">
+                  <Icon name="users" size={11} color={colors.pink} />
+                </View>
+              )}
+              <Text variant="overline" className="text-ink-muted">
+                {primaryHub.name}
+              </Text>
+            </Pressable>
           ) : null}
           {showLocation || (profile.is_public_professional && profile.professional_category) ? (
             <View className="flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1 mt-1">

@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Input, Button, Card, Icon, Footer } from "@/components/ui";
+import { Screen, Text, Input, Button, Card, Icon, Footer, Avatar } from "@/components/ui";
 import { useHubs, useHubStateCounts } from "@/features/hubs/api";
+import { useSearchProfiles } from "@/features/profiles/api";
 import { CommunityCard, SkeletonCard } from "@/features/hubs/components/CommunityCard";
 import { HUB_TYPES, HUB_TYPE_LABELS, AUSTRALIAN_STATES, type HubType, type StateCode } from "@/lib/constants";
 import { colors } from "@/lib/theme";
@@ -38,6 +39,8 @@ export default function CommunitiesScreen() {
     indigenousLed: onlyIndigenousLed || undefined,
     search: query || undefined,
   });
+
+  const { data: profiles } = useSearchProfiles(query);
 
   const visibleHubs = useMemo(() => {
     let list = hubs ?? [];
@@ -97,7 +100,7 @@ export default function CommunitiesScreen() {
               clearButtonMode="while-editing"
               leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
               containerClassName="border-0 bg-transparent h-10 px-0 flex-1"
-              className="text-xs font-sans"
+              className="text-sm font-sans"
             />
             {query ? (
               <Pressable onPress={() => setSearchQuery("")} hitSlop={10} className="h-6 w-6 items-center justify-center rounded-full active:bg-sand">
@@ -160,7 +163,7 @@ export default function CommunitiesScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
                 className={cn(
-                  "h-9 flex-row items-center rounded-full border px-3.5 active:opacity-80",
+                  "h-10 flex-row items-center rounded-full border px-4 active:opacity-80",
                   on ? "border-ink bg-ink" : "border-linen bg-card",
                 )}
               >
@@ -200,6 +203,49 @@ export default function CommunitiesScreen() {
       </View>
 
       {/* Grid */}
+      {!isLoading && !isError && profiles && profiles.length > 0 ? (
+        <View className="gap-3 mb-6 bg-sand/10 border border-linen/35 p-5 rounded-3xl">
+          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
+            People & Professionals ({profiles.length})
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerClassName="gap-3 pr-gutter py-1"
+            className="-mx-gutter px-gutter"
+          >
+            {profiles.map((prof) => (
+              <Pressable
+                key={prof.id}
+                onPress={() => router.push(`/profile/${prof.id}`)}
+                className="w-[180px] bg-card border border-linen/50 p-4 rounded-2xl items-center gap-2.5 active:scale-[0.98] shadow-sm"
+              >
+                <Avatar
+                  name={prof.full_name}
+                  uri={prof.avatar_url}
+                  size={52}
+                />
+                <View className="items-center min-w-0 w-full mt-1">
+                  <Text className="font-heading text-xs text-ink text-center truncate w-full" numberOfLines={1}>
+                    {prof.full_name}
+                  </Text>
+                  {prof.professional_title ? (
+                    <Text className="text-[9px] text-pink-600 font-medium tracking-tight text-center truncate w-full mt-0.5" numberOfLines={1}>
+                      {prof.professional_title}
+                    </Text>
+                  ) : null}
+                  {prof.bio ? (
+                    <Text className="text-[10px] text-ink-faint text-center mt-1.5 truncate w-full" numberOfLines={2}>
+                      {prof.bio}
+                    </Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
       {isLoading ? (
         <View className="flex-row flex-wrap gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -224,11 +270,21 @@ export default function CommunitiesScreen() {
             onPress={() => refetch()}
           />
         </Card>
-      ) : count > 0 ? (
-        <View className="flex-row flex-wrap gap-4">
-          {visibleHubs.map((hub) => (
-            <CommunityCard key={hub.id} hub={hub} className={CARD_WIDTH} onPress={() => router.push(`/hub/${hub.slug}`)} />
-          ))}
+      ) : (count > 0 || (profiles && profiles.length > 0)) ? (
+        <View className="gap-6">
+          {count > 0 ? (
+            <View className="flex-row flex-wrap gap-4">
+              {visibleHubs.map((hub) => (
+                <CommunityCard key={hub.id} hub={hub} className={CARD_WIDTH} onPress={() => router.push(`/hub/${hub.slug}`)} />
+              ))}
+            </View>
+          ) : (
+            <Card className="items-center gap-2 p-6 border border-dashed border-linen bg-sand/5">
+              <Text variant="caption" tone="muted" className="text-center">
+                No matching community pages. See matching profiles above.
+              </Text>
+            </Card>
+          )}
         </View>
       ) : (
         <Card className="items-center gap-3 p-10 border border-dashed border-linen bg-sand/15">
@@ -236,12 +292,12 @@ export default function CommunitiesScreen() {
             <Icon name="users" size={26} color={colors.pink} />
           </View>
           <Text variant="subheading" className="font-display tracking-tight text-center">
-            No communities found
+            No results found
           </Text>
           <Text variant="caption" tone="muted" className="text-center max-w-sm leading-6">
             {activeFilterCount > 0
-              ? "Nothing matches your current filters. Try clearing them or looking in another state."
-              : "No communities have been published yet — be the first to start one."}
+              ? "Nothing matches your search or filters. Try clearing them or looking in another state."
+              : "No communities or profiles have been published yet."}
           </Text>
           <View className="flex-row gap-2 mt-1">
             {activeFilterCount > 0 ? (
@@ -283,15 +339,15 @@ function StatePill({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={cn(
-        "h-9 flex-row items-center gap-1.5 rounded-full border px-3.5 active:opacity-80",
+        "h-10 flex-row items-center gap-1.5 rounded-full border px-4 active:opacity-80",
         active ? "border-pink-500 bg-pink-500" : "border-linen bg-card",
       )}
     >
-      <Text className={cn("text-xs font-heading", active ? "text-white font-semibold" : "text-ink-muted")}>
+      <Text className={cn("text-xs font-heading", active ? "text-ink font-semibold" : "text-ink-muted")}>
         {label}
       </Text>
       {count != null && count > 0 ? (
-        <Text className={cn("text-[10px] font-heading", active ? "text-white/80" : "text-ink-faint")}>
+        <Text className={cn("text-[10px] font-heading", active ? "text-ink/70" : "text-ink-faint")}>
           {count}
         </Text>
       ) : null}
@@ -306,7 +362,7 @@ function FirstNationsToggle({ active, onPress }: { active: boolean; onPress: () 
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={cn(
-        "h-8 flex-row items-center gap-1.5 rounded-full border px-3 active:opacity-80",
+        "h-9 flex-row items-center gap-1.5 rounded-full border px-3.5 active:opacity-80",
         active ? "border-country-black bg-country-black" : "border-linen bg-card",
       )}
     >
@@ -328,7 +384,7 @@ function SortChip({ label, active, onPress }: { label: string; active: boolean; 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={cn("rounded-full px-3 py-1.5 active:opacity-80", active ? "bg-ink" : "bg-transparent")}
+      className={cn("rounded-full px-3.5 py-2 active:opacity-80", active ? "bg-ink" : "bg-transparent")}
     >
       <Text className={cn("text-[11px] font-heading", active ? "text-paper font-semibold" : "text-ink-muted")}>
         {label}

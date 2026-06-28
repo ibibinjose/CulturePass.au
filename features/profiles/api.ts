@@ -77,6 +77,24 @@ export function useProfile(id: string | undefined) {
   });
 }
 
+/** Search public professional profiles by name or bio. */
+export function useSearchProfiles(searchQuery: string) {
+  const query = searchQuery.trim();
+  return useQuery({
+    queryKey: ["profiles", "search", query],
+    enabled: query.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, bio, interests, professional_category, professional_title")
+        .eq("is_public_professional", true)
+        .or(`full_name.ilike.%${query}%,bio.ilike.%${query}%`);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
 /**
  * Update the signed-in user's own profile (RLS restricts to user_id = auth.uid()).
  * Used by the edit-profile, privacy and notification settings screens, and to

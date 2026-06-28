@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Pressable, ScrollView, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
@@ -9,8 +9,9 @@ import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useHubs } from "@/features/hubs/api";
 import { useEvents } from "@/features/events/api";
-import { useMyProfile } from "@/features/profiles/api";
+import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
+import { parsePreferences } from "@/lib/validation/profile";
 import { HUB_TYPE_LABELS, type HubType, type StateCode } from "@/lib/constants";
 
 function groupEventsByDate(eventsList: any[]) {
@@ -49,6 +50,7 @@ export default function MyCouncilScreen() {
   const router = useRouter();
   const { location, setLocation } = useSavedLocation();
   const { data: profile } = useMyProfile();
+  const updateProfile = useUpdateMyProfile();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | "events" | "venues" | "businesses" | "community">("all");
@@ -174,6 +176,43 @@ export default function MyCouncilScreen() {
     }
     fetchCouncilDetails(location.councilId);
   }, [location.councilId]);
+
+  // Seed user saved location on startup from profile onboarding preferences
+  const seededLocation = useRef(false);
+  useEffect(() => {
+    if (seededLocation.current || !profile) return;
+    seededLocation.current = true;
+    const loc = parsePreferences(profile.preferences).location;
+    if (loc?.state && !location.councilId) {
+      setLocation({ state: loc.state as StateCode, councilId: loc.councilId ?? undefined, label: loc.label });
+    }
+  }, [profile, setLocation, location.councilId]);
+
+  // Sync local location selection back to Supabase profile preferences
+  useEffect(() => {
+    if (!profile) return;
+    const currentPrefs = parsePreferences(profile.preferences);
+    const dbLoc = currentPrefs.location;
+    
+    const isDifferent =
+      dbLoc?.state !== location.state ||
+      dbLoc?.councilId !== location.councilId ||
+      dbLoc?.label !== location.label;
+
+    if (isDifferent && location.state) {
+      updateProfile.mutate({
+        location: location.label !== "Anywhere" ? location.label : null,
+        preferences: {
+          ...currentPrefs,
+          location: {
+            state: location.state,
+            councilId: location.councilId ?? null,
+            label: location.label,
+          },
+        },
+      });
+    }
+  }, [location, profile, updateProfile]);
 
   const handleSaveChanges = async () => {
     if (!councilDetails) return;

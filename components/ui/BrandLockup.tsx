@@ -15,9 +15,12 @@ export function BrandLockup({ className }: { className?: string }) {
       <View className="h-9 w-9 items-center justify-center rounded-2xl border border-linen bg-white shadow-subtle">
         <Pinwheel size={26} />
       </View>
-      <Text className="font-display text-lg text-ink">
-        CulturePass <Text className="font-display text-lg text-pink-500">AU</Text>
-      </Text>
+      <View className="gap-0.5">
+        <Text className="font-display text-lg leading-none text-ink">CulturePass</Text>
+        <Text className="font-heading text-[10px] uppercase leading-none tracking-[2px] text-pink-500">
+          Australia
+        </Text>
+      </View>
     </View>
   );
 }

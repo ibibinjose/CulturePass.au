@@ -12,6 +12,7 @@ import {
   Card,
   Footer,
   Icon,
+  type IconName,
   LocationPicker,
   ANYWHERE,
   MultiSelectFilter,
@@ -26,7 +27,7 @@ import { useHubs } from "@/features/hubs/api";
 import { EventCard } from "@/features/events/EventCard";
 import { FeaturedEventCard } from "@/features/events/FeaturedEventCard";
 import { useEvents } from "@/features/events/api";
-import { useMyProfile } from "@/features/profiles/api";
+import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { parsePreferences } from "@/lib/validation/profile";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
 import {
@@ -88,10 +89,25 @@ function groupEventsByDate(eventsList: any[]) {
   return groups;
 }
 
+const CATEGORY_ICONS: Record<EventType, string> = {
+  event: "calendar",
+  activity: "compass",
+  workshop: "edit",
+  art: "palette",
+  movie: "film",
+  dining: "food",
+  shopping: "bag",
+  offer: "star",
+  classes_gym: "dumbbell",
+  travel: "globe",
+  other: "grid",
+};
+
 export default function DiscoverScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { data: profile } = useMyProfile();
+  const updateProfile = useUpdateMyProfile();
 
   const [search, setSearch] = useState("");
   const { location, setLocation } = useSavedLocation();
@@ -230,6 +246,33 @@ export default function DiscoverScreen() {
     }
   }, [profile, setLocation]);
 
+  // Sync local location selection back to Supabase profile preferences
+  useEffect(() => {
+    if (!profile) return;
+    const currentPrefs = parsePreferences(profile.preferences);
+    const dbLoc = currentPrefs.location;
+    
+    // Check if dbLoc is different from local location
+    const isDifferent =
+      dbLoc?.state !== location.state ||
+      dbLoc?.councilId !== location.councilId ||
+      dbLoc?.label !== location.label;
+
+    if (isDifferent && location.state) {
+      updateProfile.mutate({
+        location: location.label !== "Anywhere" ? location.label : null,
+        preferences: {
+          ...currentPrefs,
+          location: {
+            state: location.state,
+            councilId: location.councilId ?? null,
+            label: location.label,
+          },
+        },
+      });
+    }
+  }, [location, profile, updateProfile]);
+
   const activeInterests = interests.length > 0 ? interests : profile?.interests ?? [];
 
   const eventFilters = {
@@ -304,46 +347,48 @@ export default function DiscoverScreen() {
   };
 
   const locationLabel = location.label !== "Anywhere" ? location.label : "Australia";
-  const groupedEvents = groupEventsByDate(comingUp);
 
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
       
-      {/* Luma-style Typographical Header & Search Block */}
-      <View className="flex-col md:flex-row md:items-center justify-between gap-4 border-b border-linen/40 pb-5">
-        <View className="gap-1 min-w-[200px] flex-1">
-          <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight font-bold">
-            Discover {locationLabel}
+      {/* Eventbrite-Style Hero Banner */}
+      <View className="rounded-3xl border border-linen bg-sand/15 p-6 md:p-10 gap-5 mt-2">
+        <View className="gap-2 max-w-xl">
+          <Text className="font-display text-3xl md:text-5xl text-ink font-extrabold tracking-tight leading-none">
+            Find your next experience
           </Text>
-          <Text className="font-sans text-xs text-ink-faint">
-            Curated events and active community calendars.
+          <Text className="font-sans text-xs md:text-sm text-ink-muted">
+            Explore curated cultural events, local gatherings, and active community groups in {locationLabel}.
           </Text>
         </View>
 
-        {/* Repositioned Search & Location Bar */}
-        <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-4 h-11 gap-2 shadow-subtle w-full md:w-[460px] lg:w-[500px]">
-          <View className="flex-1 flex-row items-center">
+        {/* Floating Search & Location bar */}
+        <View className="flex-col md:flex-row items-stretch md:items-center border border-linen bg-card rounded-2xl md:rounded-full px-4 py-2 md:py-0 h-auto md:h-14 gap-3 shadow-subtle w-full max-w-3xl mt-2">
+          <View className="flex-1 flex-row items-center h-10 md:h-full">
             <Input
               value={search}
               onChangeText={setSearch}
-              placeholder="Search events, hubs..."
+              placeholder="Search events, organizers..."
               returnKeyType="search"
               autoCorrect={false}
-              leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
-              containerClassName="border-0 bg-transparent h-9 px-0 flex-1"
-              className="text-xs font-sans"
+              leftIcon={<Icon name="search" size={16} color={colors.inkFaint} />}
+              containerClassName="border-0 bg-transparent h-full px-0 flex-1"
+              className="text-sm font-sans"
             />
           </View>
 
           {/* Vertical divider */}
-          <View className="w-[1px] h-5 bg-linen/70 mx-1" />
+          <View className="hidden md:block w-[1px] h-6 bg-linen/70 mx-1" />
 
-          {/* Location selector */}
-          <View className="flex-row items-center">
+          {/* Location picker */}
+          <View className="flex-row items-center h-10 md:h-full pr-1">
+            <View className="mr-1.5">
+              <Icon name="map-pin" size={14} color={colors.inkFaint} />
+            </View>
             <LocationPicker
               value={location}
               onChange={setLocation}
-              className="h-9 border-0 bg-transparent px-0 active:bg-transparent"
+              className="h-full border-0 bg-transparent px-0 active:bg-transparent"
             />
           </View>
         </View>
@@ -354,7 +399,7 @@ export default function DiscoverScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ alignItems: "center", gap: 6, paddingRight: 20 }}
-        className="-mx-gutter px-gutter mt-3"
+        className="-mx-gutter px-gutter mt-5"
       >
         <MultiSelectFilter
           label="Interests"
@@ -386,28 +431,40 @@ export default function DiscoverScreen() {
         ) : null}
       </ScrollView>
 
-      {/* Minimal Category tags */}
+      {/* Eventbrite-Style Circular Category Browser */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerClassName="gap-2 pr-4 pt-1"
-        className="-mx-gutter px-gutter mt-4"
+        contentContainerClassName="gap-6 px-gutter py-2.5"
+        className="-mx-gutter px-gutter mt-5"
       >
         {EVENT_TYPES.map((type) => {
           const on = categories.includes(type);
+          const icon = CATEGORY_ICONS[type] || "calendar";
           return (
             <Pressable
               key={type}
               onPress={() => toggleCategory(type)}
-              className={cn(
-                "flex-row items-center gap-1.5 rounded-full border px-3 py-1 active:opacity-80",
-                on ? "border-ink bg-ink" : "border-linen/70 bg-card"
-              )}
+              className="items-center gap-2 active:scale-95 transition-transform duration-100"
             >
+              <View
+                className={cn(
+                  "h-14 w-14 rounded-full items-center justify-center border-2 shadow-sm",
+                  on
+                    ? "bg-ink border-ink"
+                    : "bg-card border-linen active:bg-sand"
+                )}
+              >
+                <Icon
+                  name={icon as IconName}
+                  size={22}
+                  color={on ? colors.paper : colors.ink}
+                />
+              </View>
               <Text
                 className={cn(
-                  "text-[10px] font-heading uppercase tracking-wider",
-                  on ? "text-paper" : "text-ink"
+                  "text-[10px] font-heading text-center tracking-tight",
+                  on ? "text-ink font-semibold" : "text-ink-muted"
                 )}
               >
                 {EVENT_TYPE_LABELS[type]}
@@ -519,7 +576,7 @@ export default function DiscoverScreen() {
                 </View>
               ) : null}
 
-              {/* Grouped upcoming listing */}
+              {/* Eventbrite-Style Grid listing */}
               {comingUp.length > 0 ? (
                 <View className="gap-6">
                   <View className="flex-row items-center justify-between border-b border-linen pb-2">
@@ -533,74 +590,10 @@ export default function DiscoverScreen() {
                     />
                   </View>
 
-                  <View className="gap-5">
-                    {groupedEvents.map((group) => (
-                      <View key={group.dateLabel} className="gap-1.5">
-                        {/* Date heading (Luma style) */}
-                        <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
-                          {group.dateLabel}
-                        </Text>
-                        
-                        {/* List of events on this day */}
-                        <View className="gap-0.5">
-                          {group.items.map((event) => {
-                            const coverUrl = event.images?.find((img: any) => img.type === "cover")?.url ?? event.images?.[0]?.url ?? null;
-                            const place = [event.location_city, event.location_state].filter(Boolean).join(", ");
-                            const formattedTime = event.start_time
-                              ? new Intl.DateTimeFormat("en-AU", { hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(event.start_time))
-                              : "";
-
-                            return (
-                              <Pressable
-                                key={event.id}
-                                onPress={() => router.push(`/event/${event.id}`)}
-                                className="flex-row items-center gap-4 py-3 border-b border-linen/25 active:opacity-75"
-                              >
-                                {/* Time */}
-                                <View className="w-16">
-                                  <Text className="text-xs font-heading text-ink-muted">
-                                    {formattedTime}
-                                  </Text>
-                                </View>
-
-                                {/* Thumbnail */}
-                                <View className="h-10 w-10 rounded-lg overflow-hidden bg-sand">
-                                  {coverUrl ? (
-                                    <Image
-                                      source={{ uri: coverUrl }}
-                                      style={{ width: "100%", height: "100%" }}
-                                      contentFit="cover"
-                                    />
-                                  ) : (
-                                    <View className="flex-1 items-center justify-center bg-sand">
-                                      <Icon name="calendar" size={14} color={colors.inkFaint} />
-                                    </View>
-                                  )}
-                                </View>
-
-                                {/* Event details */}
-                                <View className="flex-1 min-w-0">
-                                  <Text className="text-sm font-heading text-ink truncate">
-                                    {event.title}
-                                  </Text>
-                                  <Text className="text-[11px] text-ink-faint mt-0.5 truncate">
-                                    By {event.hub?.name || "Independent"} · {place || "Online"}
-                                  </Text>
-                                </View>
-
-                                {/* Attending count */}
-                                <View className="flex-row items-center gap-2">
-                                  {event.rsvp_count ? (
-                                    <Text className="text-[10px] font-heading text-ink-muted bg-sand/60 px-2 py-0.5 rounded">
-                                      {event.rsvp_count} going
-                                    </Text>
-                                  ) : null}
-                                  <Icon name="arrow-right" size={14} color={colors.inkFaint} />
-                                </View>
-                              </Pressable>
-                            );
-                          })}
-                        </View>
+                  <View className="flex-row flex-wrap gap-5 mt-2">
+                    {comingUp.map((event) => (
+                      <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(50%-10px)]">
+                        <EventCard event={event} />
                       </View>
                     ))}
                   </View>

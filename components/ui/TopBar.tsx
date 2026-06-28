@@ -53,9 +53,11 @@ function BrandMark({ onPress }: { onPress: () => void }) {
       <View className="h-9 w-9 items-center justify-center rounded-2xl bg-white shadow-subtle">
         <Pinwheel size={26} />
       </View>
-      <View className="flex-row items-baseline gap-1">
-        <Text className="font-display text-lg leading-none text-white">CulturePass</Text>
-        <Text className="font-display text-lg leading-none text-gold-500">AU</Text>
+      <View className="gap-0.5">
+        <Text className="font-display text-lg leading-none text-ink">CulturePass</Text>
+        <Text className="font-heading text-[10px] uppercase leading-none tracking-[2px] text-ink/70">
+          Australia
+        </Text>
       </View>
     </Pressable>
   );
@@ -79,7 +81,7 @@ function HamburgerButton({ hasUnread, unread, onPress }: HamburgerButtonProps) {
         hasUnread ? "border-gold-500 bg-gold-100" : "border-pink-600 bg-pink-600/40 active:bg-pink-600/80",
       )}
     >
-      <Icon name="menu" size={20} color={hasUnread ? colors.goldDeep : colors.white} />
+      <Icon name="menu" size={20} color={hasUnread ? colors.goldDeep : colors.ink} />
       {hasUnread ? (
         <View className="absolute -right-1 -top-1 h-4 min-w-4 items-center justify-center rounded-pill border border-paper bg-gold-500 px-1">
           <Text className="font-heading text-[10px] leading-none text-ink">
@@ -121,7 +123,7 @@ function ActionCluster({
         accessibilityLabel={hasUnread ? `Notifications, ${unread} unread` : "Notifications"}
         className="relative h-10 w-10 items-center justify-center rounded-pill border border-pink-600 bg-pink-600/40 active:bg-pink-600/80"
       >
-        <Icon name="bell" size={19} color={colors.white} />
+        <Icon name="bell" size={19} color={colors.ink} />
         {hasUnread ? (
           <View className="absolute -right-1 -top-1 h-4 min-w-4 items-center justify-center rounded-pill border border-paper bg-gold-500 px-1">
             <Text className="font-heading text-[10px] leading-none text-ink">
@@ -358,7 +360,7 @@ function NavLink({ label, active, onPress }: { label: string; active: boolean; o
       accessibilityState={{ selected: active }}
       className="items-center gap-1.5 px-3 py-2"
     >
-      <Text variant="label" className={cn("font-heading text-sm", active ? "text-white" : "text-white/80 hover:text-white")}>
+      <Text variant="label" className={cn("font-heading text-sm", active ? "text-ink" : "text-ink/70 hover:text-ink")}>
         {label}
       </Text>
       <View className={cn("h-[3px] self-stretch rounded-pill", active ? "bg-gold-500" : "bg-transparent")} />
@@ -404,11 +406,11 @@ function Clock({ now, weather, compact }: { now: Date; weather?: Weather | null;
   if (compact) {
     return (
       <View className="flex-row items-center gap-2">
-        <Text variant="label" className="font-ui text-white">
+        <Text variant="label" className="font-ui text-ink">
           {time}
         </Text>
         {weather ? (
-          <Text variant="label" className="font-ui text-white">
+          <Text variant="label" className="font-ui text-ink">
             {weather.emoji} {weather.tempC}°
           </Text>
         ) : null}
@@ -419,21 +421,21 @@ function Clock({ now, weather, compact }: { now: Date; weather?: Weather | null;
     <View className="flex-row items-center gap-4">
       {weather ? (
         <View className="items-end">
-          <Text variant="caption" className="font-ui text-white">
+          <Text variant="caption" className="font-ui text-ink">
             {weather.emoji} {weather.tempC}°
           </Text>
           {weather.name ? (
-            <Text variant="overline" className="text-white/70" numberOfLines={1}>
+            <Text variant="overline" className="text-ink/60" numberOfLines={1}>
               {weather.name}
             </Text>
           ) : null}
         </View>
       ) : null}
       <View className="items-end">
-        <Text variant="caption" className="font-ui text-white">
+        <Text variant="caption" className="font-ui text-ink">
           {time}
         </Text>
-        <Text variant="overline" className="text-white/70">
+        <Text variant="overline" className="text-ink/60">
           {dateFmt.format(now)}
         </Text>
       </View>

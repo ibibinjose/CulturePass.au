@@ -141,12 +141,12 @@ export default function CouncilsDirectoryScreen() {
             <Pressable
               onPress={() => setStateFilter("ALL")}
               className={cn(
-                "rounded px-3 py-1.5 border active:opacity-85",
+                "h-10 items-center justify-center rounded-full border px-4 active:opacity-85",
                 stateFilter === "ALL" ? "border-ink bg-ink" : "border-linen/70 bg-card"
               )}
             >
-              <Text className={cn("text-xs font-heading", stateFilter === "ALL" ? "text-paper" : "text-ink-muted")}>
-                All States
+              <Text className={cn("text-xs font-heading", stateFilter === "ALL" ? "text-paper font-semibold" : "text-ink-muted")}>
+                All
               </Text>
             </Pressable>
             {AUSTRALIAN_STATES.map((s) => (
@@ -154,12 +154,12 @@ export default function CouncilsDirectoryScreen() {
                 key={s.code}
                 onPress={() => setStateFilter(s.code)}
                 className={cn(
-                  "rounded px-3 py-1.5 border active:opacity-85",
+                  "h-10 items-center justify-center rounded-full border px-4 active:opacity-85",
                   stateFilter === s.code ? "border-ink bg-ink" : "border-linen/70 bg-card"
                 )}
               >
-                <Text className={cn("text-xs font-heading", stateFilter === s.code ? "text-paper" : "text-ink-muted")}>
-                  {s.name}
+                <Text className={cn("text-xs font-heading", stateFilter === s.code ? "text-paper font-semibold" : "text-ink-muted")}>
+                  {s.code}
                 </Text>
               </Pressable>
             ))}
@@ -171,25 +171,30 @@ export default function CouncilsDirectoryScreen() {
           <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
             Location Type
           </Text>
-          <View className="flex-row border border-linen bg-card p-1 rounded-xl self-start gap-1">
-            <Pressable
-              onPress={() => setMetroFilter("ALL")}
-              className={cn("px-4 py-1.5 rounded-lg active:opacity-80", metroFilter === "ALL" ? "bg-sand" : "bg-transparent")}
-            >
-              <Text className="text-xs font-heading text-ink">All Types</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setMetroFilter("METRO")}
-              className={cn("px-4 py-1.5 rounded-lg active:opacity-80", metroFilter === "METRO" ? "bg-sand" : "bg-transparent")}
-            >
-              <Text className="text-xs font-heading text-ink">Metropolitan</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => setMetroFilter("REGIONAL")}
-              className={cn("px-4 py-1.5 rounded-lg active:opacity-80", metroFilter === "REGIONAL" ? "bg-sand" : "bg-transparent")}
-            >
-              <Text className="text-xs font-heading text-ink">Regional</Text>
-            </Pressable>
+          <View className="w-full md:max-w-[420px] flex-row border border-linen bg-card p-1 rounded-xl gap-1">
+            {([
+              { key: "ALL", label: "All" },
+              { key: "METRO", label: "Metro" },
+              { key: "REGIONAL", label: "Regional" },
+            ] as const).map(({ key, label }) => {
+              const on = metroFilter === key;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => setMetroFilter(key)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  className={cn(
+                    "flex-1 items-center justify-center py-2.5 rounded-lg active:opacity-80",
+                    on ? "bg-ink" : "bg-transparent",
+                  )}
+                >
+                  <Text className={cn("text-xs font-heading", on ? "text-paper font-semibold" : "text-ink-muted")}>
+                    {label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       </View>
