@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { qk } from "@/lib/query";
+import { getCurrentProfileId } from "@/features/auth/api";
 import type { Database } from "@/lib/supabase/database.types";
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -116,5 +117,123 @@ export function useDeleteAccount() {
       await supabase.auth.signOut();
     },
     onSuccess: () => qc.clear(),
+  });
+}
+
+export function useProfileFollowStatus(profileId: string) {
+  return useQuery({
+    queryKey: qk.profileFollows(profileId),
+    queryFn: async () => {
+      const currentId = await getCurrentProfileId().catch(() => null);
+
+      // Fetch total follower count.
+      const { count, error: countError } = await supabase
+        .from("profile_follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", profileId);
+
+      if (countError) throw countError;
+
+      let followed = false;
+      if (currentId) {
+        const { data, error: followError } = await supabase
+          .from("profile_follows")
+          .select("id")
+          .eq("follower_id", currentId)
+          .eq("following_id", profileId)
+          .maybeSingle();
+        if (followError) throw followError;
+        followed = !!data;
+      }
+
+      return { count: count ?? 0, followed };
+    },
+    enabled: !!profileId,
+  });
+}
+
+export function useToggleProfileFollow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ profileId, followed }: { profileId: string; followed: boolean }) => {
+      const currentId = await getCurrentProfileId();
+      if (!currentId) throw new Error("Must be signed in to follow a profile");
+
+      if (followed) {
+        const { error } = await supabase
+          .from("profile_follows")
+          .delete()
+          .eq("follower_id", currentId)
+          .eq("following_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("profile_follows")
+          .insert({ follower_id: currentId, following_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { profileId }) => {
+      qc.invalidateQueries({ queryKey: qk.profileFollows(profileId) });
+    },
+  });
+}
+
+export function useProfileSubscriptionStatus(profileId: string) {
+  return useQuery({
+    queryKey: qk.profileSubscriptions(profileId),
+    queryFn: async () => {
+      const currentId = await getCurrentProfileId().catch(() => null);
+
+      // Fetch total subscriber count.
+      const { count, error: countError } = await supabase
+        .from("profile_subscriptions")
+        .select("*", { count: "exact", head: true })
+        .eq("subscribed_to_id", profileId);
+
+      if (countError) throw countError;
+
+      let subscribed = false;
+      if (currentId) {
+        const { data, error: subError } = await supabase
+          .from("profile_subscriptions")
+          .select("id")
+          .eq("subscriber_id", currentId)
+          .eq("subscribed_to_id", profileId)
+          .maybeSingle();
+        if (subError) throw subError;
+        subscribed = !!data;
+      }
+
+      return { count: count ?? 0, subscribed };
+    },
+    enabled: !!profileId,
+  });
+}
+
+export function useToggleProfileSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ profileId, subscribed }: { profileId: string; subscribed: boolean }) => {
+      const currentId = await getCurrentProfileId();
+      if (!currentId) throw new Error("Must be signed in to subscribe to a profile");
+
+      if (subscribed) {
+        const { error } = await supabase
+          .from("profile_subscriptions")
+          .delete()
+          .eq("subscriber_id", currentId)
+          .eq("subscribed_to_id", profileId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("profile_subscriptions")
+          .insert({ subscriber_id: currentId, subscribed_to_id: profileId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, { profileId }) => {
+      qc.invalidateQueries({ queryKey: qk.profileSubscriptions(profileId) });
+    },
   });
 }

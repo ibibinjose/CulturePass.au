@@ -49,7 +49,7 @@ function Thread() {
     conversation?.hub?.images?.[0]?.url ??
     null;
   const otherName = iAmMember
-    ? conversation?.hub?.name ?? "Hub"
+    ? conversation?.hub?.name ?? "Page"
     : conversation?.member?.full_name || "Member";
   const otherUri = iAmMember ? hubLogo : conversation?.member?.avatar_url ?? null;
 
@@ -153,11 +153,18 @@ function Thread() {
               accessibilityRole="button"
               accessibilityLabel="Send"
               className={cn(
-                "h-12 w-12 items-center justify-center rounded-xl",
-                draft.trim() ? "bg-whatsapp active:bg-whatsapp-dark" : "bg-linen",
+                "h-12 w-12 items-center justify-center rounded-xl border transition-all duration-150",
+                draft.trim()
+                  ? "bg-gold-500 border-ink active:bg-gold-600 active:scale-95"
+                  : "bg-linen border-transparent opacity-50",
               )}
             >
-              <Icon name="send" size={20} color={draft.trim() ? "#FFFFFF" : colors.inkFaint} strokeWidth={2} />
+              <Icon
+                name="send"
+                size={18}
+                color={draft.trim() ? colors.ink : colors.inkFaint}
+                strokeWidth={2.2}
+              />
             </Pressable>
           </View>
         </View>

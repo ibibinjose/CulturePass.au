@@ -436,6 +436,64 @@ export interface Database {
           }
         ];
       };
+      profile_follows: {
+        Row: {
+          id: string;
+          follower_id: string;
+          following_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          follower_id: string;
+          following_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profile_follows"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "profile_follows_follower_id_fkey";
+            columns: ["follower_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profile_follows_following_id_fkey";
+            columns: ["following_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      profile_subscriptions: {
+        Row: {
+          id: string;
+          subscriber_id: string;
+          subscribed_to_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          subscriber_id: string;
+          subscribed_to_id: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["profile_subscriptions"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "profile_subscriptions_subscriber_id_fkey";
+            columns: ["subscriber_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profile_subscriptions_subscribed_to_id_fkey";
+            columns: ["subscribed_to_id"];
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
       ticket_orders: {
         Row: {
           id: string;
@@ -638,3 +696,5 @@ export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
 export type EventLikeRow = Database["public"]["Tables"]["event_likes"]["Row"];
 export type EventSaveRow = Database["public"]["Tables"]["event_saves"]["Row"];
 export type EventCohostRow = Database["public"]["Tables"]["event_cohosts"]["Row"];
+export type ProfileFollowRow = Database["public"]["Tables"]["profile_follows"]["Row"];
+export type ProfileSubscriptionRow = Database["public"]["Tables"]["profile_subscriptions"]["Row"];

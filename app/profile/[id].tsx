@@ -17,7 +17,14 @@ import {
   Icon,
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
-import { useMyProfile, useProfile } from "@/features/profiles/api";
+import {
+  useMyProfile,
+  useProfile,
+  useProfileFollowStatus,
+  useToggleProfileFollow,
+  useProfileSubscriptionStatus,
+  useToggleProfileSubscription,
+} from "@/features/profiles/api";
 import { PROFESSIONAL_CATEGORY_LABELS, type ProfessionalCategory } from "@/lib/constants";
 import { parsePreferences } from "@/lib/validation/profile";
 import { resolveLinks } from "@/lib/social";
@@ -27,6 +34,11 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const { data: profile, isLoading } = useProfile(id);
   const { data: me } = useMyProfile();
+
+  const { data: followStatus } = useProfileFollowStatus(profile?.id ?? "");
+  const { data: subStatus } = useProfileSubscriptionStatus(profile?.id ?? "");
+  const toggleFollow = useToggleProfileFollow();
+  const toggleSub = useToggleProfileSubscription();
 
   const isMe = !!profile && !!me && profile.id === me.id;
 
@@ -133,12 +145,82 @@ export default function PublicProfileScreen() {
           ) : null}
         </View>
 
+        {/* Stats Row */}
+        <View className="flex-row items-center justify-center gap-6 py-1">
+          <View className="items-center">
+            <Text variant="subheading" className="font-display text-lg text-ink">
+              {followStatus?.count ?? 0}
+            </Text>
+            <Text variant="overline" tone="faint" className="text-[10px]">
+              Followers
+            </Text>
+          </View>
+          <View className="h-6 w-px bg-linen" />
+          <View className="items-center">
+            <Text variant="subheading" className="font-display text-lg text-ink">
+              {subStatus?.count ?? 0}
+            </Text>
+            <Text variant="overline" tone="faint" className="text-[10px]">
+              Subscribers
+            </Text>
+          </View>
+        </View>
+
         {isMe ? (
           <View className="flex-row gap-3">
             <Button label="Edit profile" variant="outline" size="sm" onPress={() => router.push("/profile/edit")} />
             <Button label="Settings" variant="ghost" size="sm" onPress={() => router.push("/settings")} />
           </View>
-        ) : null}
+        ) : (
+          <View className="flex-row gap-3">
+            <Button
+              label={followStatus?.followed ? "Following" : "Follow"}
+              variant={followStatus?.followed ? "outline" : "primary"}
+              size="sm"
+              leftIcon={
+                <Icon
+                  name={followStatus?.followed ? "check" : "plus"}
+                  size={15}
+                  color={colors.ink}
+                />
+              }
+              loading={toggleFollow.isPending}
+              onPress={() => {
+                if (!me) {
+                  router.push("/sign-in");
+                  return;
+                }
+                toggleFollow.mutate({
+                  profileId: profile.id,
+                  followed: !!followStatus?.followed,
+                });
+              }}
+            />
+            <Button
+              label={subStatus?.subscribed ? "Subscribed" : "Subscribe"}
+              variant={subStatus?.subscribed ? "outline" : "whatsapp"}
+              size="sm"
+              leftIcon={
+                <Icon
+                  name={subStatus?.subscribed ? "check" : "bell"}
+                  size={15}
+                  color={colors.ink}
+                />
+              }
+              loading={toggleSub.isPending}
+              onPress={() => {
+                if (!me) {
+                  router.push("/sign-in");
+                  return;
+                }
+                toggleSub.mutate({
+                  profileId: profile.id,
+                  subscribed: !!subStatus?.subscribed,
+                });
+              }}
+            />
+          </View>
+        )}
 
         <View className="flex-row flex-wrap justify-center gap-3">
           <ShareButton

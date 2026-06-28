@@ -1,7 +1,7 @@
 import { Pressable, View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, BackButton, Card, Avatar, Divider, Icon } from "@/components/ui";
+import { Screen, Text, BackButton, Card, Avatar, Divider, Icon, EmptyCard, Badge } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { useMyProfile } from "@/features/profiles/api";
@@ -25,7 +25,7 @@ function Inbox() {
     <Screen maxWidth="form" contentClassName="pt-6">
       <BackButton fallbackHref="/" className="mb-5" />
 
-      <View className="gap-1">
+      <View className="gap-1 mb-6">
         <Text variant="overline" tone="pink">
           Inbox
         </Text>
@@ -43,7 +43,7 @@ function Inbox() {
           </Text>
         </Card>
       ) : conversations && conversations.length > 0 ? (
-        <Card padded={false} className="mt-8 px-5">
+        <Card padded={false} className="px-4 border border-linen rounded-2xl bg-card">
           {conversations.map((c, i) => (
             <View key={c.id}>
               {i > 0 ? <Divider /> : null}
@@ -56,16 +56,12 @@ function Inbox() {
           ))}
         </Card>
       ) : (
-        <Card className="mt-8 items-start gap-3">
-          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-sand">
-            <Icon name="chat" size={22} color={colors.inkMuted} />
-          </View>
-          <Text variant="subheading">No messages yet</Text>
-          <Text variant="caption" tone="muted">
-            Open a page and tap “Message organiser” to start a conversation.
-          </Text>
-          <Button label="Discover pages" variant="secondary" size="sm" onPress={() => router.push("/")} />
-        </Card>
+        <EmptyCard
+          title="No messages yet"
+          body="Open a page and tap “Message organiser” to start a conversation."
+          action="Discover pages"
+          onPress={() => router.push("/")}
+        />
       )}
     </Screen>
   );
@@ -92,18 +88,27 @@ function ConversationRow({
   const uri = iAmMember ? hubLogo : conversation.member?.avatar_url ?? null;
 
   return (
-    <Pressable onPress={onPress} className="flex-row items-center gap-3.5 py-4 active:opacity-60">
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3.5 py-4 active:bg-sand/35 rounded-xl px-2 -mx-2 transition-colors duration-150"
+    >
       <Avatar name={name} uri={uri} size={48} />
-      <View className="flex-1">
-        <Text variant="label" className="text-base" numberOfLines={1}>
-          {name}
-        </Text>
-        <Text variant="caption" tone="faint">
-          {role}
+      <View className="flex-1 min-w-0">
+        <View className="flex-row items-center gap-2">
+          <Text variant="label" className="text-base font-heading text-ink" numberOfLines={1}>
+            {name}
+          </Text>
+          <Badge
+            label={role}
+            variant={iAmMember ? "ochre" : "neutral"}
+          />
+        </View>
+        <Text variant="caption" tone="faint" className="mt-1 text-xs" numberOfLines={1}>
+          {conversation.last_message?.body || "No messages yet"}
         </Text>
       </View>
-      <View className="items-end gap-1">
-        <Text variant="overline" tone="faint">
+      <View className="items-end gap-1.5 justify-center">
+        <Text variant="overline" tone="faint" className="text-[10px]">
           {timeAgo(conversation.last_message_at)}
         </Text>
         <Icon name="chevron-right" size={16} color={colors.inkFaint} />
