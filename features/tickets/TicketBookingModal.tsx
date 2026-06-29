@@ -1,10 +1,31 @@
-import { useState, useMemo } from "react";
-import { Modal, ScrollView, View, Pressable, ActivityIndicator, useWindowDimensions } from "react-native";
+import { useState, useMemo, useEffect } from "react";
+import { Modal, ScrollView, View, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { Button, Card, Icon, Text, Badge } from "@/components/ui";
 import { colors } from "@/lib/theme";
-import { useEventTicketTypes, useBuyTicket } from "./api";
+import { useEventTicketTypes, useBuyTicket, useTakenSeats } from "./api";
 import { cn } from "@/lib/utils/cn";
+
+/**
+ * Parse the event's `seating_layout` jsonb into row labels + seats per row.
+ * Falls back to a 5×8 grid when the event hasn't configured a layout.
+ * Accepts `{ rows: string[] | number, seatsPerRow: number }`.
+ */
+function parseLayout(layout: unknown): { rowNames: string[]; seatsPerRow: number } {
+  const fallbackRows = ["A", "B", "C", "D", "E"];
+  const l = (layout ?? {}) as { rows?: unknown; seatsPerRow?: unknown };
+  const seatsPerRow = Math.max(1, Math.min(20, Number(l.seatsPerRow) || 8));
+
+  let rowNames: string[];
+  if (Array.isArray(l.rows) && l.rows.length > 0) {
+    rowNames = l.rows.map((r) => String(r));
+  } else if (typeof l.rows === "number" && l.rows > 0) {
+    rowNames = Array.from({ length: Math.min(26, l.rows) }, (_, i) => String.fromCharCode(65 + i));
+  } else {
+    rowNames = fallbackRows;
+  }
+  return { rowNames, seatsPerRow };
+}
 
 interface TicketBookingModalProps {
   visible: boolean;
@@ -24,9 +45,9 @@ export function TicketBookingModal({
   eventTitle,
   eventDates = [],
   hasAssignedSeating = false,
+  seatingLayout,
   venueMapUrl,
 }: TicketBookingModalProps) {
-  const { width } = useWindowDimensions();
   const { data: ticketTypes, isLoading: typesLoading } = useEventTicketTypes(eventId);
   const buyTicket = useBuyTicket();
 
@@ -52,22 +73,28 @@ export function TicketBookingModal({
     }, 0);
   }, [ticketTypes, quantities]);
 
-  // Seating grid generator (occupied seats determined deterministically from event ID)
+  // Real occupancy: seats already held/sold for this event + chosen date.
+  const { data: takenSeats = [] } = useTakenSeats(
+    hasAssignedSeating ? eventId : "",
+    selectedDate || null,
+  );
+
+  // Drop any selected seat that someone else just booked.
+  useEffect(() => {
+    setSelectedSeats((prev) => prev.filter((s) => !takenSeats.includes(s)));
+  }, [takenSeats]);
+
+  // Seating grid built from the event's seating_layout (falls back to 5×8).
   const seatingGrid = useMemo(() => {
-    const rows = ["A", "B", "C", "D", "E"];
-    const seatsPerRow = 8;
-    return rows.map((rowName) => {
-      const seats = [];
-      for (let i = 1; i <= seatsPerRow; i++) {
-        const id = `${rowName}-${i}`;
-        // Deterministic occupancy
-        const charSum = eventId.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-        const isOccupied = (charSum + rowName.charCodeAt(0) * i) % 3 === 0;
-        seats.push({ id, isOccupied });
-      }
-      return { name: rowName, seats };
-    });
-  }, [eventId]);
+    const { rowNames, seatsPerRow } = parseLayout(seatingLayout);
+    return rowNames.map((rowName) => ({
+      name: rowName,
+      seats: Array.from({ length: seatsPerRow }, (_, idx) => {
+        const id = `${rowName}-${idx + 1}`;
+        return { id, isOccupied: takenSeats.includes(id) };
+      }),
+    }));
+  }, [seatingLayout, takenSeats]);
 
   const updateQuantity = (id: string, delta: number) => {
     setErrorMessage(null);
@@ -104,15 +131,24 @@ export function TicketBookingModal({
     }
 
     try {
-      // Find the first selected ticket type ID (or fallback to general)
-      const ticketTypeId = Object.keys(quantities).find((id) => (quantities[id] || 0) > 0);
-      await buyTicket.mutateAsync({
-        eventId,
-        quantity: totalTickets,
-        ticketTypeId,
-        selectedDate: selectedDate || undefined,
-        seatNumbers: hasAssignedSeating ? selectedSeats : undefined,
-      });
+      const seatNumbers = hasAssignedSeating ? selectedSeats : undefined;
+      const date = selectedDate || undefined;
+
+      if (ticketTypes && ticketTypes.length > 0) {
+        // Multi-type cart — server resolves prices + reserves seats.
+        const items = ticketTypes
+          .map((type) => ({ ticketTypeId: type.id, quantity: quantities[type.id] || 0 }))
+          .filter((item) => item.quantity > 0);
+        await buyTicket.mutateAsync({ eventId, items, selectedDate: date, seatNumbers });
+      } else {
+        // Legacy single-price event (no ticket types) — send a flat quantity.
+        await buyTicket.mutateAsync({
+          eventId,
+          quantity: totalTickets,
+          selectedDate: date,
+          seatNumbers,
+        });
+      }
     } catch (e: any) {
       setErrorMessage(e.message || "Checkout failed. Please try again.");
     }
@@ -157,7 +193,10 @@ export function TicketBookingModal({
                   return (
                     <Pressable
                       key={dateStr}
-                      onPress={() => setSelectedDate(dateStr)}
+                      onPress={() => {
+                        setSelectedDate(dateStr);
+                        setSelectedSeats([]);
+                      }}
                       className={cn(
                         "px-4 py-3 rounded-xl border-2 active:opacity-75 items-center justify-center min-w-[100px]",
                         isSelected ? "border-ink bg-ink" : "border-linen/70 bg-card"

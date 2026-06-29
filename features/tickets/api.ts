@@ -25,28 +25,35 @@ function openCheckout(url: string) {
   }
 }
 
+/** One line of a multi-type cart sent to the checkout function. */
+export type CartItem = { ticketTypeId: string; quantity: number };
+
 /**
  * Start a Stripe Checkout for a paid event ticket. Calls the `tickets-checkout`
  * Edge Function (which holds the secret key) and opens the returned URL.
+ *
+ * Pass `items` for events with ticket tiers (prices/seats are resolved and
+ * reserved server-side). Pass `quantity` only for legacy single-price events
+ * that have no ticket types.
  */
 export function useBuyTicket() {
   return useMutation({
     mutationFn: async ({
       eventId,
-      quantity = 1,
-      ticketTypeId,
+      quantity,
+      items,
       selectedDate,
       seatNumbers,
     }: {
       eventId: string;
       quantity?: number;
-      ticketTypeId?: string;
+      items?: CartItem[];
       selectedDate?: string;
       seatNumbers?: string[];
     }) => {
       const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
         "tickets-checkout",
-        { body: { eventId, quantity, ticketTypeId, selectedDate, seatNumbers } },
+        { body: { eventId, quantity, items, selectedDate, seatNumbers } },
       );
 
       if (error) {
@@ -125,6 +132,28 @@ export function useEventTicketTypes(eventId: string) {
         .select("*")
         .eq("event_id", eventId)
         .order("price_cents", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+/**
+ * Seats already held or sold for an event + show date, for rendering occupancy
+ * on the seat chart. Backed by the `get_taken_seats` RPC, which returns only
+ * seat labels (no buyer data), so it works for any signed-in buyer.
+ */
+export function useTakenSeats(eventId: string, selectedDate?: string | null) {
+  return useQuery({
+    queryKey: ["taken-seats", eventId, selectedDate ?? "none"],
+    enabled: !!eventId,
+    // Refresh periodically so concurrent bookings surface while the buyer picks.
+    refetchInterval: 15000,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await supabase.rpc("get_taken_seats", {
+        p_event_id: eventId,
+        p_selected_date: selectedDate ?? null,
+      });
       if (error) throw error;
       return data ?? [];
     },

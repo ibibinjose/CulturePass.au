@@ -523,6 +523,7 @@ export interface Database {
           ticket_type_id: string | null;
           selected_date: string | null;
           seat_numbers: string[] | null;
+          line_items: Json;
         };
         Insert: {
           id?: string;
@@ -544,6 +545,7 @@ export interface Database {
           ticket_type_id?: string | null;
           selected_date?: string | null;
           seat_numbers?: string[] | null;
+          line_items?: Json;
         };
         Update: Partial<Database["public"]["Tables"]["ticket_orders"]["Insert"]>;
         Relationships: [
@@ -679,6 +681,10 @@ export interface Database {
       delete_my_account: {
         Args: Record<string, never>;
         Returns: undefined;
+      };
+      get_taken_seats: {
+        Args: { p_event_id: string; p_selected_date: string | null };
+        Returns: string[];
       };
     };
     Enums: {

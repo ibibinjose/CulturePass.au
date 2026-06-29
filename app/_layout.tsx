@@ -22,6 +22,8 @@ import { AuthProvider } from "@/features/auth/AuthProvider";
 import {
   BottomTabBar,
   TopBar,
+  ToastProvider,
+  ConfirmProvider,
 } from "@/components/ui";
 import { OnboardingGate } from "@/features/onboarding/OnboardingGate";
 import { NotificationsRealtime } from "@/features/notifications/NotificationsRealtime";
@@ -49,6 +51,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <ToastProvider>
+            <ConfirmProvider>
             <StatusBar style="dark" />
             <View style={{ flex: 1, backgroundColor: colors.paper }}>
               <TopBar />
@@ -111,6 +115,8 @@ export default function RootLayout() {
               <OnboardingGate />
               <NotificationsRealtime />
             </View>
+            </ConfirmProvider>
+            </ToastProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

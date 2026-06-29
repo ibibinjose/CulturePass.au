@@ -6,6 +6,7 @@ import { Text } from "./Text";
 import { Input } from "./Input";
 import { Icon } from "./Icon";
 import { Divider } from "./Divider";
+import { useToast } from "./Toast";
 import { cn } from "@/lib/utils/cn";
 import { colors } from "@/lib/theme";
 import { AUSTRALIAN_STATES, type StateCode } from "@/lib/constants";
@@ -53,6 +54,7 @@ export function LocationPicker({
   className?: string;
 }) {
   const insets = useSafeAreaInsets();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [stateSel, setStateSel] = useState<StateCode | undefined>(value.state);
   const [search, setSearch] = useState("");
@@ -71,7 +73,7 @@ export function LocationPicker({
 
   const detectLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      toast.error("Geolocation isn't supported by your browser.");
       return;
     }
     setDetecting(true);
@@ -123,14 +125,14 @@ export function LocationPicker({
           });
         } catch (err) {
           console.error(err);
-          alert("Could not automatically resolve your local council. Please select manually.");
+          toast.error("Couldn't detect your council — please choose manually.");
         } finally {
           setDetecting(false);
         }
       },
       (error) => {
         console.error(error);
-        alert("Permission denied or location unavailable.");
+        toast.error("Location permission denied or unavailable.");
         setDetecting(false);
       }
     );
