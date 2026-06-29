@@ -11,6 +11,7 @@ module.exports = [
       "dist/**",
       "supabase/functions/**",
       "amplify/**",
+      ".amplify/**",
       "scripts/**",
     ],
   },

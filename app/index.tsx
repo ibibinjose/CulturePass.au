@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { supabase } from "@/lib/supabase/client";
 
 import {
   Screen,
@@ -17,6 +16,7 @@ import {
   Carousel,
   SectionHeader,
   EmptyCard,
+  useToast,
 } from "@/components/ui";
 import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
 import { colors } from "@/lib/theme";
@@ -29,6 +29,7 @@ import { useEvents } from "@/features/events/api";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { parsePreferences } from "@/lib/validation/profile";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
+import { useCouncilDetails, useDetectCouncil } from "@/features/reference/api";
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABELS,
@@ -105,113 +106,21 @@ export default function DiscoverScreen() {
   const query = search.trim();
 
   const [homeTab, setHomeTab] = useState<"discover" | "council">("discover");
-  const [detecting, setDetecting] = useState(false);
-  const [councilDetails, setCouncilDetails] = useState<any>(null);
-  const [councilLoading, setCouncilLoading] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  const STATE_NAME_TO_CODE: Record<string, string> = {
-    "new south wales": "NSW",
-    "victoria": "VIC",
-    "queensland": "QLD",
-    "western australia": "WA",
-    "south australia": "SA",
-    "tasmania": "TAS",
-    "australian capital territory": "ACT",
-    "northern territory": "NT",
-  };
+  const toast = useToast();
+  const { detect, detecting } = useDetectCouncil();
+  const { data: councilDetails, isLoading: councilLoading } = useCouncilDetails(
+    location.councilId ?? undefined,
+  );
 
-  const detectLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
+  const handleDetect = async () => {
+    try {
+      setLocation(await detect());
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't detect your location.");
     }
-    setDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`
-          );
-          if (!res.ok) throw new Error("reverse-geocode");
-          const geo = await res.json();
-          
-          const stateName = geo.address?.state?.toLowerCase();
-          const county = geo.address?.county || geo.address?.city_district || geo.address?.city;
-          
-          if (!stateName || !county) {
-            throw new Error("incomplete-address");
-          }
-
-          const stateCode = STATE_NAME_TO_CODE[stateName];
-          if (!stateCode) {
-            throw new Error("unsupported-state");
-          }
-
-          const { data: councilsData } = await supabase
-            .from("australian_councils")
-            .select("*")
-            .eq("state_code", stateCode);
-
-          if (!councilsData || councilsData.length === 0) {
-            throw new Error("no-councils-in-state");
-          }
-
-          const cleanCounty = county.toLowerCase().replace("council", "").replace("city of", "").trim();
-          const matchedCouncil = councilsData.find((c) => {
-            const cleanName = c.name.toLowerCase().replace("council", "").replace("city of", "").trim();
-            return cleanName.includes(cleanCounty) || cleanCounty.includes(cleanName);
-          }) || councilsData[0];
-
-          if (!matchedCouncil) {
-            throw new Error("no-matched-council");
-          }
-
-          setLocation({
-            state: stateCode as StateCode,
-            councilId: matchedCouncil.id,
-            label: matchedCouncil.name,
-          });
-        } catch (err) {
-          console.error(err);
-          alert("Could not automatically resolve your local council. Please select manually.");
-        } finally {
-          setDetecting(false);
-        }
-      },
-      (error) => {
-        console.error(error);
-        alert("Permission denied or location unavailable.");
-        setDetecting(false);
-      }
-    );
   };
-
-  useEffect(() => {
-    if (!location.councilId) {
-      setCouncilDetails(null);
-      return;
-    }
-    let active = true;
-    setCouncilLoading(true);
-    supabase
-      .from("australian_councils")
-      .select("id, name, slug, state_code, is_metro, population, traditional_custodians")
-      .eq("id", location.councilId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active && data) {
-          setCouncilDetails(data);
-        }
-        if (active) {
-          setCouncilLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [location.councilId]);
 
   const { data: councilEvents, isLoading: councilEventsLoading } = useEvents({
     councilId: location.councilId ?? undefined,
@@ -840,7 +749,7 @@ export default function DiscoverScreen() {
                 variant="primary"
                 size="sm"
                 leftIcon={detecting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icon name="map-pin" size={14} color="#FFFFFF" />}
-                onPress={detectLocation}
+                onPress={handleDetect}
                 disabled={detecting}
               />
             </Card>

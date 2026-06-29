@@ -15,6 +15,7 @@ export const queryClient = new QueryClient({
 export const qk = {
   states: ["states"] as const,
   councils: (state?: string) => ["councils", state ?? "all"] as const,
+  councilDetails: (id: string) => ["council-details", id] as const,
   hubs: (filters?: object) => ["hubs", filters ?? {}] as const,
   hubStateCounts: ["hub-state-counts"] as const,
   hub: (slug: string) => ["hub", slug] as const,
