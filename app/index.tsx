@@ -14,7 +14,6 @@ import {
   Icon,
   LocationPicker,
   ANYWHERE,
-  MultiSelectFilter,
   Carousel,
   SectionHeader,
   EmptyCard,
@@ -25,6 +24,7 @@ import { cn } from "@/lib/utils/cn";
 import { useHubs } from "@/features/hubs/api";
 import { EventCard } from "@/features/events/EventCard";
 import { FeaturedEventCard } from "@/features/events/FeaturedEventCard";
+import { CohostInvitationsBanner } from "@/features/events/CohostInvitationsBanner";
 import { useEvents } from "@/features/events/api";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { parsePreferences } from "@/lib/validation/profile";
@@ -108,6 +108,7 @@ export default function DiscoverScreen() {
   const [detecting, setDetecting] = useState(false);
   const [councilDetails, setCouncilDetails] = useState<any>(null);
   const [councilLoading, setCouncilLoading] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   const STATE_NAME_TO_CODE: Record<string, string> = {
     "new south wales": "NSW",
@@ -276,9 +277,16 @@ export default function DiscoverScreen() {
   const { data: events } = useEvents(eventFilters);
   const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(hubFilters);
 
+  const now = new Date();
+  const activeEvents = (events ?? []).filter((e) => {
+    if (!e.start_time) return false;
+    const eventTime = e.end_time ? new Date(e.end_time) : new Date(e.start_time);
+    return eventTime >= now;
+  });
+
   const categoryEvents = categories.length
-    ? (events ?? []).filter((e) => categories.includes(e.type))
-    : events ?? [];
+    ? activeEvents.filter((e) => categories.includes(e.type))
+    : activeEvents;
 
   const interestSet = lowerSet(activeInterests);
   const matches = (haystack: (string | null | undefined)[]) =>
@@ -380,42 +388,169 @@ export default function DiscoverScreen() {
         </View>
       </View>
 
-      {/* Clean Horizontal Filter Bar */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ alignItems: "center", gap: 6, paddingRight: 20 }}
-        className="-mx-gutter px-gutter mt-5"
-      >
-        <MultiSelectFilter
-          label="Interests"
-          icon="sparkle"
-          options={INTEREST_OPTIONS as readonly string[]}
-          selected={interests}
-          onChange={setInterests}
-        />
-        <MultiSelectFilter
-          label="Category"
-          icon="filter"
-          options={EVENT_TYPES as readonly string[]}
-          labels={EVENT_TYPE_LABELS as Record<string, string>}
-          selected={categories as string[]}
-          onChange={(next) => setCategories(next as EventType[])}
-        />
-        <MultiSelectFilter
-          label="Page type"
-          icon="grid"
-          options={HUB_TYPES as readonly string[]}
-          labels={HUB_TYPE_LABELS as Record<string, string>}
-          selected={hubTypes as string[]}
-          onChange={(next) => setHubTypes(next as HubType[])}
-        />
+      {/* Search Filter Toggle and Collapsible Panel */}
+      <View className="flex-row items-center gap-3 mt-5 w-full max-w-4xl">
+        <Pressable
+          onPress={() => setShowFilterPanel(!showFilterPanel)}
+          className={cn(
+            "h-11 px-5 rounded-full border-2 flex-row items-center gap-2 active:opacity-75 shadow-sm",
+            showFilterPanel || activeFilterCount > 0 ? "border-ink bg-ink" : "border-linen bg-card"
+          )}
+        >
+          <Icon name="filter" size={15} color={showFilterPanel || activeFilterCount > 0 ? colors.paper : colors.ink} />
+          <Text className={cn("text-xs font-heading font-semibold", showFilterPanel || activeFilterCount > 0 ? "text-paper" : "text-ink")}>
+            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
+          </Text>
+        </Pressable>
+
         <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
-        
+
         {activeFilterCount > 0 ? (
-          <Button label="Clear filters" variant="outline" size="sm" className="h-8 px-2.5 rounded-lg" onPress={clearFilters} />
+          <Button label="Clear all" variant="outline" size="sm" className="h-9 px-3 rounded-full" onPress={clearFilters} />
         ) : null}
-      </ScrollView>
+      </View>
+
+      {showFilterPanel && (
+        <View className="w-full max-w-4xl border-2 border-ink bg-card rounded-3xl p-5 mt-4 gap-5 shadow-card">
+          <View className="flex-row items-center justify-between border-b border-linen pb-2.5">
+            <Text className="font-heading text-sm font-bold text-ink">Discover Filters</Text>
+            <Pressable onPress={() => setShowFilterPanel(false)} className="active:opacity-75">
+              <Text className="text-xs font-semibold text-ink-muted">Hide panel</Text>
+            </Pressable>
+          </View>
+
+          {/* Interests Section */}
+          <View className="gap-2">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="sparkle" size={13} color={colors.inkMuted} />
+              <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Interests</Text>
+            </View>
+            <View className="flex-row flex-wrap gap-1.5">
+              {INTEREST_OPTIONS.map((opt) => {
+                const on = interests.includes(opt);
+                return (
+                  <Pressable
+                    key={opt}
+                    onPress={() => setInterests(cur => cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt])}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
+                    )}
+                  >
+                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
+                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                      {opt}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Categories Section */}
+          <View className="gap-2">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="filter" size={13} color={colors.inkMuted} />
+              <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Categories</Text>
+            </View>
+            <View className="flex-row flex-wrap gap-1.5">
+              {EVENT_TYPES.map((type) => {
+                const on = categories.includes(type);
+                return (
+                  <Pressable
+                    key={type}
+                    onPress={() => toggleCategory(type)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
+                    )}
+                  >
+                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
+                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                      {EVENT_TYPE_LABELS[type]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Page Type Section */}
+          <View className="gap-2">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="grid" size={13} color={colors.inkMuted} />
+              <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Page Types</Text>
+            </View>
+            <View className="flex-row flex-wrap gap-1.5">
+              {HUB_TYPES.map((type) => {
+                const on = hubTypes.includes(type);
+                return (
+                  <Pressable
+                    key={type}
+                    onPress={() => toggleHubType(type)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
+                    )}
+                  >
+                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
+                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                      {HUB_TYPE_LABELS[type]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Active Filter Chips Row */}
+      {activeFilterCount > 0 && (
+        <View className="flex-row flex-wrap items-center gap-2 mt-3 w-full max-w-4xl">
+          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted mr-1">Active Filters:</Text>
+          {interests.map((opt) => (
+            <Pressable
+              key={`active-int-${opt}`}
+              onPress={() => setInterests(cur => cur.filter(x => x !== opt))}
+              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+            >
+              <Text className="text-xs text-ink">{opt}</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          ))}
+          {categories.map((type) => (
+            <Pressable
+              key={`active-cat-${type}`}
+              onPress={() => toggleCategory(type)}
+              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+            >
+              <Text className="text-xs text-ink">{EVENT_TYPE_LABELS[type]}</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          ))}
+          {hubTypes.map((type) => (
+            <Pressable
+              key={`active-hub-${type}`}
+              onPress={() => toggleHubType(type)}
+              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+            >
+              <Text className="text-xs text-ink">{HUB_TYPE_LABELS[type]}</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          ))}
+          {firstNations && (
+            <Pressable
+              key="active-fn"
+              onPress={() => setFirstNations(false)}
+              className="bg-country-ochre/15 px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-country-ochre/30 active:opacity-75"
+            >
+              <Text className="text-xs text-country-red font-semibold">First Nations Spotlight</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {/* Swiss Text-Only Category navigation list */}
       <ScrollView
@@ -466,6 +601,7 @@ export default function DiscoverScreen() {
 
       {homeTab === "discover" ? (
         <>
+          <CohostInvitationsBanner />
           {/* Curated featured slider */}
           {featured.length > 0 ? (
             <View className="mt-6 gap-4">
@@ -532,155 +668,155 @@ export default function DiscoverScreen() {
             </View>
           ) : null}
 
-          {/* Main Two-Column Layout */}
-          <View className="mt-8 gap-8 lg:flex-row lg:items-start lg:gap-10">
+          {/* Main Full-Width Feed Layout */}
+          <View className="mt-8 gap-8 w-full">
             
-            {/* Left Column: Grouped Calendar List (Luma Style) */}
-            <View className="flex-1 gap-6">
-              
-              {/* For You events feed */}
-              {hasForYou ? (
-                <View className="gap-3">
-                  <SectionHeader eyebrow="Tailored to you" title="Recommended" />
-                  <View className="gap-3 md:flex-row md:flex-wrap">
-                    {forYouEvents.slice(0, 4).map((event) => (
-                      <View key={event.id} className="w-full md:w-[calc(50%-6px)]">
-                        <EventCard event={event} />
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {/* Eventbrite-Style Grid listing */}
-              {comingUp.length > 0 ? (
-                <View className="gap-6">
-                  <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3 mt-2">
-                    <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Upcoming events</Text>
-                    <Pressable onPress={() => router.push("/calendar")} className="active:opacity-75">
-                      <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">Calendar view</Text>
-                    </Pressable>
-                  </View>
-
-                  <View className="flex-row flex-wrap gap-5 mt-2">
-                    {comingUp.map((event) => (
-                      <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(50%-10px)]">
-                        <EventCard event={event} />
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : (
-                <EmptyCard
-                  title="No events found"
-                  body="Try clearing some search filters or changing locations."
-                  action="Add event"
-                  onPress={() => router.push("/create/event")}
-                />
-              )}
-
-            </View>
-
-            {/* Right Column: Calendars & Hubs List (Luma Style) */}
-            <View className="w-full lg:w-[320px] gap-6">
+            {/* For You events feed */}
+            {hasForYou ? (
               <View className="gap-3">
-                <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3">
-                  <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Active hubs</Text>
-                  <Pressable onPress={() => router.push("/my-hubs")} className="active:opacity-75">
-                    <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">My hubs</Text>
+                <SectionHeader eyebrow="Tailored to you" title="Recommended" />
+                <View className="flex-row flex-wrap gap-5 mt-2">
+                  {forYouEvents.slice(0, 4).map((event) => (
+                    <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]">
+                      <EventCard event={event} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* EventGrid listing */}
+            {comingUp.length > 0 ? (
+              <View className="gap-6">
+                <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3 mt-2">
+                  <Text variant="heading" className="font-heading text-xl text-ink tracking-tight font-extrabold">Upcoming events</Text>
+                  <Pressable onPress={() => router.push("/calendar")} className="active:opacity-75">
+                    <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">Calendar view</Text>
                   </Pressable>
                 </View>
 
-                {/* Quick Hub Purpose scroll */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerClassName="gap-2 pr-4 pt-1"
-                  className="-mx-gutter px-gutter mt-2"
-                >
-                  {HUB_TYPES.map((type) => {
-                    const on = hubTypes.includes(type);
+                <View className="flex-row flex-wrap gap-5 mt-2">
+                  {comingUp.map((event) => (
+                    <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]">
+                      <EventCard event={event} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <EmptyCard
+                title="No events found"
+                body="Try clearing some search filters or changing locations."
+                action="Add event"
+                onPress={() => router.push("/create/event")}
+              />
+            )}
+
+            {/* Active Hubs Section */}
+            <View className="gap-6 mt-8 border-t-2 border-ink pt-6">
+              <View className="flex-row items-baseline justify-between">
+                <Text variant="heading" className="font-heading text-xl text-ink tracking-tight font-extrabold">Active hubs</Text>
+                <Pressable onPress={() => router.push("/my-hubs")} className="active:opacity-75">
+                  <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">My hubs</Text>
+                </Pressable>
+              </View>
+
+              {/* Hub Type Filters */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerClassName="gap-2 pr-4 pt-1"
+                className="-mx-gutter px-gutter mt-2"
+              >
+                {HUB_TYPES.map((type) => {
+                  const on = hubTypes.includes(type);
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() => toggleHubType(type)}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 active:opacity-85",
+                        on ? "border-ink bg-ink" : "border-linen/70 bg-card"
+                      )}
+                    >
+                      <Text className={cn("text-[9px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
+                        {HUB_TYPE_LABELS[type].split(" ")[0]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {hubsLoading ? (
+                <Card className="p-4 items-center"><Text variant="caption" tone="faint">Loading hubs...</Text></Card>
+              ) : hubsError ? (
+                <Card className="p-4 items-center"><Text variant="caption" tone="muted">Could not load hubs.</Text></Card>
+              ) : hubResults.length > 0 ? (
+                <View className="flex-row flex-wrap gap-5 mt-2">
+                  {hubResults.map((hub) => {
+                    const images = (hub.images ?? []).filter((img: any) => img && img.url);
+                    const logoUrl =
+                      images.find((img: any) => img.type === "logo")?.url ??
+                      images.find((img: any) => img.type !== "logo")?.url ??
+                      images[0]?.url ??
+                      null;
+                    const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
+
                     return (
-                      <Pressable
-                        key={type}
-                        onPress={() => toggleHubType(type)}
-                        className={cn(
-                          "rounded-full border px-3 py-1.5 active:opacity-85",
-                          on ? "border-ink bg-ink" : "border-linen/70 bg-card"
-                        )}
-                      >
-                        <Text className={cn("text-[9px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
-                          {HUB_TYPE_LABELS[type].split(" ")[0]}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
-                {/* Hubs Listing */}
-                {hubsLoading ? (
-                  <Card className="p-4 items-center"><Text variant="caption" tone="faint">Loading hubs...</Text></Card>
-                ) : hubsError ? (
-                  <Card className="p-4 items-center"><Text variant="caption" tone="muted">Could not load hubs.</Text></Card>
-                ) : hubResults.length > 0 ? (
-                  <View className="gap-1 mt-2">
-                    {hubResults.map((hub) => {
-                      const images = (hub.images ?? []).filter((img: any) => img && img.url);
-                      const logoUrl =
-                        images.find((img: any) => img.type === "logo")?.url ??
-                        images.find((img: any) => img.type !== "logo")?.url ??
-                        images[0]?.url ??
-                        null;
-                      const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
-
-                      return (
+                      <View key={hub.slug} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]">
                         <Pressable
-                          key={hub.slug}
                           onPress={() => router.push(`/hub/${hub.slug}`)}
-                          className="flex-row items-center gap-3 py-2.5 border-b border-linen/15 active:opacity-75"
+                          className="bg-card border border-linen p-4 rounded-2xl h-full justify-between active:opacity-75 shadow-sm"
                         >
-                          {logoUrl ? (
-                            <Image
-                              source={{ uri: logoUrl }}
-                              style={{ width: 36, height: 36, borderRadius: 18 }}
-                              contentFit="cover"
-                            />
-                          ) : (
-                            <View className="h-9 w-9 items-center justify-center rounded-full bg-sand">
-                              <Text className="font-heading text-sm text-ink-muted">
-                                {hub.name.charAt(0).toUpperCase()}
+                          <View className="flex-row items-center gap-3">
+                            {logoUrl ? (
+                              <Image
+                                source={{ uri: logoUrl }}
+                                style={{ width: 44, height: 44, borderRadius: 22 }}
+                                contentFit="cover"
+                              />
+                            ) : (
+                              <View className="h-11 w-11 items-center justify-center rounded-full bg-sand">
+                                <Text className="font-heading text-lg text-ink-muted">
+                                  {hub.name.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                            
+                            <View className="flex-1 min-w-0">
+                              <View className="flex-row items-center gap-1">
+                                <Text className="text-sm font-heading text-ink truncate font-semibold">{hub.name}</Text>
+                                {hub.indigenous_led && (
+                                  <View className="h-3.5 w-3.5 rounded-full bg-country-ochre items-center justify-center">
+                                    <View className="h-2 w-2 rounded-full bg-country-red" />
+                                  </View>
+                                )}
+                              </View>
+                              <Text className="text-[10px] text-ink-faint mt-0.5 truncate">
+                                {HUB_TYPE_LABELS[hub.type]}
                               </Text>
                             </View>
-                          )}
-                          
-                          <View className="flex-1 min-w-0">
-                            <View className="flex-row items-center gap-1">
-                              <Text className="text-xs font-heading text-ink truncate">{hub.name}</Text>
-                              {hub.indigenous_led && (
-                                <View className="h-3 w-3 rounded-full bg-country-ochre items-center justify-center">
-                                  <View className="h-1.5 w-1.5 rounded-full bg-country-red" />
-                                </View>
-                              )}
-                            </View>
-                            <Text className="text-[10px] text-ink-faint mt-0.5 truncate">
-                              {HUB_TYPE_LABELS[hub.type]} · {place || "Australia"}
-                            </Text>
                           </View>
-                          
-                          <Icon name="arrow-right" size={13} color={colors.inkFaint} />
+
+                          <View className="flex-row items-center justify-between mt-4 pt-3 border-t border-linen/30">
+                            <Text className="text-[10px] text-ink-muted truncate flex-1">
+                              {place || "Australia"}
+                            </Text>
+                            <Icon name="arrow-right" size={14} color={colors.inkFaint} />
+                          </View>
                         </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <EmptyCard
-                    title="No hubs matching"
-                    body="Try modifying your state or category filters."
-                    action="Create a page"
-                    onPress={() => router.push("/create/hub")}
-                  />
-                )}
-              </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <EmptyCard
+                  title="No hubs matching"
+                  body="Try modifying your state or category filters."
+                  action="Create a page"
+                  onPress={() => router.push("/create/hub")}
+                />
+              )}
             </View>
 
           </View>

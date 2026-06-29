@@ -31,6 +31,14 @@ export interface LocationValue {
 
 export const ANYWHERE: LocationValue = { label: "Anywhere" };
 
+const POPULAR_COUNCILS = [
+  { name: "Sydney", state_code: "NSW" },
+  { name: "Melbourne", state_code: "VIC" },
+  { name: "Brisbane", state_code: "QLD" },
+  { name: "Adelaide", state_code: "SA" },
+  { name: "Perth", state_code: "WA" },
+];
+
 /**
  * Location filter — a pill that opens a sheet to choose a state/territory and,
  * optionally, a council within it. Replaces the old "Explore by place" list.
@@ -48,7 +56,9 @@ export function LocationPicker({
   const [open, setOpen] = useState(false);
   const [stateSel, setStateSel] = useState<StateCode | undefined>(value.state);
   const [search, setSearch] = useState("");
-  const { data: councils, isLoading } = useCouncils(stateSel);
+  
+  // Always query all councils to enable global search and cached navigation
+  const { data: councils, isLoading } = useCouncils();
   const [detecting, setDetecting] = useState(false);
 
   const active = !!value.state || !!value.councilId;
@@ -129,7 +139,23 @@ export function LocationPicker({
   const filteredCouncils = (() => {
     const list = councils ?? [];
     const q = search.trim().toLowerCase();
-    return (q ? list.filter((c) => c.name.toLowerCase().includes(q)) : list).slice(0, 30);
+    
+    if (!q) {
+      return stateSel ? list.filter((c) => c.state_code === stateSel) : [];
+    }
+
+    return list.filter((c) => {
+      const matchName = c.name.toLowerCase().includes(q);
+      const matchState = c.state_code.toLowerCase() === q;
+      const matchCustodians = c.traditional_custodians?.some((tc: string) => tc.toLowerCase().includes(q)) ?? false;
+      
+      const matchesQuery = matchName || matchState || matchCustodians;
+      
+      if (stateSel) {
+        return c.state_code === stateSel && matchesQuery;
+      }
+      return matchesQuery;
+    });
   })();
 
   const stateName = stateSel
@@ -175,92 +201,177 @@ export function LocationPicker({
           </View>
 
           <View className="flex-row items-center justify-between px-gutter pb-3 pt-4">
-            <Text variant="heading">{stateSel ? stateName : "Choose a location"}</Text>
+            <Text variant="heading">{stateSel && !search ? stateName : "Choose a location"}</Text>
             <Pressable onPress={() => setOpen(false)} hitSlop={8} className="h-9 w-9 items-center justify-center rounded-pill active:bg-sand">
               <Icon name="close" size={20} color={colors.ink} />
             </Pressable>
           </View>
           <Divider />
 
-          {!stateSel ? (
-            <ScrollView contentContainerClassName="px-gutter py-4 gap-2" showsVerticalScrollIndicator={false}>
-              <Pressable
-                onPress={detectLocation}
-                disabled={detecting}
-                className="flex-row items-center gap-3 bg-pink-50/50 border border-pink-100/60 rounded-2xl p-3.5 mb-2 active:opacity-85"
-              >
-                <View className="h-8 w-8 rounded-full bg-pink-600 items-center justify-center">
-                  {detecting ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
+          {/* Unified search bar, always visible at top of modal */}
+          <View className="px-gutter pt-3 pb-2">
+            <Input
+              value={search}
+              onChangeText={setSearch}
+              placeholder={stateSel ? `Search councils in ${stateName}...` : "Search all Australian councils, regions, or lands..."}
+              leftIcon={<Icon name="search" size={18} color={colors.inkFaint} />}
+              rightIcon={search ? (
+                <Pressable onPress={() => setSearch("")} className="p-1">
+                  <Icon name="close" size={14} color={colors.inkMuted} />
+                </Pressable>
+              ) : undefined}
+            />
+          </View>
+
+          {/* Scrollable list content */}
+          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24, gap: 10 }} showsVerticalScrollIndicator={false}>
+            {search ? (
+              // Search Results mode
+              <View className="gap-2">
+                <Text variant="overline" tone="pink">
+                  Search Results ({filteredCouncils.length})
+                </Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color={colors.pink} className="py-8" />
+                ) : filteredCouncils.length === 0 ? (
+                  <View className="py-8 items-center justify-center">
+                    <Icon name="search" size={24} color={colors.inkFaint} />
+                    <Text variant="caption" tone="faint" className="mt-2 text-center">
+                      {"No councils match \"" + search + "\""}
+                    </Text>
+                  </View>
+                ) : (
+                  filteredCouncils.map((c) => {
+                    const custodianLabel = c.traditional_custodians && c.traditional_custodians.length > 0
+                      ? `Traditional Land: ${c.traditional_custodians.join(" & ")}`
+                      : undefined;
+                    return (
+                      <Row
+                        key={c.id}
+                        label={c.name}
+                        subtitle={custodianLabel}
+                        trailing={c.state_code}
+                        active={value.councilId === c.id}
+                        onPress={() => choose({ state: c.state_code as StateCode, councilId: c.id, label: c.name })}
+                      />
+                    );
+                  })
+                )}
+              </View>
+            ) : !stateSel ? (
+              // Main selectors: Detect location, Quick select, and State list
+              <View className="gap-4">
+                <Pressable
+                  onPress={detectLocation}
+                  disabled={detecting}
+                  className="flex-row items-center gap-3 bg-pink-50/50 border border-pink-100/60 rounded-2xl p-3.5 active:opacity-85"
+                >
+                  <View className="h-8 w-8 rounded-full bg-pink-600 items-center justify-center">
+                    {detecting ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Icon name="map-pin" size={14} color="#FFFFFF" />
+                    )}
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-heading text-xs text-ink font-semibold">
+                      {detecting ? "Locating you..." : "Detect my location"}
+                    </Text>
+                    <Text className="text-[10px] text-ink-faint mt-0.5">
+                      Find postcodes and local council automatically
+                    </Text>
+                  </View>
+                </Pressable>
+
+                {/* Popular suggestions list */}
+                {councils && councils.length > 0 && (
+                  <View className="gap-2">
+                    <Text variant="overline" tone="pink">
+                      Quick Suggestions
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} className="py-1">
+                      {POPULAR_COUNCILS.map((pop) => {
+                        const match = councils.find(c => c.name.toLowerCase().includes(pop.name.toLowerCase()) && c.state_code === pop.state_code);
+                        if (!match) return null;
+                        return (
+                          <Pressable
+                            key={match.id}
+                            onPress={() => choose({ state: match.state_code as StateCode, councilId: match.id, label: match.name })}
+                            className="bg-sand/40 border border-linen rounded-full px-3 py-1.5 active:bg-sand flex-row items-center gap-1.5"
+                          >
+                            <Text className="text-xs font-semibold text-ink-muted">{pop.name}</Text>
+                            <Text className="text-[9px] font-bold text-ink-faint bg-linen/50 px-1 py-0.5 rounded">{pop.state_code}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
+                )}
+
+                <Row label="Anywhere in Australia" active={!active} onPress={() => choose(ANYWHERE)} />
+
+                <View className="gap-2">
+                  <Text variant="overline" tone="pink">
+                    States & territories
+                  </Text>
+                  {AUSTRALIAN_STATES.map((s) => (
+                    <Row
+                      key={s.code}
+                      label={s.name}
+                      trailing={s.code}
+                      active={value.state === s.code && !value.councilId}
+                      chevron
+                      onPress={() => setStateSel(s.code)}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : (
+              // State drill-down
+              <View className="gap-4">
+                <Pressable onPress={() => setStateSel(undefined)} className="flex-row items-center gap-1 self-start py-1 active:opacity-60">
+                  <Icon name="chevron-left" size={16} color={colors.inkMuted} />
+                  <Text variant="label" tone="muted" className="font-heading">
+                    All states
+                  </Text>
+                </Pressable>
+
+                <Row
+                  label={`All of ${stateName}`}
+                  active={value.state === stateSel && !value.councilId}
+                  onPress={() => choose({ state: stateSel, label: stateSel! })}
+                />
+
+                <View className="gap-2">
+                  <Text variant="overline" tone="pink">
+                    Councils in {stateName}
+                  </Text>
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={colors.pink} className="py-4" />
+                  ) : filteredCouncils.length === 0 ? (
+                    <Text variant="caption" tone="faint" className="italic py-2">
+                      No councils found in this state.
+                    </Text>
                   ) : (
-                    <Icon name="map-pin" size={14} color="#FFFFFF" />
+                    filteredCouncils.map((c) => {
+                      const custodianLabel = c.traditional_custodians && c.traditional_custodians.length > 0
+                        ? `Traditional Land: ${c.traditional_custodians.join(" & ")}`
+                        : undefined;
+                      return (
+                        <Row
+                          key={c.id}
+                          label={c.name}
+                          subtitle={custodianLabel}
+                          active={value.councilId === c.id}
+                          onPress={() => choose({ state: stateSel, councilId: c.id, label: c.name })}
+                        />
+                      );
+                    })
                   )}
                 </View>
-                <View className="flex-1">
-                  <Text className="font-heading text-xs text-ink">
-                    {detecting ? "Locating you..." : "Detect my location"}
-                  </Text>
-                  <Text className="text-[10px] text-ink-faint mt-0.5">
-                    Find postcodes and local council automatically
-                  </Text>
-                </View>
-              </Pressable>
-
-              <Row label="Anywhere in Australia" active={!active} onPress={() => choose(ANYWHERE)} />
-              <Text variant="overline" tone="pink" className="mb-1 mt-3">
-                States & territories
-              </Text>
-              {AUSTRALIAN_STATES.map((s) => (
-                <Row
-                  key={s.code}
-                  label={s.name}
-                  trailing={s.code}
-                  active={value.state === s.code && !value.councilId}
-                  chevron
-                  onPress={() => setStateSel(s.code)}
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <ScrollView contentContainerClassName="px-gutter py-4 gap-2" showsVerticalScrollIndicator={false}>
-              <Pressable onPress={() => setStateSel(undefined)} className="mb-1 flex-row items-center gap-1 self-start py-1 active:opacity-60">
-                <Icon name="chevron-left" size={16} color={colors.inkMuted} />
-                <Text variant="label" tone="muted" className="font-heading">
-                  All states
-                </Text>
-              </Pressable>
-              <Row
-                label={`All of ${stateName}`}
-                active={value.state === stateSel && !value.councilId}
-                onPress={() => choose({ state: stateSel, label: stateSel! })}
-              />
-              <Input
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search councils…"
-                className="my-1"
-                leftIcon={<Icon name="search" size={18} color={colors.inkFaint} />}
-              />
-              {isLoading ? (
-                <Text variant="caption" tone="faint">
-                  Loading councils…
-                </Text>
-              ) : filteredCouncils.length === 0 ? (
-                <Text variant="caption" tone="faint">
-                  No councils match.
-                </Text>
-              ) : (
-                filteredCouncils.map((c) => (
-                  <Row
-                    key={c.id}
-                    label={c.name}
-                    active={value.councilId === c.id}
-                    onPress={() => choose({ state: stateSel, councilId: c.id, label: c.name })}
-                  />
-                ))
-              )}
-            </ScrollView>
-          )}
+              </View>
+            )}
+          </ScrollView>
         </View>
       </Modal>
     </>
@@ -269,12 +380,14 @@ export function LocationPicker({
 
 function Row({
   label,
+  subtitle,
   trailing,
   active,
   chevron,
   onPress,
 }: {
   label: string;
+  subtitle?: string;
   trailing?: string;
   active?: boolean;
   chevron?: boolean;
@@ -288,13 +401,22 @@ function Row({
         active ? "border-ink bg-ochre-50" : "border-linen bg-card active:bg-sand",
       )}
     >
-      <Text variant="label" className="flex-1 text-base">
-        {label}
-      </Text>
-      {trailing ? (
-        <Text variant="caption" tone="faint">
-          {trailing}
+      <View className="flex-1 gap-0.5">
+        <Text variant="label" className="text-base font-medium text-ink">
+          {label}
         </Text>
+        {subtitle ? (
+          <Text className="text-[10px] text-ink-faint font-sans">
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {trailing ? (
+        <View className="bg-sand/50 px-2 py-0.5 rounded-md border border-linen/40">
+          <Text className="text-[10px] font-heading font-semibold text-ink-muted">
+            {trailing}
+          </Text>
+        </View>
       ) : null}
       {active ? (
         <Icon name="check" size={16} color={colors.ink} strokeWidth={2.4} />

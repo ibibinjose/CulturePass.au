@@ -324,19 +324,92 @@ export default function CalendarScreen() {
               </Text>
             </Card>
           ) : listedEvents.length > 0 ? (
-            <View className={cn("gap-4", viewMode === "box" ? "md:flex-row md:flex-wrap" : "flex-column")}>
-              {listedEvents.map((event) => (
-                <View
-                  key={event.id}
-                  className={cn(
-                    viewMode === "box"
-                      ? "w-full md:w-[calc(50%-8px)]"
-                      : "w-full"
-                  )}
-                >
-                  <EventCard event={event} variant={viewMode} />
-                </View>
-              ))}
+            <View className="gap-6">
+              {/* 1. Live Events Section */}
+              {(() => {
+                const live = listedEvents.filter(e => {
+                  if (!e.start_time) return false;
+                  const start = new Date(e.start_time);
+                  const end = e.end_time ? new Date(e.end_time) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+                  const now = new Date();
+                  return now >= start && now <= end;
+                });
+                if (live.length === 0) return null;
+                return (
+                  <View className="gap-2.5">
+                    <View className="flex-row items-center gap-1.5 border-b border-linen pb-2">
+                      <View className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <Text className="text-xs font-heading font-extrabold uppercase text-emerald-700 tracking-wider">
+                        Happening Live ({live.length})
+                      </Text>
+                    </View>
+                    <View className={cn("gap-4", viewMode === "box" ? "flex-row flex-wrap" : "flex-col")}>
+                      {live.map((event) => (
+                        <View key={event.id} className={cn(viewMode === "box" ? "w-full md:w-[calc(50%-8px)]" : "w-full")}>
+                          <EventCard event={event} variant={viewMode} />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {/* 2. Upcoming Events Section */}
+              {(() => {
+                const upcoming = listedEvents.filter(e => {
+                  if (!e.start_time) return false;
+                  const start = new Date(e.start_time);
+                  const now = new Date();
+                  return start > now;
+                });
+                if (upcoming.length === 0) return null;
+                return (
+                  <View className="gap-2.5">
+                    <View className="flex-row items-center gap-1.5 border-b border-linen pb-2">
+                      <View className="h-2 w-2 rounded-full bg-pink" />
+                      <Text className="text-xs font-heading font-extrabold uppercase text-ink-muted tracking-wider">
+                        Upcoming ({upcoming.length})
+                      </Text>
+                    </View>
+                    <View className={cn("gap-4", viewMode === "box" ? "flex-row flex-wrap" : "flex-col")}>
+                      {upcoming.map((event) => (
+                        <View key={event.id} className={cn(viewMode === "box" ? "w-full md:w-[calc(50%-8px)]" : "w-full")}>
+                          <EventCard event={event} variant={viewMode} />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })()}
+
+              {/* 3. Past Events Section */}
+              {(() => {
+                const past = listedEvents.filter(e => {
+                  if (!e.start_time) return false;
+                  const start = new Date(e.start_time);
+                  const end = e.end_time ? new Date(e.end_time) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+                  const now = new Date();
+                  return now > end;
+                });
+                if (past.length === 0) return null;
+                return (
+                  <View className="gap-2.5 opacity-85 mt-2">
+                    <View className="flex-row items-center gap-1.5 border-b border-linen pb-2">
+                      <View className="h-2 w-2 rounded-full bg-ink-faint" />
+                      <Text className="text-xs font-heading font-extrabold uppercase text-ink-faint tracking-wider">
+                        Past Events ({past.length})
+                      </Text>
+                    </View>
+                    <View className={cn("gap-4", viewMode === "box" ? "flex-row flex-wrap" : "flex-col")}>
+                      {past.map((event) => (
+                        <View key={event.id} className={cn(viewMode === "box" ? "w-full md:w-[calc(50%-8px)]" : "w-full")}>
+                          <EventCard event={event} variant={viewMode} />
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           ) : (
             <Card className="gap-3">

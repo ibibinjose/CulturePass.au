@@ -7,6 +7,7 @@ import { Screen, Text, Button, Card, Badge, Divider, Icon } from "@/components/u
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { useDeleteHub, useMyHubs } from "@/features/hubs/api";
 import { useDeleteEvent, useMyHubEvents } from "@/features/events/api";
+import { CohostInvitationsBanner } from "@/features/events/CohostInvitationsBanner";
 import { useMyProfile } from "@/features/profiles/api";
 import { HUB_TYPE_LABELS, type HubType } from "@/lib/constants";
 import { colors } from "@/lib/theme";
@@ -76,6 +77,8 @@ export default function MyHubsScreen() {
           onPress={() => router.push("/create/hub")}
         />
       </View>
+
+      <CohostInvitationsBanner />
 
       <View className="flex-row flex-wrap gap-4">
         {isLoading ? (

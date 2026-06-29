@@ -30,6 +30,7 @@ import {
 import { useMyProfile } from "@/features/profiles/api";
 import { useMyHubs } from "@/features/hubs/api";
 import { useBuyTicket } from "@/features/tickets/api";
+import { TicketBookingModal } from "@/features/tickets/TicketBookingModal";
 import {
   useEventCohosts,
   useRespondToCohost,

@@ -31,10 +31,22 @@ function openCheckout(url: string) {
  */
 export function useBuyTicket() {
   return useMutation({
-    mutationFn: async ({ eventId, quantity = 1 }: { eventId: string; quantity?: number }) => {
+    mutationFn: async ({
+      eventId,
+      quantity = 1,
+      ticketTypeId,
+      selectedDate,
+      seatNumbers,
+    }: {
+      eventId: string;
+      quantity?: number;
+      ticketTypeId?: string;
+      selectedDate?: string;
+      seatNumbers?: string[];
+    }) => {
       const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
         "tickets-checkout",
-        { body: { eventId, quantity } },
+        { body: { eventId, quantity, ticketTypeId, selectedDate, seatNumbers } },
       );
 
       if (error) {
@@ -96,6 +108,25 @@ export function useTicketBySession(sessionId: string | undefined) {
         .maybeSingle();
       if (error) throw error;
       return (data as unknown as TicketOrder) ?? null;
+    },
+  });
+}
+
+export type EventTicketType = Database["public"]["Tables"]["event_ticket_types"]["Row"];
+
+/** Fetch all ticket types for a specific event. */
+export function useEventTicketTypes(eventId: string) {
+  return useQuery({
+    queryKey: ["event-ticket-types", eventId],
+    enabled: !!eventId,
+    queryFn: async (): Promise<EventTicketType[]> => {
+      const { data, error } = await supabase
+        .from("event_ticket_types")
+        .select("*")
+        .eq("event_id", eventId)
+        .order("price_cents", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
     },
   });
 }

@@ -261,12 +261,16 @@ export interface Database {
           coordinates: string | null;
           capacity: number | null;
           rsvp_count: number;
-          images: HubImage[];
+           images: HubImage[];
           tags: string[];
           cultural_focus: string[];
           status: Database["public"]["Enums"]["event_status"];
           created_at: string;
           updated_at: string;
+          event_dates: string[] | null;
+          has_assigned_seating: boolean | null;
+          seating_layout: Json | null;
+          venue_map_url: string | null;
         };
         Insert: {
           id?: string;
@@ -291,6 +295,10 @@ export interface Database {
           status?: Database["public"]["Enums"]["event_status"];
           created_at?: string;
           updated_at?: string;
+          event_dates?: string[] | null;
+          has_assigned_seating?: boolean | null;
+          seating_layout?: Json | null;
+          venue_map_url?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["events"]["Insert"]>;
         Relationships: [
@@ -512,6 +520,9 @@ export interface Database {
           created_at: string;
           updated_at: string;
           paid_at: string | null;
+          ticket_type_id: string | null;
+          selected_date: string | null;
+          seat_numbers: string[] | null;
         };
         Insert: {
           id?: string;
@@ -530,6 +541,9 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
           paid_at?: string | null;
+          ticket_type_id?: string | null;
+          selected_date?: string | null;
+          seat_numbers?: string[] | null;
         };
         Update: Partial<Database["public"]["Tables"]["ticket_orders"]["Insert"]>;
         Relationships: [
@@ -539,6 +553,37 @@ export interface Database {
             referencedRelation: "events";
             referencedColumns: ["id"];
           },
+        ];
+      };
+      event_ticket_types: {
+        Row: {
+          id: string;
+          event_id: string;
+          name: string;
+          price_cents: number;
+          capacity: number | null;
+          sold_count: number;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          name: string;
+          price_cents: number;
+          capacity?: number | null;
+          sold_count?: number;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["event_ticket_types"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "event_ticket_types_event_id_fkey";
+            columns: ["event_id"];
+            referencedRelation: "events";
+            referencedColumns: ["id"];
+          }
         ];
       };
       notifications: {

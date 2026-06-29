@@ -45,6 +45,12 @@ export interface EventCohost {
   avatarUrl: string | null;
   slug?: string;
   indigenousLed?: boolean;
+  
+  // Optional event details for invitations dashboard
+  eventTitle?: string;
+  eventHostName?: string;
+  eventImageUrl?: string | null;
+  eventId?: string;
 }
 
 function hubLogo(images: HubImage[] | null | undefined): string | null {
@@ -217,6 +223,110 @@ export function useRemoveCohost(eventId: string) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.eventCohosts(eventId) });
+    },
+  });
+}
+
+/** Fetch pending invitations where the current user or their managed hubs are targeted. */
+export function useMyCohostInvitations() {
+  return useQuery({
+    queryKey: qk.myCohostInvitations,
+    queryFn: async (): Promise<EventCohost[]> => {
+      const profileId = await getCurrentProfileId();
+      if (!profileId) return [];
+
+      // Fetch editable/owned hubs to match target hub invitations
+      const { data: memberships, error: memError } = await supabase
+        .from("hub_members")
+        .select("hub_id")
+        .eq("profile_id", profileId)
+        .in("role", ["owner", "editor"]);
+
+      if (memError) throw memError;
+      const managedHubIds = new Set((memberships ?? []).map((m) => m.hub_id));
+
+      // Fetch pending invitations
+      const { data, error } = await supabase
+        .from("event_cohosts")
+        .select(`
+          *,
+          event:events(id, title, status, images, hub_id, hub:hubs(name)),
+          hub:hubs(id, name, slug, type, images, indigenous_led),
+          profile:profiles!event_cohosts_profile_id_fkey(id, full_name, avatar_url, professional_category)
+        `)
+        .eq("status", "pending");
+
+      if (error) throw error;
+
+      // Filter in memory for security & accuracy
+      const filtered = (data ?? []).filter((row) => {
+        if (row.profile_id === profileId) return true;
+        if (row.hub_id && managedHubIds.has(row.hub_id)) return true;
+        return false;
+      });
+
+      return filtered.map((row): EventCohost => {
+        const event = row.event as any;
+        const hub = row.hub as any;
+        const prof = row.profile as any;
+        
+        if (hub) {
+          return {
+            id: row.id,
+            role: row.role,
+            status: row.status,
+            kind: "hub",
+            hubId: row.hub_id,
+            profileId: null,
+            name: hub.name,
+            subtitle: HUB_TYPE_LABELS[hub.type as HubType] ?? "Hub",
+            avatarUrl: hubLogo(hub.images),
+            slug: hub.slug,
+            indigenousLed: hub.indigenous_led,
+            eventTitle: event?.title || "Untitled Event",
+            eventHostName: event?.hub?.name || "Independent",
+            eventImageUrl: event?.images?.[0]?.url || null,
+            eventId: row.event_id,
+          };
+        }
+        return {
+          id: row.id,
+          role: row.role,
+          status: row.status,
+          kind: "profile",
+          hubId: null,
+          profileId: row.profile_id,
+          name: prof?.full_name || "Member",
+          subtitle: prof?.professional_category
+            ? PROFESSIONAL_CATEGORY_LABELS[prof.professional_category as ProfessionalCategory]
+            : "Member",
+          avatarUrl: prof?.avatar_url ?? null,
+          eventTitle: event?.title || "Untitled Event",
+          eventHostName: event?.hub?.name || "Independent",
+          eventImageUrl: event?.images?.[0]?.url || null,
+          eventId: row.event_id,
+        };
+      });
+    },
+  });
+}
+
+/** Respond to a co-host invitation generically (from dashboard or notification feed). */
+export function useRespondToInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: Exclude<CohostStatus, "pending"> }) => {
+      const { error } = await supabase.from("event_cohosts").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: qk.myCohostInvitations });
+      qc.invalidateQueries({ queryKey: qk.notifications });
+      qc.invalidateQueries({ queryKey: qk.unreadCount });
+      qc.invalidateQueries({ queryKey: ["event-cohosts"] });
+      qc.invalidateQueries({ queryKey: qk.myHubs });
+      qc.invalidateQueries({ queryKey: ["my-hub-events"] });
+      qc.invalidateQueries({ queryKey: ["events"] });
     },
   });
 }

@@ -26,7 +26,12 @@ export function useEvents(filters: EventFilters = {}) {
         .from("events")
         .select(`
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images)
+          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images),
+          event_cohosts (
+            *,
+            hub: hubs (id, name, slug, type, images, indigenous_led),
+            profile: profiles!event_cohosts_profile_id_fkey (id, full_name, avatar_url, professional_category)
+          )
         `)
         .eq("status", "published")
         .order("start_time", { ascending: true });
@@ -75,17 +80,55 @@ export function useHubEvents(hubId: string) {
   return useQuery({
     queryKey: qk.hubEvents(hubId),
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("events")
-        .select(`
+      const SELECT_FIELDS = `
+        *,
+        hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images),
+        event_cohosts (
           *,
-          hub: hubs (name, slug, type, indigenous_led, traditional_custodians, images)
+          hub: hubs (id, name, slug, type, images, indigenous_led),
+          profile: profiles!event_cohosts_profile_id_fkey (id, full_name, avatar_url, professional_category)
+        )
+      `;
+
+      // 1. Fetch events hosted by this hub
+      const hostedPromise = supabase
+        .from("events")
+        .select(SELECT_FIELDS)
+        .eq("hub_id", hubId)
+        .eq("status", "published");
+
+      // 2. Fetch events co-hosted by this hub (accepted only)
+      const cohostedPromise = supabase
+        .from("event_cohosts")
+        .select(`
+          event:events (
+            ${SELECT_FIELDS}
+          )
         `)
         .eq("hub_id", hubId)
-        .eq("status", "published")
-        .order("start_time", { ascending: true });
-      if (error) throw error;
-      return data;
+        .eq("status", "accepted")
+        .eq("event.status", "published");
+
+      const [hostedRes, cohostedRes] = await Promise.all([hostedPromise, cohostedPromise]);
+
+      if (hostedRes.error) throw hostedRes.error;
+      if (cohostedRes.error) throw cohostedRes.error;
+
+      const hostedEvents = hostedRes.data ?? [];
+      const cohostedEvents = (cohostedRes.data ?? [])
+        .map((row) => row.event)
+        .filter(Boolean) as any[];
+
+      // Merge and deduplicate by event ID
+      const allEventsMap = new Map<string, any>();
+      hostedEvents.forEach((e) => allEventsMap.set(e.id, e));
+      cohostedEvents.forEach((e) => allEventsMap.set(e.id, e));
+
+      return Array.from(allEventsMap.values()).sort((a, b) => {
+        if (!a.start_time) return 1;
+        if (!b.start_time) return -1;
+        return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+      });
     },
     enabled: !!hubId,
   });
