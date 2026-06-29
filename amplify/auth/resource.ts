@@ -11,6 +11,7 @@ export const auth = defineAuth({
   loginWith: {
     email: true,
   },
-  // userAttributes / groups (e.g. an "admin" group to replace the SQL admin
-  // role) can be declared here once the data layer is ported.
+  // "admin" replaces the Supabase `profiles.is_admin` / SQL admin role; the data
+  // schema grants this group elevated access via `allow.group("admin")`.
+  groups: ["admin"],
 });

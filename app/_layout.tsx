@@ -27,8 +27,15 @@ import {
 } from "@/components/ui";
 import { OnboardingGate } from "@/features/onboarding/OnboardingGate";
 import { NotificationsRealtime } from "@/features/notifications/NotificationsRealtime";
+import { isAwsBackend } from "@/lib/backend";
+import { configureAmplify } from "@/lib/aws/config";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// AWS migration (additive cutover): configure Amplify only when the app is run
+// with EXPO_PUBLIC_BACKEND=aws. No-op on the default Supabase build. See
+// docs/AWS_MIGRATION.md.
+if (isAwsBackend) configureAmplify();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

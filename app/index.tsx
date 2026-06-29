@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 
@@ -30,6 +37,7 @@ import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { parsePreferences } from "@/lib/validation/profile";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
 import { useCouncilDetails, useDetectCouncil } from "@/features/reference/api";
+import { ExploreCities } from "@/features/reference/ExploreCities";
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABELS,
@@ -87,6 +95,53 @@ function groupEventsByDate(eventsList: any[]) {
     }
   });
   return groups;
+}
+
+function getGreeting(name?: string | null) {
+  const hour = new Date().getHours();
+  const dayPart = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const firstName = name?.trim().split(/\s+/)[0];
+  return firstName ? `Good ${dayPart}, ${firstName}` : `Good ${dayPart}`;
+}
+
+function getWhatsOnLabel(locationLabel: string) {
+  return locationLabel === "Australia" ? "What's On Near You" : `What's On ${locationLabel}`;
+}
+
+const FRIENDLY_PLACE_NAMES: Record<string, string> = {
+  "city of sydney": "Sydney",
+  "sydney": "Sydney",
+  "inner west council": "Newtown",
+  "inner west": "Newtown",
+  "city of newcastle": "Newcastle",
+  "newcastle": "Newcastle",
+  "city of melbourne": "Melbourne",
+  "melbourne": "Melbourne",
+  "brisbane city council": "Brisbane",
+  "city of brisbane": "Brisbane",
+  "brisbane": "Brisbane",
+  "city of adelaide": "Adelaide",
+  "adelaide": "Adelaide",
+  "city of perth": "Perth",
+  "perth": "Perth",
+};
+
+function getFriendlyPlaceName(label: string) {
+  if (label === "Anywhere") return "Australia";
+
+  const normalized = label.trim().toLowerCase().replace(/\s+/g, " ");
+  const mapped = FRIENDLY_PLACE_NAMES[normalized];
+  if (mapped) return mapped;
+
+  return label
+    .replace(/^city of\s+/i, "")
+    .replace(/^municipality of\s+/i, "")
+    .replace(/\s+city council$/i, "")
+    .replace(/\s+regional council$/i, "")
+    .replace(/\s+shire council$/i, "")
+    .replace(/\s+shire$/i, "")
+    .replace(/\s+council$/i, "")
+    .trim();
 }
 
 
@@ -236,6 +291,11 @@ export default function DiscoverScreen() {
 
   const showFnSection = !firstNations && (fnEvents.length > 0 || fnHubs.length > 0);
   const featuredWidth = Math.min(width - 56, 440);
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768;
+  const gridItemStyle: ViewStyle = {
+    width: isDesktop ? "23.5%" : isTablet ? "48%" : "100%",
+  };
 
   const toggleCategory = (c: EventType) =>
     setCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
@@ -250,29 +310,76 @@ export default function DiscoverScreen() {
     setFirstNations(false);
   };
 
-  const locationLabel = location.label !== "Anywhere" ? location.label : "Australia";
+  const locationLabel = getFriendlyPlaceName(location.label);
+  const greeting = getGreeting(profile?.full_name);
+  const whatsOnLabel = getWhatsOnLabel(locationLabel);
+  const discoverStats = [
+    { label: "Events", value: activeEvents.length },
+    { label: "Communities", value: filteredHubs.length },
+    { label: "Featured", value: featured.length },
+  ];
 
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
       
-      {/* Swiss Editorial Hero Header */}
-      <View className="gap-3 pt-4 pb-2">
-        <Text variant="overline" tone="pink" className="font-bold tracking-[2px]">CulturePass Australia</Text>
-        <Text className="font-display text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold tracking-tighter leading-[1.05]">
-          Find your next{"\n"}experience.
-        </Text>
-        <Text className="font-sans text-sm text-ink-muted max-w-prose mt-1">
-          Explore curated cultural events, local gatherings, and active community groups in {locationLabel}.
-        </Text>
+      {/* Hero Header */}
+      <View className="overflow-hidden rounded-3xl border border-night-line bg-night p-5 md:p-7 shadow-raised">
+        <View className="absolute -right-8 -top-8 h-40 w-40 opacity-25">
+          <Image source={require("../assets/logo.png")} style={{ width: "100%", height: "100%" }} contentFit="contain" />
+        </View>
+
+        <View className="relative gap-5">
+          <View className="flex-row flex-wrap items-center justify-between gap-3">
+            <View className="flex-row items-center gap-3">
+              <View className="h-11 w-11 items-center justify-center rounded-2xl bg-white">
+                <Image source={require("../assets/logo.png")} style={{ width: 36, height: 36 }} contentFit="contain" />
+              </View>
+              <View>
+                <Text className="font-display text-lg text-paper">CulturePass</Text>
+                <Text variant="overline" className="text-night-muted">
+                  Belong anywhere
+                </Text>
+              </View>
+            </View>
+
+            <View className="rounded-pill border border-white/15 bg-white/10 px-3 py-1.5">
+              <Text variant="overline" className="font-bold text-teal-100 tracking-[1.6px]">
+                {locationLabel}
+              </Text>
+            </View>
+          </View>
+
+          <View className="gap-2">
+            <Text className="font-display text-4xl md:text-5xl lg:text-6xl text-paper font-extrabold leading-[1.05]">
+              {greeting}
+              {"\n"}
+              {whatsOnLabel}
+            </Text>
+            <Text className="font-sans text-sm md:text-base text-night-muted max-w-prose">
+              {"Discover what's on this week: cultural events, communities, tickets, and local experiences tailored to your city."}
+            </Text>
+          </View>
+
+          <View className="flex-row flex-wrap gap-2">
+            {discoverStats.map((stat) => (
+              <View key={stat.label} className="min-w-[104px] rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
+                <Text className="font-display text-xl text-paper">{stat.value}</Text>
+                <Text variant="overline" className="text-night-muted">
+                  {stat.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </View>
 
-      {/* High-Contrast Search & Location block */}
-      <View className="flex-row items-center border-2 border-ink bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-11 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-4">
+      {/* Search & Location block */}
+      <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-12 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-4">
         <View className="flex-1 flex-row items-center h-full">
           <Input
             value={search}
             onChangeText={setSearch}
-            placeholder="Search events..."
+            placeholder="Discover events near you..."
             returnKeyType="search"
             autoCorrect={false}
             leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
@@ -298,14 +405,14 @@ export default function DiscoverScreen() {
       </View>
 
       {/* Search Filter Toggle and Collapsible Panel */}
-      <View className="flex-row items-center gap-3 mt-5 w-full max-w-4xl">
+      <View className="flex-row flex-wrap items-center gap-3 mt-5 w-full max-w-4xl">
         <Pressable
           onPress={() => setShowFilterPanel(!showFilterPanel)}
           accessibilityRole="button"
           accessibilityState={{ expanded: showFilterPanel }}
           accessibilityLabel={`Filters${activeFilterCount > 0 ? `, ${activeFilterCount} active` : ""}`}
           className={cn(
-            "h-11 px-5 rounded-full border-2 flex-row items-center gap-2 active:opacity-75 shadow-sm",
+            "h-11 px-5 rounded-full border flex-row items-center gap-2 active:opacity-75 shadow-sm",
             showFilterPanel || activeFilterCount > 0 ? "border-ink bg-ink" : "border-linen bg-card"
           )}
         >
@@ -323,7 +430,7 @@ export default function DiscoverScreen() {
       </View>
 
       {showFilterPanel && (
-        <View className="w-full max-w-4xl border-2 border-ink bg-card rounded-3xl p-5 mt-4 gap-5 shadow-card">
+        <View className="w-full max-w-4xl border border-linen bg-card rounded-2xl p-5 mt-4 gap-5 shadow-card">
           <View className="flex-row items-center justify-between border-b border-linen pb-2.5">
             <Text className="font-heading text-sm font-bold text-ink">Discover Filters</Text>
             <Pressable
@@ -486,7 +593,7 @@ export default function DiscoverScreen() {
         </View>
       )}
 
-      {/* Swiss Text-Only Category navigation list */}
+      {/* Category navigation */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -518,18 +625,16 @@ export default function DiscoverScreen() {
       </ScrollView>
 
       {/* Home Switcher Tabs */}
-      <View className="flex-row gap-6 border-b border-linen mt-6 mb-4">
-        <Pressable onPress={() => setHomeTab("discover")} className="items-center">
-          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "discover" ? "text-ink font-semibold" : "text-ink-faint")}>
+      <View className="mt-6 mb-4 flex-row self-start rounded-full border border-linen bg-card p-1">
+        <Pressable onPress={() => setHomeTab("discover")} className={cn("rounded-full px-4 py-2", homeTab === "discover" && "bg-ink")}>
+          <Text className={cn("font-heading text-sm", homeTab === "discover" ? "text-paper font-semibold" : "text-ink-faint")}>
             Discover Feed
           </Text>
-          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "discover" ? "bg-pink-500" : "bg-transparent")} />
         </Pressable>
-        <Pressable onPress={() => setHomeTab("council")} className="items-center">
-          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "council" ? "text-ink font-semibold" : "text-ink-faint")}>
+        <Pressable onPress={() => setHomeTab("council")} className={cn("rounded-full px-4 py-2", homeTab === "council" && "bg-ink")}>
+          <Text className={cn("font-heading text-sm", homeTab === "council" ? "text-paper font-semibold" : "text-ink-faint")}>
             My Council
           </Text>
-          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "council" ? "bg-pink-500" : "bg-transparent")} />
         </Pressable>
       </View>
 
@@ -553,9 +658,14 @@ export default function DiscoverScreen() {
             </View>
           ) : null}
 
+          {/* Explore Cities — nationwide discovery rail */}
+          <View className="mt-8">
+            <ExploreCities />
+          </View>
+
           {/* First Nations acknowledgement banner */}
           {showFnSection ? (
-            <View className="mt-8 rounded-3xl border-2 border-country-red bg-card p-5 gap-4 shadow-card">
+            <View className="mt-8 rounded-2xl border border-country-ochre/40 bg-card p-5 gap-4 shadow-card">
               <View className="flex-row items-center gap-1.5 border-b border-linen pb-3">
                 <View className="h-2 w-2 rounded-full bg-country-ochre" />
                 <Text variant="overline" className="text-country-red font-bold tracking-[2px]">
@@ -611,7 +721,7 @@ export default function DiscoverScreen() {
                 <SectionHeader eyebrow="Tailored to you" title="Recommended" />
                 <View className="flex-row flex-wrap gap-5 mt-2">
                   {forYouEvents.slice(0, 4).map((event) => (
-                    <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]">
+                    <View key={event.id} style={gridItemStyle}>
                       <EventCard event={event} />
                     </View>
                   ))}
@@ -622,8 +732,8 @@ export default function DiscoverScreen() {
             {/* EventGrid listing */}
             {comingUp.length > 0 ? (
               <View className="gap-6">
-                <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3 mt-2">
-                  <Text variant="heading" className="font-heading text-xl text-ink tracking-tight font-extrabold">Upcoming events</Text>
+                <View className="flex-row items-baseline justify-between border-t border-linen pt-5 mt-2">
+                  <Text variant="heading" className="font-heading text-xl text-ink font-extrabold">Upcoming events</Text>
                   <Pressable onPress={() => router.push("/calendar")} className="active:opacity-75">
                     <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">Calendar view</Text>
                   </Pressable>
@@ -631,7 +741,7 @@ export default function DiscoverScreen() {
 
                 <View className="flex-row flex-wrap gap-5 mt-2">
                   {comingUp.map((event) => (
-                    <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]">
+                    <View key={event.id} style={gridItemStyle}>
                       <EventCard event={event} />
                     </View>
                   ))}
@@ -647,9 +757,9 @@ export default function DiscoverScreen() {
             )}
 
             {/* Active Hubs Section */}
-            <View className="gap-6 mt-8 border-t-2 border-ink pt-6">
+            <View className="gap-6 mt-8 border-t border-linen pt-6">
               <View className="flex-row items-baseline justify-between">
-                <Text variant="heading" className="font-heading text-xl text-ink tracking-tight font-extrabold">Active hubs</Text>
+                <Text variant="heading" className="font-heading text-xl text-ink font-extrabold">Active hubs</Text>
                 <Pressable onPress={() => router.push("/my-hubs")} className="active:opacity-75">
                   <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">My hubs</Text>
                 </Pressable>
@@ -697,7 +807,7 @@ export default function DiscoverScreen() {
                     const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
 
                     return (
-                      <View key={hub.slug} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]">
+                      <View key={hub.slug} style={gridItemStyle}>
                         <Pressable
                           onPress={() => router.push(`/hub/${hub.slug}`)}
                           className="bg-card border border-linen p-4 rounded-2xl h-full justify-between active:opacity-75 shadow-sm"
@@ -785,14 +895,14 @@ export default function DiscoverScreen() {
             </Card>
           ) : councilDetails ? (
             <View className="mt-4 gap-6">              {/* Council details card */}
-              <View className="rounded-3xl border-2 border-ink bg-card p-6 gap-4 shadow-card">
+              <View className="rounded-2xl border border-linen bg-card p-6 gap-4 shadow-card">
                 <View className="flex-row items-center gap-2">
                   <Icon name="map-pin" size={16} color={colors.pink} />
                   <Text variant="overline" tone="pink" className="text-2xs font-bold tracking-widest text-pink-600">
                     Local Government Area
                   </Text>
                 </View>
-                <Text className="font-display text-3xl text-ink tracking-tight font-extrabold">
+                <Text className="font-display text-3xl text-ink font-extrabold">
                   {councilDetails.name}
                 </Text>
                 

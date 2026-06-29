@@ -58,8 +58,8 @@ export function BottomTabBar() {
   };
 
   return (
-    <View style={{ paddingBottom: insets.bottom }} className="border-t border-pink-600 bg-pink-500">
-      <View className="h-16 flex-row items-stretch">
+    <View style={{ paddingBottom: insets.bottom }} className="border-t border-linen bg-card shadow-raised">
+      <View className="h-16 flex-row items-stretch px-1">
         {tabs.map((tab) => {
           const active = isActive(tab.match);
           return (
@@ -70,19 +70,19 @@ export function BottomTabBar() {
               accessibilityLabel={tab.label}
               accessibilityState={{ selected: active }}
               className={cn(
-                "flex-1 items-center justify-center gap-1",
-                active ? "opacity-100" : "opacity-60"
+                "flex-1 items-center justify-center gap-1 rounded-xl",
+                active ? "bg-pink-50 opacity-100" : "opacity-70"
               )}
             >
               <Icon
                 name={tab.icon}
                 size={23}
-                color={colors.white}
+                color={active ? colors.pink : colors.inkMuted}
                 strokeWidth={active ? 2.2 : 1.8}
               />
               <Text
                 variant="overline"
-                className="text-[10px] font-heading text-white"
+                className={cn("text-[10px] font-heading", active ? "text-pink-700" : "text-ink-muted")}
               >
                 {tab.label}
               </Text>

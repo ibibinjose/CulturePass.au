@@ -276,9 +276,9 @@ export function TopBar() {
         <View className="flex-1" />
 
         {/* Live date + time + weather */}
-        <Clock now={now} weather={weather} compact={!isWide} />
+        {isWide ? <Clock now={now} weather={weather} compact={false} /> : null}
 
-        <View className="flex-1" />
+        {isWide ? <View className="flex-1" /> : null}
 
         {/* Right-hand actions */}
         {isWide && isAuthenticated ? (
