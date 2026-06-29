@@ -1,22 +1,29 @@
 // aws/amplify-config.ts
-import { Amplify, Auth, API } from "aws-amplify";
+import { Amplify } from "aws-amplify";
 
-// Load env vars (Expo automatically prefixes with VITE_ for client side)
-const region = process.env.VITE_AWS_REGION || "us-east-1";
-const userPoolId = process.env.VITE_COGNITO_USER_POOL_ID || "";
-const clientId = process.env.VITE_COGNITO_APP_CLIENT_ID || "";
+// IMPORTANT: this is an Expo app, not Vite. Only `EXPO_PUBLIC_*` env vars are
+// inlined into the client bundle — `VITE_*` vars resolve to `undefined` here.
+//
+// In Amplify v6 the Cognito region is encoded in the user-pool id
+// (e.g. "ap-southeast-2_aBcD1234"), so there is no separate `region` field on
+// the user-pool config.
+const userPoolId = process.env.EXPO_PUBLIC_COGNITO_USER_POOL_ID ?? "";
+const userPoolClientId = process.env.EXPO_PUBLIC_COGNITO_APP_CLIENT_ID ?? "";
 
 Amplify.configure({
   Auth: {
-    region,
-    userPoolId,
-    userPoolWebClientId: clientId,
+    Cognito: {
+      userPoolId,
+      userPoolClientId,
+    },
   },
-  API: {
-    // Define any API endpoints here if you use API Gateway/Lambda.
-    // Example placeholder:
-    // endpoints: [{ name: "myApi", endpoint: process.env.VITE_API_ENDPOINT }],
-  },
+  // Add a REST API here once API Gateway/Lambda exists, e.g.:
+  // API: {
+  //   REST: {
+  //     myApi: {
+  //       endpoint: process.env.EXPO_PUBLIC_API_ENDPOINT ?? "",
+  //       region: process.env.EXPO_PUBLIC_AWS_REGION ?? "ap-southeast-2",
+  //     },
+  //   },
+  // },
 });
-
-export { Auth, API };

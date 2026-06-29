@@ -30,6 +30,11 @@ supabase/.branches/
 supabase/.temp/
 supabase/.env
 
+# Amplify Gen 2
+amplify_outputs*
+.amplify/
+amplifyconfiguration*
+
 # Editor / OS
 .DS_Store
 *.log

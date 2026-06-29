@@ -10,6 +10,7 @@ module.exports = [
       ".expo/**",
       "dist/**",
       "supabase/functions/**",
+      "amplify/**",
       "scripts/**",
     ],
   },
