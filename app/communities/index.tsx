@@ -3,6 +3,7 @@ import { Pressable, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { Screen, Text, Input, Button, Card, Icon, Footer, Avatar } from "@/components/ui";
+import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
 import { useHubs, useHubStateCounts } from "@/features/hubs/api";
 import { useSearchProfiles } from "@/features/profiles/api";
 import { CommunityCard, SkeletonCard } from "@/features/hubs/components/CommunityCard";
@@ -21,6 +22,7 @@ export default function CommunitiesScreen() {
   const [selectedTypes, setSelectedTypes] = useState<HubType[]>([]);
   const [onlyIndigenousLed, setOnlyIndigenousLed] = useState(false);
   const [sort, setSort] = useState<SortKey>("newest");
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const query = searchQuery.trim();
 
@@ -74,111 +76,103 @@ export default function CommunitiesScreen() {
         <Text variant="overline" tone="pink">
           Directory
         </Text>
-        <View className="flex-row flex-wrap items-center justify-between gap-4">
-          <View className="flex-row items-end gap-3 flex-1 min-w-[200px]">
-            <Text className="font-display text-3xl md:text-5xl text-ink tracking-tight font-bold">
-              Communities
-            </Text>
-            {totalAcrossStates > 0 ? (
-              <View className="items-end pb-1">
-                <Text className="font-display text-2xl text-pink-500 leading-none">{totalAcrossStates}</Text>
-                <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted mt-1">
-                  Active hubs
-                </Text>
-              </View>
-            ) : null}
-          </View>
-
-          <View className="flex-row items-center border border-linen bg-card rounded-full px-3 md:px-4 h-11 gap-2 shadow-subtle w-full md:w-[280px] lg:w-[320px]">
-            <Input
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Search by name…"
-              returnKeyType="search"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-              leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
-              containerClassName="border-0 bg-transparent h-10 px-0 flex-1"
-              className="text-xs md:text-sm font-sans"
-            />
-            {query ? (
-              <Pressable onPress={() => setSearchQuery("")} hitSlop={10} className="h-6 w-6 items-center justify-center rounded-full active:bg-sand">
-                <Icon name="close" size={13} color={colors.inkMuted} />
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-      </View>
-
-      {/* State jurisdiction — edge-to-edge scroller */}
-      <View className="mt-3.5 gap-2">
-        <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
-          State jurisdiction
-        </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="gap-2 pr-gutter"
-          className="-mx-gutter px-gutter"
-        >
-          <StatePill
-            label="All Australia"
-            count={totalAcrossStates}
-            active={selectedState === ""}
-            onPress={() => setSelectedState("")}
-          />
-          {AUSTRALIAN_STATES.map((st) => (
-            <StatePill
-              key={st.code}
-              label={st.code}
-              count={stateCounts?.[st.code]}
-              active={selectedState === st.code}
-              onPress={() => setSelectedState(st.code as StateCode)}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Community type — edge-to-edge scroller */}
-      <View className="mt-3 gap-2">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
-            Community type
+        <View className="flex-row items-end gap-3">
+          <Text className="font-display text-3xl md:text-5xl text-ink tracking-tight font-bold">
+            Communities
           </Text>
-          <FirstNationsToggle active={onlyIndigenousLed} onPress={() => setOnlyIndigenousLed((v) => !v)} />
+          {totalAcrossStates > 0 ? (
+            <View className="items-end pb-1">
+              <Text className="font-display text-2xl text-pink-500 leading-none">{totalAcrossStates}</Text>
+              <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted mt-1">
+                Active hubs
+              </Text>
+            </View>
+          ) : null}
         </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerClassName="gap-2 pr-gutter"
-          className="-mx-gutter px-gutter"
-        >
-          {HUB_TYPES.map((type) => {
-            const on = selectedTypes.includes(type);
-            return (
-              <Pressable
-                key={type}
-                onPress={() => toggleType(type)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                className={cn(
-                  "h-8 flex-row items-center rounded-full border px-3 active:opacity-80",
-                  on ? "border-ink bg-ink" : "border-linen bg-card",
-                )}
-              >
-                <Text
-                  className={cn(
-                    "text-[11px] font-heading",
-                    on ? "text-paper font-semibold" : "text-ink-muted",
-                  )}
-                >
-                  {HUB_TYPE_LABELS[type]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
       </View>
+
+      {/* Primary controls — search · First Nations · sort, one line */}
+      <View className="mt-4 flex-row flex-wrap items-center gap-2.5">
+        {/* Search + people */}
+        <View
+          className={cn(
+            "h-11 min-w-[240px] flex-1 flex-row items-center gap-1.5 rounded-full border bg-card px-3 md:h-12 md:px-5",
+            searchFocused ? "border-teal-500 shadow-card" : "border-linen shadow-subtle",
+          )}
+        >
+          <Input
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="Search communities & people…"
+            returnKeyType="search"
+            autoCorrect={false}
+            leftIcon={<Icon name="search" size={17} color={searchFocused ? colors.teal : colors.inkFaint} />}
+            rightIcon={
+              query ? (
+                <Pressable
+                  onPress={() => setSearchQuery("")}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  className="h-5 w-5 items-center justify-center rounded-full bg-sand active:opacity-60"
+                >
+                  <Icon name="close" size={13} color={colors.inkMuted} strokeWidth={2.5} />
+                </Pressable>
+              ) : undefined
+            }
+            containerClassName="flex-1 border-0 bg-transparent h-full px-0"
+            className="font-sans text-sm md:text-base"
+          />
+        </View>
+
+        {/* First Nations */}
+        <FirstNationsToggle
+          active={onlyIndigenousLed}
+          onPress={() => setOnlyIndigenousLed((v) => !v)}
+          className="h-11 self-center px-4 md:h-12"
+        />
+
+        {/* Sort */}
+        <View className="h-11 flex-row rounded-full border border-linen bg-card p-1 md:h-12">
+          <SortChip label="Newest" active={sort === "newest"} onPress={() => setSort("newest")} />
+          <SortChip label="A–Z" active={sort === "az"} onPress={() => setSort("az")} />
+        </View>
+      </View>
+
+      {/* Filters — states · types on one scrolling line */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerClassName="items-center gap-2 pr-gutter"
+        className="-mx-gutter px-gutter mt-3"
+      >
+        <StatePill
+          label="All Australia"
+          count={totalAcrossStates}
+          active={selectedState === ""}
+          onPress={() => setSelectedState("")}
+        />
+        {AUSTRALIAN_STATES.map((st) => (
+          <StatePill
+            key={st.code}
+            label={st.code}
+            count={stateCounts?.[st.code]}
+            active={selectedState === st.code}
+            onPress={() => setSelectedState(st.code as StateCode)}
+          />
+        ))}
+        <View className="mx-1 h-6 w-[1px] bg-linen" />
+        {HUB_TYPES.map((type) => (
+          <TogglePill
+            key={type}
+            label={HUB_TYPE_LABELS[type]}
+            selected={selectedTypes.includes(type)}
+            onPress={() => toggleType(type)}
+          />
+        ))}
+      </ScrollView>
 
       {/* Results toolbar */}
       <View className="mt-4 mb-2 flex-row items-center justify-between border-b border-linen pb-2">
@@ -192,12 +186,6 @@ export default function CommunitiesScreen() {
               <Text className="text-xs font-heading text-pink-600">Clear {activeFilterCount}</Text>
             </Pressable>
           ) : null}
-        </View>
-
-        {/* Sort toggle */}
-        <View className="flex-row items-center rounded-full border border-linen bg-card p-0.5">
-          <SortChip label="Newest" active={sort === "newest"} onPress={() => setSort("newest")} />
-          <SortChip label="A–Z" active={sort === "az"} onPress={() => setSort("az")} />
         </View>
       </View>
 
@@ -338,8 +326,8 @@ function StatePill({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={cn(
-        "h-8.5 flex-row items-center gap-1.5 rounded-full border px-3 active:opacity-80",
-        active ? "border-pink-500 bg-pink-500" : "border-linen bg-card",
+        "h-9 flex-row items-center gap-1.5 rounded-full border px-3.5 active:opacity-80",
+        active ? "border-pink-500 bg-pink-500 shadow-subtle" : "border-linen bg-card hover:bg-sand",
       )}
     >
       <Text className={cn("text-xs font-heading", active ? "text-ink font-semibold" : "text-ink-muted")}>
@@ -354,24 +342,34 @@ function StatePill({
   );
 }
 
-function FirstNationsToggle({ active, onPress }: { active: boolean; onPress: () => void }) {
+/** Unified selectable pill — shared look with the Discover screen's filters. */
+function TogglePill({
+  label,
+  selected,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityState={{ selected: active }}
+      accessibilityState={{ selected }}
+      accessibilityLabel={accessibilityLabel ?? label}
       className={cn(
-        "h-8 flex-row items-center gap-1.5 rounded-full border px-3 active:opacity-80",
-        active ? "border-country-black bg-country-black" : "border-linen bg-card",
+        "h-9 flex-row items-center gap-1.5 rounded-full border px-3.5 active:opacity-80",
+        selected
+          ? "border-ink bg-ink shadow-subtle"
+          : "border-linen bg-card hover:border-ink/30 hover:bg-sand",
       )}
     >
-      <View className="flex-row gap-0.5">
-        <View className="h-1.5 w-1.5 rounded-pill bg-country-red" />
-        <View className="h-1.5 w-1.5 rounded-pill bg-country-ochre" />
-        <View className={cn("h-1.5 w-1.5 rounded-pill", active ? "bg-paper" : "bg-ink")} />
-      </View>
-      <Text className={cn("text-[10px] font-heading uppercase tracking-wide", active ? "text-paper" : "text-ink")}>
-        First Nations
+      {selected ? <Icon name="check" size={11} color={colors.paper} strokeWidth={2.5} /> : null}
+      <Text className={cn("font-heading text-[11px]", selected ? "font-semibold text-paper" : "text-ink-muted")}>
+        {label}
       </Text>
     </Pressable>
   );
@@ -383,9 +381,9 @@ function SortChip({ label, active, onPress }: { label: string; active: boolean; 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={cn("rounded-full px-2.5 py-1.5 active:opacity-80", active ? "bg-ink" : "bg-transparent")}
+      className={cn("h-full items-center justify-center rounded-full px-3.5 active:opacity-80", active && "bg-ink")}
     >
-      <Text className={cn("text-[11px] font-heading", active ? "text-paper font-semibold" : "text-ink-muted")}>
+      <Text className={cn("font-heading text-xs", active ? "text-paper font-semibold" : "text-ink-muted")}>
         {label}
       </Text>
     </Pressable>

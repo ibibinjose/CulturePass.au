@@ -1,7 +1,7 @@
 import { generateClient } from "aws-amplify/data";
 
 import type { Schema } from "@/amplify/data/resource";
-import { configureAmplify } from "./config";
+import { configureAmplify, getDataAuthMode } from "./config";
 
 /**
  * Amplify Data (AppSync) client — the AWS counterpart to `lib/supabase/client`.
@@ -17,7 +17,9 @@ import { configureAmplify } from "./config";
  */
 export function getAwsDataClient() {
   configureAmplify();
-  return generateClient<Schema>();
+  // authMode follows the session: guests read via the Identity Pool (IAM) role
+  // so `allow.guest()` rules apply; signed-in users use User Pools.
+  return generateClient<Schema>({ authMode: getDataAuthMode() });
 }
 
 /** A typed Amplify Data client (return type of {@link getAwsDataClient}). */

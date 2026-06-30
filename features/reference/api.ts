@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
 import { qk } from "@/lib/query";
@@ -21,6 +21,8 @@ type CouncilRow = {
   is_metro: boolean;
   population: number | null;
   traditional_custodians: string[] | null;
+  logo_url: string | null;
+  website: string | null;
 };
 
 function mapState(s: AwsItem<"AustralianState">): StateRow {
@@ -42,6 +44,8 @@ function mapCouncil(c: AwsItem<"AustralianCouncil">): CouncilRow {
     population: c.population ?? null,
     traditional_custodians:
       c.traditionalCustodians?.filter((t): t is string => t != null) ?? null,
+    logo_url: c.logoUrl ?? null,
+    website: c.website ?? null,
   };
 }
 
@@ -93,6 +97,30 @@ export function useCouncilDetails(councilId?: string) {
     },
     enabled: !!councilId,
     staleTime: Infinity,
+  });
+}
+
+/** Admin edit of a council's editorial fields (custodians, population, …). */
+export interface UpdateCouncilInput {
+  id: string;
+  traditionalCustodians: string[] | null;
+  population: number | null;
+  website: string | null;
+  logoUrl: string | null;
+  isMetro: boolean;
+}
+
+export function useUpdateCouncil() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateCouncilInput) => {
+      const client = getAwsDataClient();
+      const { errors } = await client.models.AustralianCouncil.update(input);
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
+    },
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: qk.councilDetails(id) });
+    },
   });
 }
 

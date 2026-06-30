@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Hub } from "aws-amplify/utils";
 
 import { getAwsAuthUser, type AwsAuthUser } from "@/lib/aws/auth";
+import { setDataSignedIn } from "@/lib/aws/config";
 import { qk } from "@/lib/query";
 
 /** Backend-neutral user — only the fields the app actually reads. */
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getAwsAuthUser().then((u) => {
       if (!active) return;
       setUser(u);
+      setDataSignedIn(!!u);
       setInitializing(false);
     });
 
@@ -45,12 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = Hub.listen("auth", ({ payload }) => {
       if (payload.event === "signedOut") {
         setUser(null);
+        setDataSignedIn(false);
         setInitializing(false);
         refreshScopedQueries();
       } else if (payload.event === "signedIn" || payload.event === "tokenRefresh") {
         getAwsAuthUser().then((u) => {
           if (!active) return;
           setUser(u);
+          setDataSignedIn(!!u);
           setInitializing(false);
           refreshScopedQueries();
         });

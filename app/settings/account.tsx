@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import { Screen, Text, Button, BackButton, Card, Field, PasswordInput, Divider } from "@/components/ui";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { useUpdatePassword } from "@/features/auth/api";
+import { useChangePassword } from "@/features/auth/api";
 import { useDeleteAccount } from "@/features/profiles/api";
 
 export default function AccountScreen() {
@@ -19,9 +19,10 @@ export default function AccountScreen() {
 function Account() {
   const router = useRouter();
   const { user } = useAuth();
-  const updatePassword = useUpdatePassword();
+  const changePasswordMutation = useChangePassword();
   const deleteAccount = useDeleteAccount();
 
+  const [oldPassword, setOldPassword] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [pwError, setPwError] = useState<string | null>(null);
@@ -33,6 +34,10 @@ function Account() {
   async function changePassword() {
     setPwError(null);
     setPwNotice(null);
+    if (!oldPassword) {
+      setPwError("Enter your current password.");
+      return;
+    }
     if (password.length < 8) {
       setPwError("Use at least 8 characters.");
       return;
@@ -42,7 +47,8 @@ function Account() {
       return;
     }
     try {
-      await updatePassword.mutateAsync({ password, confirm_password: confirm });
+      await changePasswordMutation.mutateAsync({ oldPassword, newPassword: password });
+      setOldPassword("");
       setPassword("");
       setConfirm("");
       setPwNotice("Password updated.");
@@ -91,13 +97,21 @@ function Account() {
         Change password
       </Text>
       <View className="mt-5 gap-5">
-        <Field label="New password" error={pwError ?? undefined} helper="At least 8 characters">
+        <Field label="Current password" error={pwError ?? undefined}>
+          <PasswordInput
+            value={oldPassword}
+            onChangeText={setOldPassword}
+            placeholder="Current password"
+            autoComplete="current-password"
+            invalid={!!pwError}
+          />
+        </Field>
+        <Field label="New password" helper="At least 8 characters">
           <PasswordInput
             value={password}
             onChangeText={setPassword}
             placeholder="New password"
             autoComplete="new-password"
-            invalid={!!pwError}
           />
         </Field>
         <Field label="Confirm new password">
@@ -120,7 +134,7 @@ function Account() {
         <Button
           label="Update password"
           variant="outline"
-          loading={updatePassword.isPending}
+          loading={changePasswordMutation.isPending}
           onPress={changePassword}
         />
       </View>

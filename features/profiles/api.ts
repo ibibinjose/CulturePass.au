@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { deleteUser } from "aws-amplify/auth";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
 import { compact } from "@/lib/aws/map";
@@ -190,9 +191,12 @@ export function useDeleteAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      // On AWS this needs a Lambda that deletes the Cognito user and the owner's
-      // DynamoDB rows. Tracked as migration follow-up.
-      throw new Error("Account deletion isn't wired up on AWS yet.");
+      const profileId = await getCurrentProfileId().catch(() => null);
+      if (profileId) {
+        const client = getAwsDataClient();
+        await client.models.Profile.delete({ id: profileId });
+      }
+      await deleteUser();
     },
     onSuccess: () => qc.clear(),
   });

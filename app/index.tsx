@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -23,6 +23,7 @@ import {
   Carousel,
   SectionHeader,
   EmptyCard,
+  Skeleton,
   useToast,
 } from "@/components/ui";
 import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
@@ -144,7 +145,110 @@ function getFriendlyPlaceName(label: string) {
     .trim();
 }
 
+const eventIsFN = (e: any) =>
+  !!e.hub?.indigenous_led || (e.cultural_focus ?? []).some((f: string) => FN_FOCUS.has(f.toLowerCase()));
+const hubIsFN = (h: any) => !!h.indigenous_led;
 
+/** Content-shaped placeholder for an event grid card while the feed loads. */
+function EventCardSkeleton() {
+  return (
+    <View className="overflow-hidden rounded-2xl border border-linen bg-card">
+      <Skeleton className="h-40 w-full rounded-none" />
+      <View className="gap-2 p-4">
+        <Skeleton className="h-3 w-16 rounded-full" />
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </View>
+    </View>
+  );
+}
+
+/** Content-shaped placeholder mirroring the inline hub card. */
+function HubCardSkeleton() {
+  return (
+    <View className="gap-4 rounded-2xl border border-linen bg-card p-4">
+      <View className="flex-row items-center gap-3">
+        <Skeleton className="h-11 w-11 rounded-full" />
+        <View className="flex-1 gap-1.5">
+          <Skeleton className="h-3.5 w-2/3" />
+          <Skeleton className="h-2.5 w-1/3" />
+        </View>
+      </View>
+      <View className="border-t border-linen/30 pt-3">
+        <Skeleton className="h-2.5 w-1/2" />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * Unified selectable pill — one tactile control shared by the category rail and
+ * every section of the filter panel. Ink fill + check when on; warm hairline
+ * with a sand hover when off.
+ */
+function TogglePill({
+  label,
+  selected,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={accessibilityLabel ?? label}
+      className={cn(
+        "h-8 flex-row items-center gap-1.5 rounded-full border px-3 active:opacity-80",
+        selected
+          ? "border-ink bg-ink shadow-subtle"
+          : "border-linen bg-card hover:border-ink/30 hover:bg-sand",
+      )}
+    >
+      {selected ? <Icon name="check" size={11} color={colors.paper} strokeWidth={2.5} /> : null}
+      <Text className={cn("font-heading text-[11px]", selected ? "font-semibold text-paper" : "text-ink-muted")}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** Removable active-filter chip with a circular close affordance. */
+function RemovableChip({
+  label,
+  onRemove,
+  tone = "default",
+}: {
+  label: string;
+  onRemove: () => void;
+  tone?: "default" | "country";
+}) {
+  return (
+    <Pressable
+      onPress={onRemove}
+      accessibilityRole="button"
+      accessibilityLabel={`Remove ${label} filter`}
+      className={cn(
+        "h-7 flex-row items-center gap-1.5 rounded-full border pl-3 pr-1.5 active:opacity-70",
+        tone === "country"
+          ? "border-country-ochre/40 bg-country-ochre/10"
+          : "border-linen bg-sand hover:bg-linen",
+      )}
+    >
+      <Text className={cn("text-[11px]", tone === "country" ? "font-semibold text-country-red" : "text-ink")}>
+        {label}
+      </Text>
+      <View className="h-4 w-4 items-center justify-center rounded-full bg-ink/10">
+        <Icon name="close" size={9} color={colors.inkMuted} strokeWidth={2.5} />
+      </View>
+    </Pressable>
+  );
+}
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -162,6 +266,7 @@ export default function DiscoverScreen() {
 
   const [homeTab, setHomeTab] = useState<"discover" | "council">("discover");
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   const toast = useToast();
   const { detect, detecting } = useDetectCouncil();
@@ -198,7 +303,7 @@ export default function DiscoverScreen() {
     }
   }, [profile, setLocation]);
 
-  // Sync local location selection back to Supabase profile preferences
+  // Sync local location selection back to the user's profile preferences (AWS).
   useEffect(() => {
     if (!profile) return;
     const currentPrefs = parsePreferences(profile.preferences);
@@ -225,7 +330,10 @@ export default function DiscoverScreen() {
     }
   }, [location, profile, updateProfile]);
 
-  const activeInterests = interests.length > 0 ? interests : profile?.interests ?? [];
+  const activeInterests = useMemo(
+    () => (interests.length > 0 ? interests : profile?.interests ?? []),
+    [interests, profile?.interests],
+  );
 
   const eventFilters = {
     ...(query ? { search: query } : {}),
@@ -238,48 +346,67 @@ export default function DiscoverScreen() {
     ...(hubTypes.length === 1 ? { type: hubTypes[0] } : {}),
   };
 
-  const { data: events } = useEvents(eventFilters);
+  const { data: events, isLoading: eventsLoading } = useEvents(eventFilters);
   const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(hubFilters);
 
-  const now = new Date();
-  const activeEvents = (events ?? []).filter((e) => {
-    if (!e.start_time) return false;
-    const eventTime = e.end_time ? new Date(e.end_time) : new Date(e.start_time);
-    return eventTime >= now;
-  });
+  const {
+    activeEvents,
+    filteredHubs,
+    featured,
+    comingUp,
+    forYouEvents,
+    hasForYou,
+    hubResults,
+    fnEvents,
+    fnHubs,
+    showFnSection,
+  } = useMemo(() => {
+    const now = new Date();
+    const activeEventsList = (events ?? []).filter((e) => {
+      if (!e.start_time) return false;
+      const eventTime = e.end_time ? new Date(e.end_time) : new Date(e.start_time);
+      return eventTime >= now;
+    });
 
-  const categoryEvents = categories.length
-    ? activeEvents.filter((e) => categories.includes(e.type))
-    : activeEvents;
+    const categoryEvents = categories.length
+      ? activeEventsList.filter((e) => categories.includes(e.type))
+      : activeEventsList;
 
-  const interestSet = lowerSet(activeInterests);
-  const matches = (haystack: (string | null | undefined)[]) =>
-    [...lowerSet(haystack)].some((v) => interestSet.has(v));
-  const filteredHubs = hubTypes.length
-    ? (hubs ?? []).filter((h) => hubTypes.includes(h.type as HubType))
-    : hubs ?? [];
+    const interestSet = lowerSet(activeInterests);
+    const matches = (haystack: (string | null | undefined)[]) =>
+      [...lowerSet(haystack)].some((v) => interestSet.has(v));
+    const filteredHubsList = hubTypes.length
+      ? (hubs ?? []).filter((h) => hubTypes.includes(h.type as HubType))
+      : hubs ?? [];
 
-  const eventIsFN = (e: any) =>
-    !!e.hub?.indigenous_led || (e.cultural_focus ?? []).some((f: string) => FN_FOCUS.has(f.toLowerCase()));
-  const hubIsFN = (h: any) => !!h.indigenous_led;
+    const fnEventsList = categoryEvents.filter(eventIsFN);
+    const fnHubsList = filteredHubsList.filter(hubIsFN);
 
-  const fnEvents = categoryEvents.filter(eventIsFN);
-  const fnHubs = filteredHubs.filter(hubIsFN);
+    const baseEvents = firstNations ? fnEventsList : categoryEvents;
+    const baseHubs = firstNations ? fnHubsList : filteredHubsList;
 
-  const baseEvents = firstNations ? fnEvents : categoryEvents;
-  const baseHubs = firstNations ? fnHubs : filteredHubs;
-  const featured = baseEvents.slice(0, 5);
-  const comingUp = baseEvents.slice(5, 20);
+    const forYou = activeInterests.length
+      ? categoryEvents.filter((e) => matches([...(e.cultural_focus ?? []), ...(e.tags ?? [])]))
+      : [];
 
-  const forYouEvents = activeInterests.length
-    ? categoryEvents.filter((e) => matches([...(e.cultural_focus ?? []), ...(e.tags ?? [])]))
-    : [];
-  const hasForYou = !firstNations && forYouEvents.length > 0;
+    const likedHubs = activeInterests.length
+      ? filteredHubsList.filter((h) => matches([...(h.categories ?? []), ...(h.tags ?? [])]))
+      : [];
 
-  const likedHubs = activeInterests.length
-    ? filteredHubs.filter((h) => matches([...(h.categories ?? []), ...(h.tags ?? [])]))
-    : [];
-  const hubResults = (likedHubs.length && !firstNations ? likedHubs : baseHubs).slice(0, 8);
+    return {
+      activeEvents: activeEventsList,
+      filteredHubs: filteredHubsList,
+      featured: baseEvents.slice(0, 5),
+      comingUp: baseEvents.slice(5, 20),
+      forYouEvents: forYou,
+      hasForYou: !firstNations && forYou.length > 0,
+      hubResults: (likedHubs.length && !firstNations ? likedHubs : baseHubs).slice(0, 8),
+      fnEvents: fnEventsList,
+      fnHubs: fnHubsList,
+      showFnSection: !firstNations && (fnEventsList.length > 0 || fnHubsList.length > 0),
+    };
+  }, [events, hubs, categories, hubTypes, firstNations, activeInterests]);
+
   const activeFilterCount =
     (query ? 1 : 0) +
     (location.state ? 1 : 0) +
@@ -288,14 +415,32 @@ export default function DiscoverScreen() {
     categories.length +
     hubTypes.length +
     (firstNations ? 1 : 0);
-
-  const showFnSection = !firstNations && (fnEvents.length > 0 || fnHubs.length > 0);
   const featuredWidth = Math.min(width - 56, 440);
   const isDesktop = width >= 1024;
   const isTablet = width >= 768;
   const gridItemStyle: ViewStyle = {
     width: isDesktop ? "23.5%" : isTablet ? "48%" : "100%",
   };
+
+  const eventGridSkeleton = (
+    <View className="mt-2 flex-row flex-wrap gap-5" aria-busy>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <View key={i} style={gridItemStyle}>
+          <EventCardSkeleton />
+        </View>
+      ))}
+    </View>
+  );
+
+  const hubGridSkeleton = (
+    <View className="mt-2 flex-row flex-wrap gap-5" aria-busy>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <View key={i} style={gridItemStyle}>
+          <HubCardSkeleton />
+        </View>
+      ))}
+    </View>
+  );
 
   const toggleCategory = (c: EventType) =>
     setCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
@@ -373,61 +518,135 @@ export default function DiscoverScreen() {
         </View>
       </View>
 
-      {/* Search & Location block */}
-      <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-10 md:h-12 gap-2 shadow-subtle w-full max-w-3xl mt-4">
-        <View className="flex-1 flex-row items-center h-full">
-          <Input
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Discover events near you..."
-            returnKeyType="search"
-            autoCorrect={false}
-            leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
-            containerClassName="border-0 bg-transparent h-full px-0 flex-1"
-            className="text-xs md:text-sm font-sans"
-          />
+      {/* Primary controls — Discover/Council · Filters · First Nations · search, one line */}
+      <View className="mt-4 w-full flex-row flex-wrap items-center gap-2.5">
+        {/* Discover / Council switcher */}
+        <View className="h-11 flex-row rounded-full border border-linen bg-card p-1 md:h-12">
+          <Pressable
+            onPress={() => setHomeTab("discover")}
+            accessibilityRole="button"
+            accessibilityState={{ selected: homeTab === "discover" }}
+            className={cn(
+              "h-full items-center justify-center rounded-full px-4 active:opacity-80",
+              homeTab === "discover" && "bg-ink",
+            )}
+          >
+            <Text className={cn("font-heading text-xs", homeTab === "discover" ? "font-semibold text-paper" : "text-ink-faint")}>
+              Discover Feed
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setHomeTab("council")}
+            accessibilityRole="button"
+            accessibilityState={{ selected: homeTab === "council" }}
+            className={cn(
+              "h-full items-center justify-center rounded-full px-4 active:opacity-80",
+              homeTab === "council" && "bg-ink",
+            )}
+          >
+            <Text className={cn("font-heading text-xs", homeTab === "council" ? "font-semibold text-paper" : "text-ink-faint")}>
+              My Council
+            </Text>
+          </Pressable>
         </View>
 
-        {/* Vertical divider */}
-        <View className="w-[1px] h-5 md:h-6 bg-ink/20 mx-0.5" />
-
-        {/* Location picker */}
-        <View className="flex-row items-center h-full pr-0.5">
-          <View className="mr-1">
-            <Icon name="map-pin" size={13} color={colors.inkFaint} />
-          </View>
-          <LocationPicker
-            value={location}
-            onChange={setLocation}
-            className="h-full border-0 bg-transparent px-0 active:bg-transparent"
-          />
-        </View>
-      </View>
-
-      {/* Search Filter Toggle and Collapsible Panel */}
-      <View className="flex-row flex-wrap items-center gap-3 mt-3.5 w-full max-w-4xl">
+        {/* Filters */}
         <Pressable
           onPress={() => setShowFilterPanel(!showFilterPanel)}
           accessibilityRole="button"
           accessibilityState={{ expanded: showFilterPanel }}
           accessibilityLabel={`Filters${activeFilterCount > 0 ? `, ${activeFilterCount} active` : ""}`}
           className={cn(
-            "h-8.5 px-3.5 rounded-full border flex-row items-center gap-2 active:opacity-75 shadow-sm",
-            showFilterPanel || activeFilterCount > 0 ? "border-ink bg-ink" : "border-linen bg-card"
+            "h-11 flex-row items-center gap-2 rounded-full border pl-4 pr-3 md:h-12 active:opacity-80",
+            showFilterPanel || activeFilterCount > 0
+              ? "border-ink bg-ink shadow-subtle"
+              : "border-linen bg-card hover:bg-sand",
           )}
         >
           <Icon name="filter" size={14} color={showFilterPanel || activeFilterCount > 0 ? colors.paper : colors.ink} />
-          <Text className={cn("text-xs font-heading font-semibold", showFilterPanel || activeFilterCount > 0 ? "text-paper" : "text-ink")}>
-            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
+          <Text className={cn("font-heading text-xs font-semibold", showFilterPanel || activeFilterCount > 0 ? "text-paper" : "text-ink")}>
+            Filters
           </Text>
+          {activeFilterCount > 0 ? (
+            <View className="h-5 min-w-[20px] items-center justify-center rounded-full bg-pink-500 px-1">
+              <Text className="font-heading text-[10px] font-bold text-white">{activeFilterCount}</Text>
+            </View>
+          ) : (
+            <View className={cn(showFilterPanel && "rotate-180")}>
+              <Icon name="chevron-down" size={14} color={colors.ink} />
+            </View>
+          )}
         </Pressable>
 
-        <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
+        {/* First Nations */}
+        <FirstNationsToggle
+          active={firstNations}
+          onPress={() => setFirstNations((v) => !v)}
+          className="h-11 self-center px-4 md:h-12"
+        />
 
-        {activeFilterCount > 0 ? (
-          <Button label="Clear all" variant="outline" size="sm" className="h-8 px-2.5 rounded-full" onPress={clearFilters} />
-        ) : null}
+        {/* Search + location */}
+        <View
+          className={cn(
+            "h-11 min-w-[240px] flex-1 flex-row items-center gap-1.5 rounded-full border bg-card px-3 md:h-12 md:px-5",
+            searchFocused ? "border-teal-500 shadow-card" : "border-linen shadow-subtle",
+          )}
+        >
+          <Input
+            value={search}
+            onChangeText={setSearch}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder="Discover events near you…"
+            returnKeyType="search"
+            autoCorrect={false}
+            leftIcon={<Icon name="search" size={17} color={searchFocused ? colors.teal : colors.inkFaint} />}
+            rightIcon={
+              search.length > 0 ? (
+                <Pressable
+                  onPress={() => setSearch("")}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear search"
+                  className="h-5 w-5 items-center justify-center rounded-full bg-sand active:opacity-60"
+                >
+                  <Icon name="close" size={13} color={colors.inkMuted} strokeWidth={2.5} />
+                </Pressable>
+              ) : undefined
+            }
+            containerClassName="flex-1 border-0 bg-transparent h-full px-0"
+            className="font-sans text-sm md:text-base"
+          />
+
+          <View className="h-6 w-[1px] bg-linen md:h-7" />
+
+          <View className="h-full flex-row items-center pl-1">
+            <Icon name="map-pin" size={14} color={colors.inkFaint} />
+            <LocationPicker
+              value={location}
+              onChange={setLocation}
+              className="h-full border-0 bg-transparent px-1 active:bg-transparent"
+            />
+          </View>
+        </View>
       </View>
+
+      {/* Category navigation — line below the controls */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerClassName="gap-2 px-gutter py-2"
+        className="-mx-gutter px-gutter mt-3"
+      >
+        {EVENT_TYPES.map((type) => (
+          <TogglePill
+            key={type}
+            label={EVENT_TYPE_LABELS[type]}
+            selected={categories.includes(type)}
+            onPress={() => toggleCategory(type)}
+          />
+        ))}
+      </ScrollView>
 
       {showFilterPanel && (
         <View className="w-full max-w-4xl border border-linen bg-card rounded-2xl p-4 mt-3 gap-3.5 shadow-card">
@@ -449,28 +668,17 @@ export default function DiscoverScreen() {
               <Icon name="sparkle" size={13} color={colors.inkMuted} />
               <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Interests</Text>
             </View>
-            <View className="flex-row flex-wrap gap-1.5">
-              {INTEREST_OPTIONS.map((opt) => {
-                const on = interests.includes(opt);
-                return (
-                  <Pressable
-                    key={opt}
-                    onPress={() => setInterests(cur => cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt])}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={opt}
-                    className={cn(
-                      "px-2 py-1 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
-                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
-                    )}
-                  >
-                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
-                    <Text className={cn("text-[11px] font-medium", on ? "text-paper" : "text-ink")}>
-                      {opt}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View className="flex-row flex-wrap gap-2">
+              {INTEREST_OPTIONS.map((opt) => (
+                <TogglePill
+                  key={opt}
+                  label={opt}
+                  selected={interests.includes(opt)}
+                  onPress={() =>
+                    setInterests((cur) => (cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt]))
+                  }
+                />
+              ))}
             </View>
           </View>
 
@@ -480,28 +688,15 @@ export default function DiscoverScreen() {
               <Icon name="filter" size={13} color={colors.inkMuted} />
               <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Categories</Text>
             </View>
-            <View className="flex-row flex-wrap gap-1.5">
-              {EVENT_TYPES.map((type) => {
-                const on = categories.includes(type);
-                return (
-                  <Pressable
-                    key={type}
-                    onPress={() => toggleCategory(type)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={EVENT_TYPE_LABELS[type]}
-                    className={cn(
-                      "px-2 py-1 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
-                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
-                    )}
-                  >
-                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
-                    <Text className={cn("text-[11px] font-medium", on ? "text-paper" : "text-ink")}>
-                      {EVENT_TYPE_LABELS[type]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View className="flex-row flex-wrap gap-2">
+              {EVENT_TYPES.map((type) => (
+                <TogglePill
+                  key={type}
+                  label={EVENT_TYPE_LABELS[type]}
+                  selected={categories.includes(type)}
+                  onPress={() => toggleCategory(type)}
+                />
+              ))}
             </View>
           </View>
 
@@ -511,28 +706,15 @@ export default function DiscoverScreen() {
               <Icon name="grid" size={13} color={colors.inkMuted} />
               <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Page Types</Text>
             </View>
-            <View className="flex-row flex-wrap gap-1.5">
-              {HUB_TYPES.map((type) => {
-                const on = hubTypes.includes(type);
-                return (
-                  <Pressable
-                    key={type}
-                    onPress={() => toggleHubType(type)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={HUB_TYPE_LABELS[type]}
-                    className={cn(
-                      "px-2 py-1 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
-                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
-                    )}
-                  >
-                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
-                    <Text className={cn("text-[11px] font-medium", on ? "text-paper" : "text-ink")}>
-                      {HUB_TYPE_LABELS[type]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View className="flex-row flex-wrap gap-2">
+              {HUB_TYPES.map((type) => (
+                <TogglePill
+                  key={type}
+                  label={HUB_TYPE_LABELS[type]}
+                  selected={hubTypes.includes(type)}
+                  onPress={() => toggleHubType(type)}
+                />
+              ))}
             </View>
           </View>
         </View>
@@ -540,109 +722,64 @@ export default function DiscoverScreen() {
 
       {/* Active Filter Chips Row */}
       {activeFilterCount > 0 && (
-        <View className="flex-row flex-wrap items-center gap-2 mt-2 w-full max-w-4xl">
-          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted mr-1">Active Filters:</Text>
+        <View className="mt-3 flex-row flex-wrap items-center gap-2 w-full max-w-4xl">
+          <Text className="mr-1 font-heading text-[10px] uppercase tracking-widest text-ink-muted">Active</Text>
           {interests.map((opt) => (
-            <Pressable
+            <RemovableChip
               key={`active-int-${opt}`}
-              onPress={() => setInterests(cur => cur.filter(x => x !== opt))}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${opt} filter`}
-              className="bg-sand hover:bg-linen px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
-            >
-              <Text className="text-[10px] text-ink">{opt}</Text>
-              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
-            </Pressable>
+              label={opt}
+              onRemove={() => setInterests((cur) => cur.filter((x) => x !== opt))}
+            />
           ))}
           {categories.map((type) => (
-            <Pressable
+            <RemovableChip
               key={`active-cat-${type}`}
-              onPress={() => toggleCategory(type)}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${EVENT_TYPE_LABELS[type]} filter`}
-              className="bg-sand hover:bg-linen px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
-            >
-              <Text className="text-[10px] text-ink">{EVENT_TYPE_LABELS[type]}</Text>
-              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
-            </Pressable>
+              label={EVENT_TYPE_LABELS[type]}
+              onRemove={() => toggleCategory(type)}
+            />
           ))}
           {hubTypes.map((type) => (
-            <Pressable
+            <RemovableChip
               key={`active-hub-${type}`}
-              onPress={() => toggleHubType(type)}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove ${HUB_TYPE_LABELS[type]} filter`}
-              className="bg-sand hover:bg-linen px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
-            >
-              <Text className="text-[10px] text-ink">{HUB_TYPE_LABELS[type]}</Text>
-              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
-            </Pressable>
+              label={HUB_TYPE_LABELS[type]}
+              onRemove={() => toggleHubType(type)}
+            />
           ))}
           {firstNations && (
-            <Pressable
+            <RemovableChip
               key="active-fn"
-              onPress={() => setFirstNations(false)}
-              accessibilityRole="button"
-              accessibilityLabel="Remove First Nations Spotlight filter"
-              className="bg-country-ochre/15 px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-country-ochre/30 active:opacity-75"
-            >
-              <Text className="text-[10px] text-country-red font-semibold">First Nations Spotlight</Text>
-              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
-            </Pressable>
+              label="First Nations Spotlight"
+              tone="country"
+              onRemove={() => setFirstNations(false)}
+            />
           )}
+          <Pressable
+            onPress={clearFilters}
+            accessibilityRole="button"
+            accessibilityLabel="Clear all filters"
+            className="h-7 flex-row items-center rounded-full px-2.5 active:opacity-70"
+          >
+            <Text className="font-heading text-[11px] font-semibold text-pink-600">Clear all</Text>
+          </Pressable>
         </View>
       )}
-
-      {/* Category navigation */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerClassName="gap-2 px-gutter py-2"
-        className="-mx-gutter px-gutter mt-3.5"
-      >
-        {EVENT_TYPES.map((type) => {
-          const on = categories.includes(type);
-          return (
-            <Pressable
-              key={type}
-              onPress={() => toggleCategory(type)}
-              className={cn(
-                "rounded-full border px-2.5 py-1 active:opacity-85",
-                on ? "border-ink bg-ink" : "border-linen/70 bg-card"
-              )}
-            >
-              <Text
-                className={cn(
-                  "text-[9px] font-heading uppercase tracking-[1px] text-center",
-                  on ? "text-paper font-semibold" : "text-ink"
-                )}
-              >
-                {EVENT_TYPE_LABELS[type]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {/* Home Switcher Tabs */}
-      <View className="mt-4 mb-2 flex-row self-start rounded-full border border-linen bg-card p-1">
-        <Pressable onPress={() => setHomeTab("discover")} className={cn("rounded-full px-3.5 py-1.5", homeTab === "discover" && "bg-ink")}>
-          <Text className={cn("font-heading text-xs", homeTab === "discover" ? "text-paper font-semibold" : "text-ink-faint")}>
-            Discover Feed
-          </Text>
-        </Pressable>
-        <Pressable onPress={() => setHomeTab("council")} className={cn("rounded-full px-3.5 py-1.5", homeTab === "council" && "bg-ink")}>
-          <Text className={cn("font-heading text-xs", homeTab === "council" ? "text-paper font-semibold" : "text-ink-faint")}>
-            My Council
-          </Text>
-        </Pressable>
-      </View>
 
       {homeTab === "discover" ? (
         <>
           <CohostInvitationsBanner />
           {/* Curated featured slider */}
-          {featured.length > 0 ? (
+          {eventsLoading ? (
+            <View className="mt-6 gap-4">
+              <SectionHeader eyebrow="Featured" title="Editor's picks" />
+              <Carousel>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <View key={i} style={{ width: featuredWidth }} aria-busy>
+                    <Skeleton className="h-64 w-full rounded-3xl" />
+                  </View>
+                ))}
+              </Carousel>
+            </View>
+          ) : featured.length > 0 ? (
             <View className="mt-6 gap-4">
               <SectionHeader
                 eyebrow={firstNations ? "First Nations voices" : "Featured"}
@@ -730,7 +867,14 @@ export default function DiscoverScreen() {
             ) : null}
 
             {/* EventGrid listing */}
-            {comingUp.length > 0 ? (
+            {eventsLoading ? (
+              <View className="gap-6">
+                <View className="flex-row items-baseline justify-between border-t border-linen pt-5 mt-2">
+                  <Text variant="heading" className="font-heading text-xl text-ink font-extrabold">Upcoming events</Text>
+                </View>
+                {eventGridSkeleton}
+              </View>
+            ) : comingUp.length > 0 ? (
               <View className="gap-6">
                 <View className="flex-row items-baseline justify-between border-t border-linen pt-5 mt-2">
                   <Text variant="heading" className="font-heading text-xl text-ink font-extrabold">Upcoming events</Text>
@@ -772,27 +916,19 @@ export default function DiscoverScreen() {
                 contentContainerClassName="gap-2 pr-4 pt-1"
                 className="-mx-gutter px-gutter mt-2"
               >
-                {HUB_TYPES.map((type) => {
-                  const on = hubTypes.includes(type);
-                  return (
-                    <Pressable
-                      key={type}
-                      onPress={() => toggleHubType(type)}
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 active:opacity-85",
-                        on ? "border-ink bg-ink" : "border-linen/70 bg-card"
-                      )}
-                    >
-                      <Text className={cn("text-[9px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
-                        {HUB_TYPE_LABELS[type].split(" ")[0]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                {HUB_TYPES.map((type) => (
+                  <TogglePill
+                    key={type}
+                    label={HUB_TYPE_LABELS[type].split(" ")[0] ?? HUB_TYPE_LABELS[type]}
+                    accessibilityLabel={HUB_TYPE_LABELS[type]}
+                    selected={hubTypes.includes(type)}
+                    onPress={() => toggleHubType(type)}
+                  />
+                ))}
               </ScrollView>
 
               {hubsLoading ? (
-                <Card className="p-4 items-center"><Text variant="caption" tone="faint">Loading hubs...</Text></Card>
+                hubGridSkeleton
               ) : hubsError ? (
                 <Card className="p-4 items-center"><Text variant="caption" tone="muted">Could not load hubs.</Text></Card>
               ) : hubResults.length > 0 ? (

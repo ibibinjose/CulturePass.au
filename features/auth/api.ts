@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  confirmResetPassword as awsConfirmResetPassword,
   resetPassword as awsResetPassword,
   signIn as awsSignIn,
   signUp as awsSignUp,
+  updatePassword as awsUpdatePassword,
 } from "aws-amplify/auth";
 
 import { getAwsCurrentUserId, getAwsAuthUser, awsSignOut } from "@/lib/aws/auth";
@@ -71,14 +73,37 @@ export function useResetPassword() {
 
 export function useUpdatePassword() {
   return useMutation({
-    mutationFn: async ({ password }: UpdatePasswordInput) => {
-      // Supabase completes reset on the recovery session with just the new
-      // password. Cognito's confirmResetPassword needs { username, code,
-      // newPassword }, so the update-password screen needs an email + code
-      // field before this branch can be wired. Tracked as migration follow-up.
-      throw new Error(
-        "Password reset on AWS requires the emailed confirmation code — the update-password screen needs a code field first.",
-      );
+    mutationFn: async ({
+      email,
+      code,
+      password,
+    }: {
+      email: string;
+      code: string;
+      password: UpdatePasswordInput;
+    }) => {
+      await awsConfirmResetPassword({
+        username: email,
+        confirmationCode: code,
+        newPassword: password.password,
+      });
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async ({
+      oldPassword,
+      newPassword,
+    }: {
+      oldPassword: string;
+      newPassword: string;
+    }) => {
+      await awsUpdatePassword({
+        oldPassword,
+        newPassword,
+      });
     },
   });
 }

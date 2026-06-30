@@ -3,7 +3,15 @@ import { Pressable, View } from "react-native";
 import { Text } from "../ui/Text";
 import { cn } from "@/lib/utils/cn";
 
-export function FirstNationsToggle({ active, onPress }: { active: boolean; onPress: () => void }) {
+export function FirstNationsToggle({
+  active,
+  onPress,
+  className,
+}: {
+  active: boolean;
+  onPress: () => void;
+  className?: string;
+}) {
   return (
     <Pressable
       onPress={onPress}
@@ -12,6 +20,7 @@ export function FirstNationsToggle({ active, onPress }: { active: boolean; onPre
       className={cn(
         "h-8.5 flex-row items-center gap-1.5 self-start rounded-full border px-3",
         active ? "border-country-black bg-country-black" : "border-linen/70 bg-card active:bg-sand",
+        className,
       )}
     >
       <View className="flex-row gap-0.5">

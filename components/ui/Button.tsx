@@ -9,14 +9,16 @@ type Size = "sm" | "md" | "lg";
 
 // Brand button system: bright fills with black (ink) borders. Gold is the main
 // action; pink the secondary; green drives "create / get started" actions.
+// Solid fills carry a soft warm shadow that lifts on hover and presses flat on
+// tap; outline/ghost gain a sand hover surface. Tactile, never noisy.
 const CONTAINER: Record<Variant, string> = {
-  primary: "bg-gold-500 border-2 border-ink active:bg-gold-600",
-  secondary: "bg-pink-700 border-2 border-ink active:bg-pink-600",
-  outline: "bg-card border-2 border-ink active:bg-sand",
-  ghost: "bg-transparent active:bg-sand",
-  danger: "bg-danger border-2 border-ink active:bg-danger/90",
-  whatsapp: "bg-green-500 border-2 border-ink active:bg-green-600",
-  pink: "bg-pink-700 border-2 border-ink active:bg-pink-600",
+  primary: "bg-gold-500 border-2 border-ink shadow-subtle hover:shadow-card active:bg-gold-600 active:shadow-none",
+  secondary: "bg-pink-700 border-2 border-ink shadow-subtle hover:shadow-card active:bg-pink-600 active:shadow-none",
+  outline: "bg-card border-2 border-ink hover:bg-sand active:bg-sand",
+  ghost: "bg-transparent hover:bg-sand active:bg-sand",
+  danger: "bg-danger border-2 border-ink shadow-subtle hover:shadow-card active:bg-danger/90 active:shadow-none",
+  whatsapp: "bg-green-500 border-2 border-ink shadow-subtle hover:shadow-card active:bg-green-600 active:shadow-none",
+  pink: "bg-pink-700 border-2 border-ink shadow-subtle hover:shadow-card active:bg-pink-600 active:shadow-none",
 };
 
 const LABEL: Record<Variant, string> = {

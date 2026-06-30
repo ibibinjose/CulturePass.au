@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Pressable } from "react-native";
 import { Link, useLocalSearchParams } from "expo-router";
-import { confirmResetPassword } from "aws-amplify/auth";
 
 import {
   Button,
@@ -49,10 +48,10 @@ export default function UpdatePasswordScreen() {
     }
     setErrors({});
     try {
-      await confirmResetPassword({
-        username: email.trim(),
-        confirmationCode: code.trim(),
-        newPassword: form.password,
+      await update.mutateAsync({
+        email: email.trim(),
+        code: code.trim(),
+        password: form,
       });
       setDone(true);
     } catch (err) {

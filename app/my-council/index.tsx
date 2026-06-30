@@ -1,17 +1,18 @@
-import { useEffect, useState, useRef } from "react";
-import { Pressable, ScrollView, View, ActivityIndicator } from "react-native";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { Pressable, ScrollView, View, ActivityIndicator, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { getAwsDataClient } from "@/lib/aws/data";
 
-import { Screen, Text, Input, Button, Card, Footer, Icon, Badge, LocationPicker } from "@/components/ui";
+import { Screen, Text, Input, Button, Card, Footer, Icon, Badge, LocationPicker, Skeleton, useToast } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useHubs } from "@/features/hubs/api";
 import { useEvents } from "@/features/events/api";
 import { EventCard } from "@/features/events/EventCard";
+import { SkeletonCard } from "@/features/hubs/components/CommunityCard";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
+import { useCouncilDetails, useDetectCouncil, useUpdateCouncil } from "@/features/reference/api";
 import { parsePreferences } from "@/lib/validation/profile";
 import { HUB_TYPE_LABELS, type HubType, type StateCode } from "@/lib/constants";
 
@@ -72,142 +73,77 @@ export default function MyCouncilScreen() {
   const { location, setLocation } = useSavedLocation();
   const { data: profile } = useMyProfile();
   const updateProfile = useUpdateMyProfile();
+  const toast = useToast();
 
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<"all" | "events" | "venues" | "businesses" | "community">("all");
 
-  const [detecting, setDetecting] = useState(false);
-  const [councilDetails, setCouncilDetails] = useState<any>(null);
-  const [councilLoading, setCouncilLoading] = useState(false);
+  // Council detection + details flow through the shared, cached data layer.
+  const { detect, detecting } = useDetectCouncil();
+  const { data: councilDetails, isLoading: councilLoading } = useCouncilDetails(
+    location.councilId ?? undefined,
+  );
+  const updateCouncil = useUpdateCouncil();
 
-  // Edit states for admins
+  const isAdmin = profile?.is_admin ?? false;
+
+  // Admin edit-form state.
   const [isEditing, setIsEditing] = useState(false);
   const [editTraditionalCustodians, setEditTraditionalCustodians] = useState("");
   const [editPopulation, setEditPopulation] = useState("");
   const [editWebsite, setEditWebsite] = useState("");
   const [editLogoUrl, setEditLogoUrl] = useState("");
   const [editIsMetro, setEditIsMetro] = useState(false);
-  const [updating, setUpdating] = useState(false);
 
-  const isAdmin = profile?.is_admin ?? false;
-
-  const STATE_NAME_TO_CODE: Record<string, string> = {
-    "new south wales": "NSW",
-    "victoria": "VIC",
-    "queensland": "QLD",
-    "western australia": "WA",
-    "south australia": "SA",
-    "tasmania": "TAS",
-    "australian capital territory": "ACT",
-    "northern territory": "NT",
-  };
-
-  const detectLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
-    }
-    setDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`
-          );
-          if (!res.ok) throw new Error("reverse-geocode");
-          const geo = await res.json();
-
-          const stateName = geo.address?.state?.toLowerCase();
-          const county = geo.address?.county || geo.address?.city_district || geo.address?.city;
-
-          if (!stateName || !county) {
-            throw new Error("incomplete-address");
-          }
-
-          const stateCode = STATE_NAME_TO_CODE[stateName];
-          if (!stateCode) {
-            throw new Error("unsupported-state");
-          }
-
-          const awsClient = getAwsDataClient();
-          const { data: councilsList } = await awsClient.models.AustralianCouncil.list({
-            filter: { stateCode: { eq: stateCode } },
-          });
-          const councilsData = councilsList ?? [];
-
-          if (councilsData.length === 0) {
-            throw new Error("no-councils-in-state");
-          }
-
-          const cleanCounty = county.toLowerCase().replace("council", "").replace("city of", "").trim();
-          const matchedCouncil = councilsData.find((c: any) => {
-            const cleanName = c.name.toLowerCase().replace("council", "").replace("city of", "").trim();
-            return cleanName.includes(cleanCounty) || cleanCounty.includes(cleanName);
-          }) || councilsData[0];
-
-          if (!matchedCouncil) {
-            throw new Error("no-matched-council");
-          }
-
-          setLocation({
-            state: stateCode as StateCode,
-            councilId: matchedCouncil.id,
-            label: matchedCouncil.name,
-          });
-        } catch (err) {
-          console.error(err);
-          alert("Could not automatically resolve your local council. Please select manually.");
-        } finally {
-          setDetecting(false);
-        }
-      },
-      (error) => {
-        console.error(error);
-        alert("Permission denied or location unavailable.");
-        setDetecting(false);
-      }
-    );
-  };
-
-  const fetchCouncilDetails = (councilId: string) => {
-    setCouncilLoading(true);
-    const awsClient = getAwsDataClient();
-    awsClient.models.AustralianCouncil.get({ id: councilId })
-      .then(({ data }) => {
-        if (data) {
-          const mapped = {
-            id: data.id,
-            name: data.name,
-            slug: data.slug,
-            state_code: data.stateCode,
-            is_metro: data.isMetro ?? false,
-            population: data.population ?? null,
-            traditional_custodians: data.traditionalCustodians?.filter(Boolean) as string[] ?? [],
-            logo_url: data.logoUrl ?? null,
-            website: data.website ?? null,
-          };
-          setCouncilDetails(mapped);
-          setEditTraditionalCustodians(mapped.traditional_custodians.join(", "));
-          setEditPopulation(mapped.population?.toString() ?? "");
-          setEditWebsite(mapped.website ?? "");
-          setEditLogoUrl(mapped.logo_url ?? "");
-          setEditIsMetro(mapped.is_metro);
-        }
-        setCouncilLoading(false);
-      })
-      .catch(() => setCouncilLoading(false));
-  };
-
+  // Debounce the search box → query key (300ms) so we don't refetch per keystroke.
   useEffect(() => {
-    if (!location.councilId) {
-      setCouncilDetails(null);
-      return;
-    }
-    fetchCouncilDetails(location.councilId);
-  }, [location.councilId]);
+    const t = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
-  // Seed user saved location on startup from profile onboarding preferences
+  const handleDetect = async () => {
+    try {
+      setLocation(await detect());
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't detect your location.");
+    }
+  };
+
+  const openEdit = () => {
+    if (!councilDetails) return;
+    setEditTraditionalCustodians((councilDetails.traditional_custodians ?? []).join(", "));
+    setEditPopulation(councilDetails.population?.toString() ?? "");
+    setEditWebsite(councilDetails.website ?? "");
+    setEditLogoUrl(councilDetails.logo_url ?? "");
+    setEditIsMetro(councilDetails.is_metro);
+    setIsEditing(true);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!councilDetails) return;
+    try {
+      const custodiansArray = editTraditionalCustodians
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      await updateCouncil.mutateAsync({
+        id: councilDetails.id,
+        traditionalCustodians: custodiansArray.length > 0 ? custodiansArray : null,
+        population: parseInt(editPopulation, 10) || null,
+        website: editWebsite.trim() || null,
+        logoUrl: editLogoUrl.trim() || null,
+        isMetro: editIsMetro,
+      });
+      toast.success("Council details updated.");
+      setIsEditing(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update council details.");
+    }
+  };
+
+  // Seed saved location on startup from profile onboarding preferences.
   const seededLocation = useRef(false);
   useEffect(() => {
     if (seededLocation.current || !profile) return;
@@ -218,12 +154,12 @@ export default function MyCouncilScreen() {
     }
   }, [profile, setLocation, location.councilId]);
 
-  // Sync local location selection back to Supabase profile preferences
+  // Sync local location selection back to the user's profile preferences (AWS).
   useEffect(() => {
     if (!profile) return;
     const currentPrefs = parsePreferences(profile.preferences);
     const dbLoc = currentPrefs.location;
-    
+
     const isDifferent =
       dbLoc?.state !== location.state ||
       dbLoc?.councilId !== location.councilId ||
@@ -244,91 +180,90 @@ export default function MyCouncilScreen() {
     }
   }, [location, profile, updateProfile]);
 
-  const handleSaveChanges = async () => {
-    if (!councilDetails) return;
-    setUpdating(true);
-    try {
-      const custodiansArray = editTraditionalCustodians
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-
-      const awsClient = getAwsDataClient();
-      const { errors } = await awsClient.models.AustralianCouncil.update({
-        id: councilDetails.id,
-        traditionalCustodians: custodiansArray.length > 0 ? custodiansArray : null,
-        population: parseInt(editPopulation, 10) || null,
-        website: editWebsite.trim() || null,
-        logoUrl: editLogoUrl.trim() || null,
-        isMetro: editIsMetro,
-      });
-
-      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-
-      // Refresh local copy
-      fetchCouncilDetails(councilDetails.id);
-      setIsEditing(false);
-    } catch (err: any) {
-      console.error(err);
-      alert(err.message || "Failed to update council details.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   const { data: events, isLoading: eventsLoading } = useEvents({
     councilId: location.councilId ?? undefined,
-    search: searchQuery.trim() || undefined,
+    search: searchQuery || undefined,
   });
 
   const { data: hubs, isLoading: hubsLoading } = useHubs({
     councilId: location.councilId ?? undefined,
-    search: searchQuery.trim() || undefined,
+    search: searchQuery || undefined,
   });
 
   const allHubs = hubs ?? [];
   const allEvents = events ?? [];
 
-  // Filter hubs into categories
-  const venues = allHubs.filter((h) => h.type === "venue_space" || h.type === "wellness");
-  const businesses = allHubs.filter((h) => h.type === "business_shop_workshop");
-  const community = allHubs.filter((h) => h.type === "community_cultural_group" || h.type === "club_society" || h.type === "organisation_association_ngo_charity");
+  const {
+    venues,
+    businesses,
+    community,
+    liveEvents,
+    upcomingEvents,
+    pastEvents,
+    groupedUpcomingEvents,
+    spotlightEvent,
+    secondaryEvents,
+  } = useMemo(() => {
+    const hubList = hubs ?? [];
+    const eventList = events ?? [];
 
-  const now = new Date();
-  
-  // Categorize events client-side
-  const liveEvents = allEvents.filter((e) => {
-    if (!e.start_time) return false;
-    const start = new Date(e.start_time);
-    const end = e.end_time ? new Date(e.end_time) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
-    return now >= start && now <= end;
-  });
+    const venues = hubList.filter((h) => h.type === "venue_space" || h.type === "wellness");
+    const businesses = hubList.filter((h) => h.type === "business_shop_workshop");
+    const community = hubList.filter(
+      (h) =>
+        h.type === "community_cultural_group" ||
+        h.type === "club_society" ||
+        h.type === "organisation_association_ngo_charity",
+    );
 
-  const upcomingEvents = allEvents.filter((e) => {
-    if (!e.start_time) return false;
-    const start = new Date(e.start_time);
-    return start > now;
-  });
+    const now = new Date();
+    const liveEvents = eventList.filter((e) => {
+      if (!e.start_time) return false;
+      const start = new Date(e.start_time);
+      const end = e.end_time ? new Date(e.end_time) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+      return now >= start && now <= end;
+    });
+    const upcomingEvents = eventList.filter((e) => {
+      if (!e.start_time) return false;
+      return new Date(e.start_time) > now;
+    });
+    const pastEvents = eventList.filter((e) => {
+      if (!e.start_time) return false;
+      const start = new Date(e.start_time);
+      const end = e.end_time ? new Date(e.end_time) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
+      return now > end;
+    });
 
-  const pastEvents = allEvents.filter((e) => {
-    if (!e.start_time) return false;
-    const start = new Date(e.start_time);
-    const end = e.end_time ? new Date(e.end_time) : new Date(start.getTime() + 3 * 60 * 60 * 1000);
-    return now > end;
-  });
+    const activeEvents = [...liveEvents, ...upcomingEvents];
+    const spotlightEvent =
+      activeEvents.find(
+        (e) => Array.isArray(e.images) && e.images.length > 0 && (e.images[0] as any)?.url,
+      ) ?? activeEvents[0];
 
-  // Group upcoming events by date
-  const groupedUpcomingEvents = groupEventsByDate(upcomingEvents);
+    return {
+      venues,
+      businesses,
+      community,
+      liveEvents,
+      upcomingEvents,
+      pastEvents,
+      groupedUpcomingEvents: groupEventsByDate(upcomingEvents),
+      spotlightEvent,
+      secondaryEvents: activeEvents.filter((e) => e.id !== spotlightEvent?.id),
+    };
+  }, [hubs, events]);
 
-  // Active (Live + Upcoming) events list for spotlight/hero features
-  const activeEvents = [...liveEvents, ...upcomingEvents];
-
-  // Spotlight: Select the first active event with an image
-  const spotlightEvent = activeEvents.find(
-    (e) => Array.isArray(e.images) && e.images.length > 0 && (e.images[0] as any)?.url
-  ) || activeEvents[0];
-
-  const secondaryEvents = activeEvents.filter((e) => e.id !== spotlightEvent?.id);
+  const feedLoading = eventsLoading || hubsLoading;
+  const gridItemClass = "w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-15px)]";
+  const cardGridSkeleton = (
+    <View className="mt-2 flex-row flex-wrap gap-5" aria-busy>
+      {Array.from({ length: 4 }).map((_, i) => (
+        <View key={i} className={gridItemClass}>
+          <SkeletonCard />
+        </View>
+      ))}
+    </View>
+  );
 
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
@@ -358,10 +293,10 @@ export default function MyCouncilScreen() {
           </View>
           <View className="flex-col gap-3 w-full pt-2">
             <Button
-              label={detecting ? "Locating..." : "Detect my location"}
+              label={detecting ? "Locating…" : "Detect my location"}
               variant="primary"
-              leftIcon={detecting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icon name="map-pin" size={14} color="#FFFFFF" />}
-              onPress={detectLocation}
+              leftIcon={detecting ? <ActivityIndicator size="small" color={colors.ink} /> : <Icon name="map-pin" size={14} color={colors.ink} />}
+              onPress={handleDetect}
               disabled={detecting}
             />
             <View className="items-center mt-1 gap-2 w-full">
@@ -371,12 +306,31 @@ export default function MyCouncilScreen() {
           </View>
         </Card>
       ) : councilLoading ? (
-        <Card className="p-16 items-center justify-center border border-linen mt-4">
-          <ActivityIndicator size="large" color={colors.pink} />
-          <Text variant="caption" tone="faint" className="mt-4">
-            Resolving council discovery board details...
-          </Text>
-        </Card>
+        <View className="gap-6 lg:flex-row lg:items-stretch lg:gap-8" aria-busy>
+          <View className="w-full lg:flex-[1.8]">
+            <Card padded={false} className="gap-4 border border-linen bg-card p-6">
+              <View className="flex-row items-center gap-4">
+                <Skeleton className="h-12 w-12 rounded-xl" />
+                <View className="flex-1 gap-2">
+                  <Skeleton className="h-3 w-24" />
+                  <Skeleton className="h-5 w-2/3" />
+                </View>
+              </View>
+              <View className="gap-2 border-t border-linen/30 pt-4">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+              </View>
+            </Card>
+          </View>
+          <View className="flex-1">
+            <Card padded={false} className="h-full gap-3 border border-linen bg-card p-6">
+              <Skeleton className="h-3 w-40" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-3/4" />
+            </Card>
+          </View>
+        </View>
       ) : councilDetails ? (
         <View className="gap-6">
           
@@ -450,14 +404,14 @@ export default function MyCouncilScreen() {
                       label="Save Changes"
                       variant="primary"
                       size="sm"
-                      loading={updating}
+                      loading={updateCouncil.isPending}
                       onPress={handleSaveChanges}
                     />
                     <Button
                       label="Cancel"
                       variant="ghost"
                       size="sm"
-                      disabled={updating}
+                      disabled={updateCouncil.isPending}
                       onPress={() => setIsEditing(false)}
                     />
                   </View>
@@ -492,7 +446,7 @@ export default function MyCouncilScreen() {
                             </View>
                             {isAdmin && (
                               <Pressable
-                                onPress={() => setIsEditing(true)}
+                                onPress={openEdit}
                                 className="flex-row items-center gap-1 bg-sand/60 border border-linen px-2 py-0.5 rounded-lg active:opacity-70"
                               >
                                 <Icon name="settings" size={10} color={colors.inkMuted} />
@@ -521,7 +475,7 @@ export default function MyCouncilScreen() {
                         {councilDetails.website && (
                           <View className="flex-row justify-between items-center">
                             <Text className="text-xs text-ink-faint font-sans">LGA Directory</Text>
-                            <Pressable onPress={() => router.push(councilDetails.website)} className="active:opacity-75">
+                            <Pressable onPress={() => councilDetails.website && Linking.openURL(councilDetails.website)} className="active:opacity-75">
                               <Text className="text-xs font-heading text-pink underline truncate max-w-[140px]" numberOfLines={1}>
                                 Visit Website
                               </Text>
@@ -618,21 +572,42 @@ export default function MyCouncilScreen() {
                 onPress={() => router.push("/create/hub")}
               />
             </View>
-            <View className="w-full md:w-[360px]">
+            <View
+              className={cn(
+                "h-11 w-full flex-row items-center rounded-full border bg-card px-3 md:w-[360px] md:px-4",
+                searchFocused ? "border-teal-500 shadow-card" : "border-linen shadow-subtle",
+              )}
+            >
               <Input
-                placeholder={`Search events or hubs in ${councilDetails.name}...`}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                leftIcon={<Icon name="search" size={15} color={colors.inkMuted} />}
-                clearButtonMode="while-editing"
-                containerClassName="h-10 rounded-full border-linen/80"
-                className="text-xs md:text-sm font-sans"
+                value={searchInput}
+                onChangeText={setSearchInput}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                placeholder={`Search ${councilDetails.name}…`}
+                returnKeyType="search"
+                autoCorrect={false}
+                leftIcon={<Icon name="search" size={16} color={searchFocused ? colors.teal : colors.inkFaint} />}
+                rightIcon={
+                  searchInput.length > 0 ? (
+                    <Pressable
+                      onPress={() => setSearchInput("")}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Clear search"
+                      className="h-5 w-5 items-center justify-center rounded-full bg-sand active:opacity-60"
+                    >
+                      <Icon name="close" size={13} color={colors.inkMuted} strokeWidth={2.5} />
+                    </Pressable>
+                  ) : undefined
+                }
+                containerClassName="flex-1 border-0 bg-transparent h-full px-0"
+                className="font-sans text-sm"
               />
             </View>
           </View>
 
           {/* Segmented Pill Tabs switcher */}
-          <View className="bg-sand/30 border border-linen p-1 rounded-2xl flex-row items-center mt-2 self-start max-w-full overflow-hidden">
+          <View className="mt-2 flex-row items-center self-start max-w-full overflow-hidden rounded-full border border-linen bg-card p-1">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 4 }}>
               <PillTabButton label="All Feed" active={activeTab === "all"} count={allEvents.length + allHubs.length} onPress={() => setActiveTab("all")} />
               <PillTabButton label="Calendar" active={activeTab === "events"} count={allEvents.length} onPress={() => setActiveTab("events")} />
@@ -646,9 +621,11 @@ export default function MyCouncilScreen() {
           <View className="gap-6 mt-4 w-full">
             
             {/* Tab: All Feed */}
-            {activeTab === "all" && (
+            {activeTab === "all" && (feedLoading ? (
+              cardGridSkeleton
+            ) : (
               <View className="gap-8">
-                
+
                 {/* Spotlight Hero Banner */}
                 {spotlightEvent && (
                   <View className="gap-3">
@@ -702,7 +679,7 @@ export default function MyCouncilScreen() {
                   )}
                 </View>
               </View>
-            )}
+            ))}
             {/* Tab: Events Calendar (Separated into Live, Upcoming, and Past sections) */}
             {activeTab === "events" && (
               <View className="gap-6">
@@ -711,7 +688,7 @@ export default function MyCouncilScreen() {
                 </View>
  
                 {eventsLoading ? (
-                  <ActivityIndicator size="small" color={colors.pink} />
+                  cardGridSkeleton
                 ) : allEvents.length > 0 ? (
                   <View className="gap-8">
                     {/* 1. Live Now Section */}
@@ -798,7 +775,7 @@ export default function MyCouncilScreen() {
                   <Text className="font-display text-base text-ink font-semibold tracking-tight">Venues, Galleries & Spaces</Text>
                 </View>
                 {hubsLoading ? (
-                  <ActivityIndicator size="small" color={colors.pink} />
+                  cardGridSkeleton
                 ) : venues.length > 0 ? (
                   <View className="flex-row flex-wrap gap-5 mt-2">
                     {venues.map((hub) => (
@@ -825,7 +802,7 @@ export default function MyCouncilScreen() {
                   <Text className="font-display text-base text-ink font-semibold tracking-tight">Creative Businesses</Text>
                 </View>
                 {hubsLoading ? (
-                  <ActivityIndicator size="small" color={colors.pink} />
+                  cardGridSkeleton
                 ) : businesses.length > 0 ? (
                   <View className="flex-row flex-wrap gap-5 mt-2">
                     {businesses.map((hub) => (
@@ -852,7 +829,7 @@ export default function MyCouncilScreen() {
                   <Text className="font-display text-base text-ink font-semibold tracking-tight">Community Groups & Collectives</Text>
                 </View>
                 {hubsLoading ? (
-                  <ActivityIndicator size="small" color={colors.pink} />
+                  cardGridSkeleton
                 ) : community.length > 0 ? (
                   <View className="flex-row flex-wrap gap-5 mt-2">
                     {community.map((hub) => (
@@ -899,16 +876,18 @@ function PillTabButton({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
       className={cn(
-        "px-4 py-2 rounded-xl active:opacity-85 flex-row items-center gap-1.5 transition-all duration-150",
-        active ? "bg-ink shadow-sm" : "bg-transparent hover:bg-sand/30"
+        "h-9 flex-row items-center gap-1.5 rounded-full px-3.5 active:opacity-80",
+        active ? "bg-ink shadow-subtle" : "bg-transparent hover:bg-sand/50",
       )}
     >
-      <Text className={cn("text-xs font-heading", active ? "text-paper font-semibold" : "text-ink-muted")}>
+      <Text className={cn("font-heading text-xs", active ? "text-paper font-semibold" : "text-ink-muted")}>
         {label}
       </Text>
-      <View className={cn("px-1.5 py-0.5 rounded-full", active ? "bg-paper/20" : "bg-sand/60")}>
-        <Text className={cn("text-[9px] font-semibold", active ? "text-paper" : "text-ink-muted")}>{count}</Text>
+      <View className={cn("h-4 min-w-[16px] items-center justify-center rounded-full px-1", active ? "bg-paper/20" : "bg-sand")}>
+        <Text className={cn("text-[9px] font-bold", active ? "text-paper" : "text-ink-muted")}>{count}</Text>
       </View>
     </Pressable>
   );
