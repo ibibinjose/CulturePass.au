@@ -9,7 +9,17 @@ import { defineAuth } from "@aws-amplify/backend";
  */
 export const auth = defineAuth({
   loginWith: {
-    email: true,
+    // LINK (not CODE) verification keeps sign-up like-for-like with Supabase:
+    // the user clicks a confirmation link and Cognito auto-confirms, so the
+    // existing "we've sent a confirmation link" sign-up screen works unchanged.
+    // (Password *reset* is code-only in Cognito — that flow still needs a code
+    // field; see features/auth/api.ts useUpdatePassword.)
+    email: {
+      verificationEmailStyle: "LINK",
+      verificationEmailSubject: "Confirm your CulturePass account",
+      verificationEmailBody: (createLink) =>
+        `Welcome to CulturePass Australia. Confirm your account: ${createLink("Confirm my account")}`,
+    },
   },
   // "admin" replaces the Supabase `profiles.is_admin` / SQL admin role; the data
   // schema grants this group elevated access via `allow.group("admin")`.

@@ -11,5 +11,7 @@
     "paths": {
       "$amplify/*": ["../.amplify/generated/*"]
     }
-  }
+  },
+  "//": "Lambda handlers import the build-time-generated $amplify/env/* module; ampx type-checks/bundles them. Excluded here so the static backend typecheck stays green without a deploy (mirrors supabase/functions being excluded from the app tsconfig).",
+  "exclude": ["functions/**/handler.ts"]
 }

@@ -1,25 +1,31 @@
 import { generateClient } from "aws-amplify/data";
 
+import type { Schema } from "@/amplify/data/resource";
 import { configureAmplify } from "./config";
 
 /**
  * Amplify Data (AppSync) client — the AWS counterpart to `lib/supabase/client`.
  *
- * Kept generic (untyped models) for now so the app tsconfig stays decoupled from
- * the backend package (`amplify/` is excluded from the app program). During the
- * per-feature port, type it end-to-end by switching to:
- *
- *   import type { Schema } from "@/amplify/data/resource";
- *   return generateClient<Schema>();
- *
- * and adding "amplify/data/resource.ts" to tsconfig "include". That gives full
- * typings on `client.models.Hub`, `client.models.Event`, etc.
+ * Typed end-to-end with the Gen 2 `Schema`, so callers get full typings on
+ * `client.models.Hub`, `client.models.Event`, etc. The `Schema` type is imported
+ * as `import type` from the (otherwise tsconfig-excluded) `amplify/` backend; with
+ * `skipLibCheck` this stays cheap and keeps the Supabase build untouched.
  *
  * (No module-level caching: the fully-instantiated client type is too large to
- * compare for a cached `let`, and a typed `generateClient<Schema>()` will replace
- * this during the port anyway. Amplify dedupes the underlying client internally.)
+ * compare for a cached `let`, and Amplify dedupes the underlying client
+ * internally, so a fresh `generateClient` per call is cheap.)
  */
 export function getAwsDataClient() {
   configureAmplify();
-  return generateClient();
+  return generateClient<Schema>();
 }
+
+/** A typed Amplify Data client (return type of {@link getAwsDataClient}). */
+export type AwsDataClient = ReturnType<typeof getAwsDataClient>;
+
+/**
+ * The resolved TS type of a single record for model `K` (e.g. `AwsItem<"Hub">`).
+ * Use it to type the mappers that translate AppSync records back into the
+ * snake_case row shapes the existing Supabase-era consumers expect.
+ */
+export type AwsItem<K extends keyof Schema & string> = Schema[K]["type"];

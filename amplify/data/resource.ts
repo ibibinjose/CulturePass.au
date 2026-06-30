@@ -1,5 +1,18 @@
 import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 
+import { ticketsCheckout } from "../functions/tickets-checkout/resource";
+import { stripeWebhook } from "../functions/stripe-webhook/resource";
+import { getTakenSeats } from "../functions/get-taken-seats/resource";
+
+/**
+ * `allow.resource(fn)` (Lambda → data access) resolves under the backend
+ * tsconfig but NOT under the app's react-native module-resolution conditions,
+ * which also typecheck this file via the imported `Schema`. This shim keeps both
+ * typechecks green; `ampx` validates the real authorization wiring at build.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const awsFnAccess = (allow: any): any => allow;
+
 /**
  * Data layer — DynamoDB-native (Amplify Data / AppSync).
  *
@@ -91,8 +104,7 @@ const schema = a.schema({
       allow.owner(),
       allow.authenticated().to(["read"]),
       allow.guest().to(["read"]),
-      allow.group("admin"),
-    ]),
+      allow.group("admin"),    ]),
 
   // ---- Hubs -----------------------------------------------------------------
   Hub: a
@@ -200,8 +212,7 @@ const schema = a.schema({
       allow.owner(),
       allow.authenticated().to(["read"]),
       allow.guest().to(["read"]),
-      allow.group("admin"),
-    ]),
+      allow.group("admin"),    ]),
 
   EventRsvp: a
     .model({
@@ -242,8 +253,7 @@ const schema = a.schema({
       allow.guest().to(["read"]),
       allow.authenticated().to(["read"]),
       allow.owner(),
-      allow.group("admin"),
-    ]),
+      allow.group("admin"),    ]),
 
   TicketOrder: a
     .model({
@@ -320,7 +330,39 @@ const schema = a.schema({
   ProfileSubscription: a
     .model({ profileId: a.id().required(), subscriberId: a.id().required() })
     .authorization((allow) => [allow.owner(), allow.authenticated().to(["read"])]),
-});
+
+  // ---- Custom operations (Stripe ticketing; Lambda-backed) ------------------
+  // The checkout/webhook logic that lived in Supabase edge functions. Prices are
+  // resolved server-side; the webhook (Function URL, see backend.ts) is the
+  // fulfilment source of truth.
+  ticketsCheckout: a
+    .mutation()
+    .arguments({
+      eventId: a.string().required(),
+      quantity: a.integer(),
+      items: a.string(), // JSON-encoded { ticketTypeId, quantity }[]
+      selectedDate: a.string(),
+      seatNumbers: a.string().array(),
+    })
+    .returns(a.customType({ url: a.string(), sessionId: a.string(), error: a.string() }))
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(ticketsCheckout)),
+
+  getTakenSeats: a
+    .query()
+    .arguments({ eventId: a.string().required(), selectedDate: a.string() })
+    .returns(a.string().array())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(getTakenSeats)),
+})
+  // Lambda → data access is granted at the SCHEMA level in data-schema 1.26.0
+  // (`allow.resource` is not yet available per-model — see Authorization.js TODO).
+  // This lets the Stripe/seat handlers call client.models.* with IAM auth.
+  .authorization((allow) => [
+    awsFnAccess(allow).resource(ticketsCheckout),
+    awsFnAccess(allow).resource(stripeWebhook),
+    awsFnAccess(allow).resource(getTakenSeats),
+  ]);
 
 export type Schema = ClientSchema<typeof schema>;
 
