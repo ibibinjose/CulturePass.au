@@ -7,6 +7,7 @@ import { storage } from "./storage/resource";
 import { ticketsCheckout } from "./functions/tickets-checkout/resource";
 import { stripeWebhook } from "./functions/stripe-webhook/resource";
 import { getTakenSeats } from "./functions/get-taken-seats/resource";
+import { devSeed } from "./functions/dev-seed/resource";
 
 /**
  * CulturePass AWS backend (Amplify Gen 2).
@@ -25,6 +26,7 @@ const backend = defineBackend({
   ticketsCheckout,
   stripeWebhook,
   getTakenSeats,
+  devSeed,
 });
 
 // Stripe POSTs webhook events directly, so expose the webhook Lambda via a public

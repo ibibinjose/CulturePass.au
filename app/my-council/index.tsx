@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { Pressable, ScrollView, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { supabase } from "@/lib/supabase/client";
+import { getAwsDataClient } from "@/lib/aws/data";
 
 import { Screen, Text, Input, Button, Card, Footer, Icon, Badge, LocationPicker } from "@/components/ui";
 import { colors } from "@/lib/theme";
@@ -130,17 +130,18 @@ export default function MyCouncilScreen() {
             throw new Error("unsupported-state");
           }
 
-          const { data: councilsData } = await supabase
-            .from("australian_councils")
-            .select("*")
-            .eq("state_code", stateCode);
+          const awsClient = getAwsDataClient();
+          const { data: councilsList } = await awsClient.models.AustralianCouncil.list({
+            filter: { stateCode: { eq: stateCode } },
+          });
+          const councilsData = councilsList ?? [];
 
-          if (!councilsData || councilsData.length === 0) {
+          if (councilsData.length === 0) {
             throw new Error("no-councils-in-state");
           }
 
           const cleanCounty = county.toLowerCase().replace("council", "").replace("city of", "").trim();
-          const matchedCouncil = councilsData.find((c) => {
+          const matchedCouncil = councilsData.find((c: any) => {
             const cleanName = c.name.toLowerCase().replace("council", "").replace("city of", "").trim();
             return cleanName.includes(cleanCounty) || cleanCounty.includes(cleanName);
           }) || councilsData[0];
@@ -171,23 +172,31 @@ export default function MyCouncilScreen() {
 
   const fetchCouncilDetails = (councilId: string) => {
     setCouncilLoading(true);
-    supabase
-      .from("australian_councils")
-      .select("id, name, slug, state_code, is_metro, population, traditional_custodians, logo_url, website")
-      .eq("id", councilId)
-      .maybeSingle()
+    const awsClient = getAwsDataClient();
+    awsClient.models.AustralianCouncil.get({ id: councilId })
       .then(({ data }) => {
         if (data) {
-          setCouncilDetails(data);
-          // Sync edit states
-          setEditTraditionalCustodians(data.traditional_custodians?.join(", ") ?? "");
-          setEditPopulation(data.population?.toString() ?? "");
-          setEditWebsite(data.website ?? "");
-          setEditLogoUrl(data.logo_url ?? "");
-          setEditIsMetro(data.is_metro ?? false);
+          const mapped = {
+            id: data.id,
+            name: data.name,
+            slug: data.slug,
+            state_code: data.stateCode,
+            is_metro: data.isMetro ?? false,
+            population: data.population ?? null,
+            traditional_custodians: data.traditionalCustodians?.filter(Boolean) as string[] ?? [],
+            logo_url: data.logoUrl ?? null,
+            website: data.website ?? null,
+          };
+          setCouncilDetails(mapped);
+          setEditTraditionalCustodians(mapped.traditional_custodians.join(", "));
+          setEditPopulation(mapped.population?.toString() ?? "");
+          setEditWebsite(mapped.website ?? "");
+          setEditLogoUrl(mapped.logo_url ?? "");
+          setEditIsMetro(mapped.is_metro);
         }
         setCouncilLoading(false);
-      });
+      })
+      .catch(() => setCouncilLoading(false));
   };
 
   useEffect(() => {
@@ -244,19 +253,18 @@ export default function MyCouncilScreen() {
         .map((s) => s.trim())
         .filter(Boolean);
 
-      const { error } = await supabase
-        .from("australian_councils")
-        .update({
-          traditional_custodians: custodiansArray.length > 0 ? custodiansArray : null,
-          population: parseInt(editPopulation, 10) || null,
-          website: editWebsite.trim() || null,
-          logo_url: editLogoUrl.trim() || null,
-          is_metro: editIsMetro,
-        })
-        .eq("id", councilDetails.id);
+      const awsClient = getAwsDataClient();
+      const { errors } = await awsClient.models.AustralianCouncil.update({
+        id: councilDetails.id,
+        traditionalCustodians: custodiansArray.length > 0 ? custodiansArray : null,
+        population: parseInt(editPopulation, 10) || null,
+        website: editWebsite.trim() || null,
+        logoUrl: editLogoUrl.trim() || null,
+        isMetro: editIsMetro,
+      });
 
-      if (error) throw error;
-      
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
+
       // Refresh local copy
       fetchCouncilDetails(councilDetails.id);
       setIsEditing(false);

@@ -1,8 +1,6 @@
 import { Linking, Platform } from "react-native";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
-import { supabase } from "@/lib/supabase/client";
-import { isAwsBackend } from "@/lib/backend";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
 import { compact, nullableList } from "@/lib/aws/map";
@@ -83,9 +81,9 @@ function openCheckout(url: string) {
 export type CartItem = { ticketTypeId: string; quantity: number };
 
 /**
- * Start a Stripe Checkout for a paid event ticket. On Supabase this calls the
- * `tickets-checkout` Edge Function; on AWS the `ticketsCheckout` AppSync custom
- * mutation (Lambda). Both hold the secret key server-side and return a URL.
+ * Start a Stripe Checkout for a paid event ticket via the `ticketsCheckout`
+ * AppSync custom mutation (Lambda). The Lambda holds the secret key server-side
+ * and returns a Checkout URL.
  */
 export function useBuyTicket() {
   return useMutation({
@@ -102,41 +100,17 @@ export function useBuyTicket() {
       selectedDate?: string;
       seatNumbers?: string[];
     }) => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { data, errors } = await client.mutations.ticketsCheckout({
-          eventId,
-          quantity: quantity ?? null,
-          items: items ? JSON.stringify(items) : null,
-          selectedDate: selectedDate ?? null,
-          seatNumbers: seatNumbers ?? null,
-        });
-        if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-        if (data?.error) throw new Error(data.error);
-        if (!data?.url) throw new Error("Checkout is unavailable right now.");
-        openCheckout(data.url);
-        return data.url;
-      }
-
-      const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
-        "tickets-checkout",
-        { body: { eventId, quantity, items, selectedDate, seatNumbers } },
-      );
-
-      if (error) {
-        // Surface the function's JSON error body when present.
-        let message = "Couldn’t start checkout. Please try again.";
-        const ctx = (error as { context?: Response }).context;
-        try {
-          const body = await ctx?.json();
-          if (body?.error) message = body.error as string;
-        } catch {
-          // ignore — fall back to the generic message
-        }
-        throw new Error(message);
-      }
-
-      if (!data?.url) throw new Error(data?.error ?? "Checkout is unavailable right now.");
+      const client = getAwsDataClient();
+      const { data, errors } = await client.mutations.ticketsCheckout({
+        eventId,
+        quantity: quantity ?? null,
+        items: items ? JSON.stringify(items) : null,
+        selectedDate: selectedDate ?? null,
+        seatNumbers: seatNumbers ?? null,
+      });
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
+      if (data?.error) throw new Error(data.error);
+      if (!data?.url) throw new Error("Checkout is unavailable right now.");
       openCheckout(data.url);
       return data.url;
     },
@@ -148,31 +122,15 @@ export function useMyTickets() {
   return useQuery({
     queryKey: qk.myTickets,
     queryFn: async (): Promise<TicketOrder[]> => {
-      if (isAwsBackend) {
-        const userId = await getAwsCurrentUserId();
-        if (!userId) return [];
-        const client = getAwsDataClient();
-        // Owner-scoped by the model's `allow.owner()` rule.
-        const orders = await collectAll((nextToken) =>
-          client.models.TicketOrder.list({ nextToken }),
-        );
-        orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-        return Promise.all(orders.map((o) => withEventEmbed(mapTicketOrder(o))));
-      }
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-
-      const { data, error } = await supabase
-        .from("ticket_orders")
-        .select(
-          `*, event:events (id, title, start_time, images, location_city, location_state)`,
-        )
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as TicketOrder[];
+      const userId = await getAwsCurrentUserId();
+      if (!userId) return [];
+      const client = getAwsDataClient();
+      // Owner-scoped by the model's `allow.owner()` rule.
+      const orders = await collectAll((nextToken) =>
+        client.models.TicketOrder.list({ nextToken }),
+      );
+      orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return Promise.all(orders.map((o) => withEventEmbed(mapTicketOrder(o))));
     },
   });
 }
@@ -185,25 +143,13 @@ export function useTicketBySession(sessionId: string | undefined) {
     refetchInterval: (query) =>
       (query.state.data as TicketOrder | null)?.status === "paid" ? false : 2000,
     queryFn: async (): Promise<TicketOrder | null> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { data } = await client.models.TicketOrder.list({
-          filter: { stripeCheckoutSessionId: { eq: sessionId! } },
-          limit: 1,
-        });
-        const order = data[0];
-        return order ? withEventEmbed(mapTicketOrder(order)) : null;
-      }
-
-      const { data, error } = await supabase
-        .from("ticket_orders")
-        .select(
-          `*, event:events (id, title, start_time, images, location_city, location_state)`,
-        )
-        .eq("stripe_checkout_session_id", sessionId!)
-        .maybeSingle();
-      if (error) throw error;
-      return (data as unknown as TicketOrder) ?? null;
+      const client = getAwsDataClient();
+      const { data } = await client.models.TicketOrder.list({
+        filter: { stripeCheckoutSessionId: { eq: sessionId! } },
+        limit: 1,
+      });
+      const order = data[0];
+      return order ? withEventEmbed(mapTicketOrder(order)) : null;
     },
   });
 }
@@ -229,30 +175,19 @@ export function useEventTicketTypes(eventId: string) {
     queryKey: ["event-ticket-types", eventId],
     enabled: !!eventId,
     queryFn: async (): Promise<EventTicketType[]> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.EventTicketType.list({ filter: { eventId: { eq: eventId } }, nextToken }),
-        );
-        return rows.map(mapTicketType).sort((a, b) => a.price_cents - b.price_cents);
-      }
-
-      const { data, error } = await supabase
-        .from("event_ticket_types")
-        .select("*")
-        .eq("event_id", eventId)
-        .order("price_cents", { ascending: true });
-      if (error) throw error;
-      return data ?? [];
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.EventTicketType.list({ filter: { eventId: { eq: eventId } }, nextToken }),
+      );
+      return rows.map(mapTicketType).sort((a, b) => a.price_cents - b.price_cents);
     },
   });
 }
 
 /**
  * Seats already held or sold for an event + show date, for rendering occupancy
- * on the seat chart. On Supabase this is the `get_taken_seats` RPC; on AWS the
- * `getTakenSeats` AppSync custom query (Lambda) — both return only seat labels
- * (no buyer data) so any signed-in buyer can read occupancy.
+ * on the seat chart. Uses the `getTakenSeats` AppSync custom query (Lambda) —
+ * returns only seat labels (no buyer data) so any signed-in buyer can read occupancy.
  */
 export function useTakenSeats(eventId: string, selectedDate?: string | null) {
   return useQuery({
@@ -261,22 +196,13 @@ export function useTakenSeats(eventId: string, selectedDate?: string | null) {
     // Refresh periodically so concurrent bookings surface while the buyer picks.
     refetchInterval: 15000,
     queryFn: async (): Promise<string[]> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { data, errors } = await client.queries.getTakenSeats({
-          eventId,
-          selectedDate: selectedDate ?? null,
-        });
-        if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-        return compact(data);
-      }
-
-      const { data, error } = await supabase.rpc("get_taken_seats", {
-        p_event_id: eventId,
-        p_selected_date: selectedDate ?? null,
+      const client = getAwsDataClient();
+      const { data, errors } = await client.queries.getTakenSeats({
+        eventId,
+        selectedDate: selectedDate ?? null,
       });
-      if (error) throw error;
-      return data ?? [];
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
+      return compact(data);
     },
   });
 }

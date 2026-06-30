@@ -17,6 +17,8 @@ export const ticketsCheckout = defineFunction({
   timeoutSeconds: 30,
   environment: {
     STRIPE_SECRET_KEY: secret("STRIPE_SECRET_KEY"),
-    SITE_URL: process.env.SITE_URL ?? "http://localhost:8081",
+    // Production default is the live domain; override locally with
+    // SITE_URL=http://localhost:8081 before `ampx sandbox` for dev redirects.
+    SITE_URL: process.env.SITE_URL ?? "https://culturepass.au",
   },
 });

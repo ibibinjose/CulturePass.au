@@ -1,5 +1,7 @@
 import { defineAuth } from "@aws-amplify/backend";
 
+import { postConfirmation } from "../functions/post-confirmation/resource";
+
 /**
  * Cognito auth for CulturePass.
  *
@@ -24,4 +26,9 @@ export const auth = defineAuth({
   // "admin" replaces the Supabase `profiles.is_admin` / SQL admin role; the data
   // schema grants this group elevated access via `allow.group("admin")`.
   groups: ["admin"],
+  // Create the user's Profile on sign-up (AWS replacement for the Supabase
+  // `handle_new_user` Postgres trigger).
+  triggers: {
+    postConfirmation,
+  },
 });

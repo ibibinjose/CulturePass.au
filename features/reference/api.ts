@@ -1,7 +1,5 @@
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase/client";
-import { isAwsBackend } from "@/lib/backend";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
 import { qk } from "@/lib/query";
@@ -51,20 +49,12 @@ export function useStates() {
   return useQuery({
     queryKey: qk.states,
     queryFn: async (): Promise<StateRow[]> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.AustralianState.list({ nextToken }),
-        );
-        // DynamoDB lists are unordered; mirror Supabase `.order("sort_order")`.
-        return rows.map(mapState).sort((a, b) => a.sort_order - b.sort_order);
-      }
-      const { data, error } = await supabase
-        .from("australian_states")
-        .select("code, name, capital_city, sort_order")
-        .order("sort_order");
-      if (error) throw error;
-      return data;
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.AustralianState.list({ nextToken }),
+      );
+      // DynamoDB lists are unordered; mirror Supabase `.order("sort_order")`.
+      return rows.map(mapState).sort((a, b) => a.sort_order - b.sort_order);
     },
     staleTime: Infinity, // reference data rarely changes
   });
@@ -74,25 +64,15 @@ export function useCouncils(stateCode?: string) {
   return useQuery({
     queryKey: qk.councils(stateCode),
     queryFn: async (): Promise<CouncilRow[]> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.AustralianCouncil.list({
-            nextToken,
-            ...(stateCode ? { filter: { stateCode: { eq: stateCode } } } : {}),
-          }),
-        );
-        // Mirror Supabase `.order("name")`.
-        return rows.map(mapCouncil).sort((a, b) => a.name.localeCompare(b.name));
-      }
-      let query = supabase
-        .from("australian_councils")
-        .select("id, name, slug, state_code, is_metro, population, traditional_custodians")
-        .order("name");
-      if (stateCode) query = query.eq("state_code", stateCode);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.AustralianCouncil.list({
+          nextToken,
+          ...(stateCode ? { filter: { stateCode: { eq: stateCode } } } : {}),
+        }),
+      );
+      // Mirror Supabase `.order("name")`.
+      return rows.map(mapCouncil).sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: stateCode === undefined || stateCode.length > 0,
     staleTime: Infinity,
@@ -104,21 +84,12 @@ export function useCouncilDetails(councilId?: string) {
   return useQuery({
     queryKey: qk.councilDetails(councilId ?? ""),
     queryFn: async (): Promise<CouncilRow | null> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { data, errors } = await client.models.AustralianCouncil.get({
-          id: councilId as string,
-        });
-        if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-        return data ? mapCouncil(data) : null;
-      }
-      const { data, error } = await supabase
-        .from("australian_councils")
-        .select("id, name, slug, state_code, is_metro, population, traditional_custodians")
-        .eq("id", councilId as string)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      const client = getAwsDataClient();
+      const { data, errors } = await client.models.AustralianCouncil.get({
+        id: councilId as string,
+      });
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
+      return data ? mapCouncil(data) : null;
     },
     enabled: !!councilId,
     staleTime: Infinity,
@@ -171,24 +142,16 @@ export function useDetectCouncil() {
       const stateCode = STATE_NAME_TO_CODE[stateName];
       if (!stateCode) throw new Error("That state isn't supported yet.");
 
-      let councils: { id: string; name: string; state_code: string }[] | null;
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.AustralianCouncil.list({
-            nextToken,
-            filter: { stateCode: { eq: stateCode } },
-          }),
-        );
-        councils = rows.map((c) => ({ id: c.id, name: c.name, state_code: c.stateCode }));
-      } else {
-        const res = await supabase
-          .from("australian_councils")
-          .select("id, name, state_code")
-          .eq("state_code", stateCode);
-        councils = res.data;
-      }
-      if (!councils || councils.length === 0) {
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.AustralianCouncil.list({
+          nextToken,
+          filter: { stateCode: { eq: stateCode } },
+        }),
+      );
+      const councils = rows.map((c) => ({ id: c.id, name: c.name, state_code: c.stateCode }));
+
+      if (councils.length === 0) {
         throw new Error("No councils found for your state.");
       }
 

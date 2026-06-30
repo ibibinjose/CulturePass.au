@@ -3,8 +3,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
  * Cross-platform key/value storage for non-secret data (e.g. wizard drafts).
- * Web uses localStorage; native uses AsyncStorage. For auth tokens use the
- * SecureStore-backed adapter in lib/supabase/client.ts instead.
+ * Web uses localStorage; native uses AsyncStorage. Auth tokens are handled by
+ * Amplify/Cognito (see lib/aws/config.ts), not this store.
  */
 export const kvStorage = {
   async getItem(key: string): Promise<string | null> {

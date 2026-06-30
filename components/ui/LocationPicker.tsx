@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils/cn";
 import { colors } from "@/lib/theme";
 import { AUSTRALIAN_STATES, type StateCode } from "@/lib/constants";
 import { useCouncils } from "@/features/reference/api";
-import { supabase } from "@/lib/supabase/client";
 
 const STATE_NAME_TO_CODE: Record<string, string> = {
   "new south wales": "NSW",
@@ -99,10 +98,8 @@ export function LocationPicker({
             throw new Error("unsupported-state");
           }
 
-          const { data: councilsData } = await supabase
-            .from("australian_councils")
-            .select("*")
-            .eq("state_code", stateCode);
+          // Use already-loaded councils from useCouncils()
+          const councilsData = (councils ?? []).filter((c) => c.state_code === stateCode);
 
           if (!councilsData || councilsData.length === 0) {
             throw new Error("no-councils-in-state");
