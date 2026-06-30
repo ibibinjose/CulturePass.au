@@ -8,7 +8,7 @@ Android (no native Stripe module / dev build required).
 
 | Piece | Where | Role |
 | --- | --- | --- |
-| `ticket_orders` table | `supabase/migrations/20260626044154_ticket_orders.sql` | One row per purchase. Written **only** by Edge Functions (service role); clients can read their own. |
+| `ticket_orders` table | `supabase/migrations/20260627090000_ticket_orders.sql` | One row per purchase. Written **only** by Edge Functions (service role); clients can read their own. |
 | `tickets-checkout` | `supabase/functions/tickets-checkout/` | Auth’d buyer → validates the event server‑side, creates a `pending` order + a Stripe Checkout Session, returns its URL. |
 | `stripe-webhook` | `supabase/functions/stripe-webhook/` | **Source of truth.** Verifies the Stripe signature and flips the order to `paid` on `checkout.session.completed`. |
 | `features/tickets/api.ts` | client | `useBuyTicket()` (invokes the function + opens the URL), `useMyTickets()`, `useTicketBySession()`. |

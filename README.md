@@ -100,6 +100,15 @@ Public Accounts) and `events` — plus reference tables (`australian_states`,
 `australian_councils`) and supporting tables (`hub_members`, `event_rsvps`).
 See [docs/SCHEMA.md](docs/SCHEMA.md) for the full model and security design.
 
+## Payments
+
+Paid event tickets are sold with Stripe Checkout, driven entirely from Supabase
+Edge Functions so the secret key never reaches the app. Price is always read
+from the database, and fulfilment is webhook-driven (not the success redirect).
+See [docs/STRIPE_TICKETING.md](docs/STRIPE_TICKETING.md) for the architecture
+and one-time setup (Stripe keys, Edge Function secrets, migration, deploy and
+webhook registration).
+
 ## Cultural respect
 
 - **Acknowledgement of Country** is shown app-wide.
