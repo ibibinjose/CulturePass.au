@@ -14,7 +14,8 @@ import {
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
-import { supabase } from "@/lib/supabase/client";
+import { getAwsDataClient } from "@/lib/aws/data";
+import { collectAll } from "@/lib/aws/list";
 import { useMyProfile } from "@/features/profiles/api";
 
 type HubAdminItem = {
@@ -58,29 +59,47 @@ export default function AdminDashboardScreen() {
     if (!currentProfile?.is_admin) return;
     setDataLoading(true);
     try {
-      // 1. Fetch counts
-      const { count: profilesCount } = await supabase.from("profiles").select("*", { count: "exact", head: true });
-      const { count: hubsCount } = await supabase.from("hubs").select("*", { count: "exact", head: true });
-      const { count: eventsCount } = await supabase.from("events").select("*", { count: "exact", head: true });
+      const client = getAwsDataClient();
+
+      const [profileRows, hubRows, eventRows] = await Promise.all([
+        collectAll((nextToken) => client.models.Profile.list({ nextToken })),
+        collectAll((nextToken) => client.models.Hub.list({ nextToken })),
+        collectAll((nextToken) => client.models.Event.list({ nextToken })),
+      ]);
+
       setStats({
-        profiles: profilesCount || 0,
-        hubs: hubsCount || 0,
-        events: eventsCount || 0,
+        profiles: profileRows.length,
+        hubs: hubRows.length,
+        events: eventRows.length,
       });
 
-      // 2. Fetch hubs list
-      const { data: hubsList } = await supabase
-        .from("hubs")
-        .select("id, name, slug, type, verification_status, status, location_state, location_city")
-        .order("created_at", { ascending: false });
-      setHubs((hubsList as HubAdminItem[]) || []);
+      setHubs(
+        hubRows
+          .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+          .map((h) => ({
+            id: h.id,
+            name: h.name,
+            slug: h.slug,
+            type: h.type ?? "community_cultural_group",
+            verification_status: (h.verificationStatus ?? "pending") as HubAdminItem["verification_status"],
+            status: (h.status ?? "draft") as HubAdminItem["status"],
+            location_state: h.locationState ?? null,
+            location_city: h.locationCity ?? null,
+          })),
+      );
 
-      // 3. Fetch profiles list
-      const { data: profilesList } = await supabase
-        .from("profiles")
-        .select("id, full_name, location, is_admin, is_public_professional, created_at")
-        .order("created_at", { ascending: false });
-      setProfiles((profilesList as ProfileAdminItem[]) || []);
+      setProfiles(
+        profileRows
+          .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+          .map((p) => ({
+            id: p.id,
+            full_name: p.fullName ?? "",
+            location: p.location ?? null,
+            is_admin: p.isAdmin ?? false,
+            is_public_professional: p.isPublicProfessional ?? false,
+            created_at: p.createdAt,
+          })),
+      );
     } catch (err) {
       console.error("Error loading admin data:", err);
     } finally {
@@ -97,11 +116,9 @@ export default function AdminDashboardScreen() {
   // Handle Hub verification update
   const updateHubVerification = async (hubId: string, status: "pending" | "verified" | "rejected") => {
     try {
-      const { error } = await supabase
-        .from("hubs")
-        .update({ verification_status: status })
-        .eq("id", hubId);
-      if (error) throw error;
+      const client = getAwsDataClient();
+      const { errors } = await client.models.Hub.update({ id: hubId, verificationStatus: status });
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
       setHubs((list) => list.map((h) => (h.id === hubId ? { ...h, verification_status: status } : h)));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to update hub verification");
@@ -116,11 +133,9 @@ export default function AdminDashboardScreen() {
       return;
     }
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ is_admin: !currentAdminVal })
-        .eq("id", profileId);
-      if (error) throw error;
+      const client = getAwsDataClient();
+      const { errors } = await client.models.Profile.update({ id: profileId, isAdmin: !currentAdminVal });
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
       setProfiles((list) => list.map((p) => (p.id === profileId ? { ...p, is_admin: !currentAdminVal } : p)));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to toggle admin status");

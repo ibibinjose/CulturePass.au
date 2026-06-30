@@ -15,7 +15,8 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "CulturePass Australia uses your location to show cultural events, creative businesses, and venues in your local area.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "CulturePass Australia uses your location to show cultural events, creative businesses, and venues in your local area."
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "CulturePass Australia uses your location to show cultural events, creative businesses, and venues in your local area.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

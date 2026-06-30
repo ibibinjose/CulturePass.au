@@ -3,6 +3,8 @@ import { type ClientSchema, a, defineData } from "@aws-amplify/backend";
 import { ticketsCheckout } from "../functions/tickets-checkout/resource";
 import { stripeWebhook } from "../functions/stripe-webhook/resource";
 import { getTakenSeats } from "../functions/get-taken-seats/resource";
+import { postConfirmation } from "../functions/post-confirmation/resource";
+import { devSeed } from "../functions/dev-seed/resource";
 
 /**
  * `allow.resource(fn)` (Lambda → data access) resolves under the backend
@@ -362,6 +364,8 @@ const schema = a.schema({
     awsFnAccess(allow).resource(ticketsCheckout),
     awsFnAccess(allow).resource(stripeWebhook),
     awsFnAccess(allow).resource(getTakenSeats),
+    awsFnAccess(allow).resource(postConfirmation),
+    awsFnAccess(allow).resource(devSeed),
   ]);
 
 export type Schema = ClientSchema<typeof schema>;

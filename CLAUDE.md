@@ -6,8 +6,8 @@ CulturePass Australia is a Swiss-design cultural platform (discover/create/conne
 councils and First Nations communities) built as one Expo codebase targeting **web, iOS and Android**.
 
 > **`Assistant.md` is the detailed working brief** — read it for the full conventions list and the
-> hard-won gotchas. This file is the orientation layer; `Assistant.md`, `docs/SCHEMA.md` and
-> `docs/STRIPE_TICKETING.md` are the depth. Keep all four in sync when conventions change.
+> hard-won gotchas. This file is the orientation layer; `Assistant.md` and `docs/SCHEMA.md` are the
+> depth. Keep all in sync when conventions change.
 
 ## Commands
 
@@ -16,11 +16,8 @@ npm run web              # Expo web (http://localhost:8081) — primary dev targ
 npm run ios | android    # native
 npm run typecheck        # tsc --noEmit  — must stay clean
 npm run lint             # eslint . (flat config: eslint.config.js)
-npm run db:start         # supabase start (local stack; needs Docker)
-npm run db:reset         # apply migrations + seed locally
-npm run db:types         # regenerate lib/supabase/database.types.ts (see gotcha #1 below)
-npm run functions:deploy # supabase functions deploy
-npm run supabase:check   # scripts/check-supabase-config.mjs — verify env/config
+npm run migrate:dynamo:dry  # preview Supabase → DynamoDB migration row counts
+npm run migrate:dynamo      # run the full data migration
 ```
 
 There is **no test runner** (no jest/vitest). The verification gates are `npm run typecheck` and
@@ -29,74 +26,109 @@ There is **no test runner** (no jest/vitest). The verification gates are `npm ru
 ## Architecture
 
 **Stack:** Expo SDK ~53 (React Native 0.79 + react-native-web, React 19), expo-router ~5 (file-based,
-`typedRoutes` on), Supabase (Postgres/Auth/Storage/RLS), TanStack Query 5 (server state), Zustand 5
-(local/persisted UI state), Zod 3 (validation), NativeWind 4 + Tailwind 3 (styling via `className`).
+`typedRoutes` on), **AWS Amplify Gen 2** (Cognito Auth, AppSync/DynamoDB Data, S3 Storage, Lambda),
+TanStack Query 5 (server state), Zustand 5 (local/persisted UI state), Zod 3 (validation),
+NativeWind 4 + Tailwind 3 (styling via `className`).
 TypeScript strict, `noUncheckedIndexedAccess: true`, path alias `@/*` → repo root.
+
+**Backend is exclusively AWS — no Supabase in production:**
+- Auth → Cognito (`aws-amplify/auth`)
+- Data → AppSync + DynamoDB (`lib/aws/data.ts` → `generateClient<Schema>()`)
+- Storage → S3 (`aws-amplify/storage` `uploadData` / `getUrl`)
+- Functions → Lambda (Stripe checkout, webhook, taken-seats)
+- Schema defined in `amplify/data/resource.ts`
+- Deployed with `npx ampx sandbox` (dev) or `npx ampx pipeline-deploy` (prod)
 
 **Layering — three layers, one direction of dependency:**
 
 - `app/` — expo-router routes only (screens, layouts). `app/_layout.tsx` mounts the provider stack:
   `GestureHandlerRootView → SafeAreaProvider → QueryClientProvider → AuthProvider`, a global `TopBar`,
-  and the root `Stack`. Routes compose features + UI; they don't talk to Supabase directly.
+  and the root `Stack`. Routes compose features + UI; they don't talk to AppSync directly.
 - `features/<domain>/` — the data layer, one folder per domain (`auth`, `hubs`, `events`, `profiles`,
-  `reference`, `tickets`, `weather`). `api.ts` holds the TanStack Query hooks and Supabase calls;
-  domain components (`HubCard`, `EventForm`, …) live alongside. This is where DB access belongs.
-- `lib/` — cross-cutting infra: `supabase/client.ts`, `query.ts` (client + query keys),
-  `constants.ts` (enums/labels — single source of truth mirroring SQL enums), `theme.ts` (JS tokens
-  mirroring `tailwind.config.js`), `validation/*` (Zod schemas), `storage.ts`, `share.ts`/`vcard.ts`/
-  `social.ts` (sharing), `utils/cn.ts`.
+  `reference`, `tickets`, `weather`, `chat`, `notifications`). `api.ts` holds the TanStack Query hooks
+  and AppSync calls via `getAwsDataClient()`. This is where data access belongs.
+- `lib/` — cross-cutting infra: `lib/aws/` (config, data client, auth helpers, list pagination),
+  `query.ts` (client + query keys), `constants.ts` (enums/labels — single source of truth mirroring
+  the AppSync schema enums), `theme.ts` (JS tokens mirroring `tailwind.config.js`), `validation/*`
+  (Zod schemas), `storage.ts`, `share.ts`/`vcard.ts`/`social.ts`.
 - `components/ui/` — design-system primitives; `components/cultural/` — `AcknowledgementBar`,
   `WelcomeToCountry`, `IndigenousLedBadge`.
 
-**Backend (`supabase/`):** `migrations/` are ordered SQL (extensions → reference → profiles → hubs →
-events → …); `docs/SCHEMA.md` is the human-readable model. Core tables: `profiles` (1:1 auth user,
-also serves as a public Professional Account), `hubs`, `hub_members`, `events`, `event_rsvps`,
-`ticket_orders`, plus reference data (`australian_states`, `australian_councils`, `localities`).
-`functions/` are **Deno** edge functions (excluded from app tsconfig + ESLint).
+**Backend (`amplify/`):** `auth/resource.ts`, `data/resource.ts` (18 domain models), `storage/resource.ts`,
+`functions/` (tickets-checkout, stripe-webhook, get-taken-seats). `amplify_outputs.json` is generated
+by `npx ampx sandbox` and provides all runtime config values. `lib/supabase/database.types.ts` is
+kept for TypeScript row-shape types but Supabase itself is not used.
 
-**Notable route groups:** `(auth)/` sign-in/up flows; `create/` (hub wizard, event, professional);
-`l/` = public "link-in-bio" share pages; `card/` = shareable business-card pages; `tickets/` =
-purchases + post-Stripe-checkout return screens.
+**Payments:** Stripe Checkout is fully server-side (secret key never reaches the app). The
+`ticketsCheckout` AppSync mutation calls a Lambda that creates a `pending` TicketOrder + Checkout
+Session; the `stripeWebhook` Lambda Function URL is the **source of truth** that flips orders to
+`paid`. The browser success redirect is never trusted. See `docs/STRIPE_TICKETING.md`.
 
-**Payments:** Stripe Checkout is fully server-side (secret key never reaches the app). `tickets-checkout`
-edge function validates the event and creates a `pending` order + Checkout Session; the `stripe-webhook`
-function is the **source of truth** that flips orders to `paid`. The browser success redirect is never
-trusted, and price is always read from the DB server-side. See `docs/STRIPE_TICKETING.md`.
+## High-value gotchas
 
-## High-value gotchas (these have bitten before — full list in `Assistant.md`)
+1. **`lib/supabase/database.types.ts` is kept for TypeScript types only** — Supabase itself is gone.
+   The snake_case row types (`HubRow`, `EventRow`, etc.) are used as the public return types of
+   the AppSync mapper functions. Do not delete this file.
 
-1. **`lib/supabase/database.types.ts` is hand-edited.** `npm run db:types` regenerates it but types
-   every `jsonb` as `Json`; the `images` columns on `hubs`/`events` must be re-typed as `HubImage[]`
-   after every regeneration (there's a comment marking it).
-2. **Never `JSON.stringify` a jsonb value before insert/update** — supabase-js serializes the whole
-   body; pass the array/object directly (`images: draft.images ?? []`). Stringifying double-encodes.
-3. **Empty form strings vs typed columns.** Fields init to `""`, which fails `z.string().datetime()`/
-   regex even with `.optional()`. Use the empty-as-undefined transforms in `lib/validation/*`
-   (`optionalIsoDateTime`, `requiredIsoDateTime`, `optionalText` + `.pipe`).
-4. **RLS lets any authenticated user read all `profiles`.** Never `.single()` an unfiltered `profiles`
-   query — scope "my own" lookups via `getCurrentProfileId()` (`features/auth/api.ts`).
-5. **Storage `media` bucket is public** (`getPublicUrl`). Upload paths must start with the user's id:
-   `<auth.uid()>/<folder>/<file>` — the storage RLS write policy requires it.
-6. **Platform-specific files:** `DatePicker.tsx` (native modal) vs `DatePicker.web.tsx` (HTML input);
-   Metro resolves `.web.tsx` on web. `react-native-date-picker` is native-only.
-7. **Edge functions are Deno** — don't try to fix "Deno is not defined" in app tsc; they're excluded.
-8. **`metro.config.js` aliases `ws` to its browser shim** so Supabase Realtime bundles in RN — don't
-   remove it (Realtime never calls `ws` at runtime; RN provides global `WebSocket`).
+2. **AppSync lists are paginated** — always use `collectAll()` from `lib/aws/list.ts` rather than
+   calling `.list()` once. DynamoDB returns at most 100 items per page.
 
-## Supabase workflow
+3. **AppSync uses camelCase; the rest of the app uses snake_case.** The mapper functions in each
+   `features/*/api.ts` translate between them. Always go through the mapper; never spread AppSync
+   model objects directly into UI components.
 
-- **`.env` points at the linked *remote* project**, so the running app uses the remote DB even with a
-  local stack up. Only `EXPO_PUBLIC_*` vars reach the client; the service_role / Stripe secrets are
-  server-side only (set via `supabase secrets set`).
-- **Migrations are immutable once applied** — editing an applied migration won't re-run on the remote.
-  Add a **new forward migration** instead.
-- **Confirm with the maintainer before `supabase db push` / `functions deploy`** — these write to the
-  hosted database / live functions.
+4. **Empty form strings vs typed columns.** Fields init to `""`. Use the empty-as-undefined
+   transforms in `lib/validation/*` (`optionalIsoDateTime`, `requiredIsoDateTime`, `optionalText`).
 
-## Cultural respect (non-negotiable)
+5. **JSON fields** (`images`, `metadata`, `publicLinks`, etc.) are stored as `AWSJSON` in AppSync.
+   Pass them as `JSON.stringify(value)` on write; parse with `JSON.parse()` on read in mappers.
 
-Acknowledgement of Country is app-wide; Welcome to Country stays prominent on hub pages (never buried
-behind a tab for layout). `country.*` colors and `components/cultural/*` are reserved strictly for
-sanctioned First Nations surfaces, never decoration. Traditional Custodian attributions are never
-auto-generated or guessed — `traditional_custodians` columns ship empty, populated only from verified,
-properly-sourced data.
+6. **Platform-specific files.** `DatePicker.tsx` (native modal) vs `DatePicker.web.tsx` (HTML input).
+   Metro resolves `.web.tsx` on web automatically.
+
+7. **Edge functions / Lambda** (`amplify/functions/**`) are Node.js and excluded from the app tsconfig.
+
+8. **`metro.config.js` aliases `ws`** to its browser shim so Amplify Realtime bundles in RN — don't
+   remove it.
+
+9. **Cultural priority.** Acknowledgement of Country is app-wide; Welcome to Country stays prominent
+   on hub pages. `country.*` colors and `components/cultural/*` are reserved strictly for sanctioned
+   First Nations surfaces, never decoration.
+
+10. **Navigation map.** TopBar, BottomTabBar and Footer all read from `lib/navigation.ts`. Add routes
+    there when a new primary surface should appear in the shell.
+
+11. **Hub branding images.** Hub logo and cover both live in the `images` JSON field. Use
+    `lib/hubImages.ts` to read/write typed entries: `type: "logo"` for the square icon, `type:
+    "cover"` for the wide top image.
+
+## AWS deployment workflow
+
+```bash
+# Deploy backend (dev sandbox — torn down when you stop it)
+AWS_PROFILE=culturepass-admin npx ampx sandbox
+
+# Populate .env from the deployed outputs
+node scripts/aws-env-from-outputs.mjs
+
+# Deploy backend to a permanent production branch
+AWS_PROFILE=culturepass-admin npx ampx pipeline-deploy --branch main --app-id YOUR_APP_ID
+
+# Migrate data from Supabase to DynamoDB (one-time)
+npm run migrate:dynamo
+
+# Build mobile apps
+eas build --platform all --profile production
+```
+
+**EAS env vars** (set once via `eas env:create --environment production`):
+`EXPO_PUBLIC_BACKEND`, `EXPO_PUBLIC_AWS_REGION`, `EXPO_PUBLIC_COGNITO_USER_POOL_ID`,
+`EXPO_PUBLIC_COGNITO_APP_CLIENT_ID`, `EXPO_PUBLIC_COGNITO_IDENTITY_POOL_ID`,
+`EXPO_PUBLIC_APPSYNC_ENDPOINT`, `EXPO_PUBLIC_S3_BUCKET`.
+
+## Definition of done
+
+- `npm run typecheck` clean, `npm run lint` clean.
+- New schema changes reflected in `amplify/data/resource.ts` + a sandbox redeploy.
+- UI uses existing primitives + tokens; cultural surfaces respected.
+- Outward/irreversible actions (pipeline-deploy, EAS build/submit) confirmed first.

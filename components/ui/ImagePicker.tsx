@@ -7,7 +7,8 @@ import { Text } from "./Text";
 import { Icon } from "./Icon";
 import { useToast } from "./Toast";
 import { colors } from "@/lib/theme";
-import { supabase } from "@/lib/supabase/client";
+import { uploadData, getUrl } from "aws-amplify/storage";
+import { getAwsCurrentUserId } from "@/lib/aws/auth";
 
 interface ImagePickerProps {
   currentImageUrl?: string | null;
@@ -84,33 +85,24 @@ export function ImagePickerComponent({
   const uploadImage = async (uri: string) => {
     setUploading(true);
     try {
-      // Storage RLS requires the first path segment to be the user's id, so
-      // uploads must live under `<uid>/…`. Resolve it before uploading.
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Sign in to upload images.");
+      const userId = await getAwsCurrentUserId();
+      if (!userId) throw new Error("Sign in to upload images.");
 
       const response = await fetch(uri);
       const blob = await response.blob();
 
-      // Generate unique, per-user filename: <uid>/<folder>/<timestamp>-<rand>.jpg
-      const filename = `${user.id}/${folderPath}/${Date.now()}-${Math.random()
+      const filename = `media/${userId}/${folderPath}/${Date.now()}-${Math.random()
         .toString(36)
         .substring(2, 8)}.jpg`;
 
-      const { data, error } = await supabase.storage
-        .from("media")
-        .upload(filename, blob, {
-          cacheControl: "3600",
-          upsert: true,
-          contentType: "image/jpeg",
-        });
+      await uploadData({
+        path: filename,
+        data: blob,
+        options: { contentType: "image/jpeg" },
+      }).result;
 
-      if (error) throw error;
-
-      const { data: publicUrlData } = supabase.storage.from("media").getPublicUrl(data.path);
-      onImageChange(publicUrlData.publicUrl);
+      const { url } = await getUrl({ path: filename });
+      onImageChange(url.toString());
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Upload failed — please try again.");

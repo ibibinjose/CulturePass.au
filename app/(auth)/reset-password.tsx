@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Pressable } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 
 import {
   Button,
@@ -14,6 +14,7 @@ import { resetRequestSchema } from "@/lib/validation/auth";
 import { authMessage } from "./sign-in";
 
 export default function ResetPasswordScreen() {
+  const router = useRouter();
   const reset = useResetPassword();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | undefined>();
@@ -42,12 +43,12 @@ export default function ResetPasswordScreen() {
       subtitle={
         sent
           ? undefined
-          : "Enter your email and we’ll send you a link to set a new password."
+          : "Enter your email and we'll send you a 6-digit confirmation code."
       }
       error={banner}
       notice={
         sent
-          ? "If an account exists for that email, a reset link is on its way. Open it on this device to continue."
+          ? "A confirmation code has been sent to your email. Enter it on the next screen to set a new password."
           : null
       }
       footer={
@@ -75,10 +76,21 @@ export default function ResetPasswordScreen() {
               returnKeyType="go"
             />
           </Field>
-          <Button label="Send reset link" loading={reset.isPending} onPress={submit} />
+          <Button label="Send reset code" loading={reset.isPending} onPress={submit} />
         </>
       ) : (
-        <Button label="Resend link" variant="outline" loading={reset.isPending} onPress={submit} />
+        <>
+          <Button
+            label="Enter my code"
+            onPress={() =>
+              router.push({
+                pathname: "/update-password",
+                params: { email },
+              })
+            }
+          />
+          <Button label="Resend code" variant="outline" loading={reset.isPending} onPress={submit} />
+        </>
       )}
     </AuthShell>
   );

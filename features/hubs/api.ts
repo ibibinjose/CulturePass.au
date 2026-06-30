@@ -1,6 +1,4 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase/client";
-import { isAwsBackend } from "@/lib/backend";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
 import { compact, slugify } from "@/lib/aws/map";
@@ -20,9 +18,6 @@ export interface HubFilters {
 type HubRow = Database["public"]["Tables"]["hubs"]["Row"];
 type HubInsert = Database["public"]["Tables"]["hubs"]["Insert"];
 type HubUpdate = Database["public"]["Tables"]["hubs"]["Update"];
-
-const HUB_CARD_COLUMNS =
-  "id, name, slug, type, short_description, location_state, location_city, indigenous_led, traditional_custodians, images, verification_status, status, categories, tags";
 
 type HubCard = Pick<
   HubRow,
@@ -181,41 +176,21 @@ export function useHubs(filters: HubFilters = {}) {
   return useQuery({
     queryKey: qk.hubs(filters),
     queryFn: async (): Promise<HubCard[]> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const filter = {
-          status: { eq: "published" as const },
-          ...(filters.state ? { locationState: { eq: filters.state } } : {}),
-          ...(filters.councilId ? { locationCouncilId: { eq: filters.councilId } } : {}),
-          ...(filters.type ? { type: { eq: filters.type } } : {}),
-          ...(filters.indigenousLed ? { indigenousLed: { eq: true } } : {}),
-          ...(filters.search ? { name: { contains: filters.search } } : {}),
-          ...(filters.tag ? { tags: { contains: filters.tag } } : {}),
-        };
-        const rows = await collectAll((nextToken) =>
-          client.models.Hub.list({ filter, nextToken }),
-        );
-        // Mirror `.order("created_at", desc).limit(24)`.
-        return rows.sort(byCreatedDesc).slice(0, 24).map(mapHubCard);
-      }
-
-      let query = supabase
-        .from("hubs")
-        .select(HUB_CARD_COLUMNS)
-        .eq("status", "published")
-        .order("created_at", { ascending: false })
-        .limit(24);
-
-      if (filters.state) query = query.eq("location_state", filters.state);
-      if (filters.councilId) query = query.eq("location_council_id", filters.councilId);
-      if (filters.type) query = query.eq("type", filters.type);
-      if (filters.indigenousLed) query = query.eq("indigenous_led", true);
-      if (filters.search) query = query.ilike("name", `%${filters.search}%`);
-      if (filters.tag) query = query.contains("tags", [filters.tag]);
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+      const client = getAwsDataClient();
+      const filter = {
+        status: { eq: "published" as const },
+        ...(filters.state ? { locationState: { eq: filters.state } } : {}),
+        ...(filters.councilId ? { locationCouncilId: { eq: filters.councilId } } : {}),
+        ...(filters.type ? { type: { eq: filters.type } } : {}),
+        ...(filters.indigenousLed ? { indigenousLed: { eq: true } } : {}),
+        ...(filters.search ? { name: { contains: filters.search } } : {}),
+        ...(filters.tag ? { tags: { contains: filters.tag } } : {}),
+      };
+      const rows = await collectAll((nextToken) =>
+        client.models.Hub.list({ filter, nextToken }),
+      );
+      // Mirror `.order("created_at", desc).limit(24)`.
+      return rows.sort(byCreatedDesc).slice(0, 24).map(mapHubCard);
     },
   });
 }
@@ -224,34 +199,16 @@ export function useHubStateCounts() {
   return useQuery({
     queryKey: qk.hubStateCounts,
     queryFn: async (): Promise<Record<string, number>> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.Hub.list({
-            filter: { status: { eq: "published" } },
-            nextToken,
-          }),
-        );
-        return rows.reduce<Record<string, number>>((counts, row) => {
-          if (row.locationState) {
-            counts[row.locationState] = (counts[row.locationState] ?? 0) + 1;
-          }
-          return counts;
-        }, {});
-      }
-
-      const { data, error } = await supabase
-        .from("hubs")
-        .select("location_state")
-        .eq("status", "published")
-        .not("location_state", "is", null)
-        .limit(1000);
-
-      if (error) throw error;
-
-      return (data ?? []).reduce<Record<string, number>>((counts, row) => {
-        if (row.location_state) {
-          counts[row.location_state] = (counts[row.location_state] ?? 0) + 1;
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.Hub.list({
+          filter: { status: { eq: "published" } },
+          nextToken,
+        }),
+      );
+      return rows.reduce<Record<string, number>>((counts, row) => {
+        if (row.locationState) {
+          counts[row.locationState] = (counts[row.locationState] ?? 0) + 1;
         }
         return counts;
       }, {});
@@ -263,57 +220,42 @@ export function useHub(slug: string) {
   return useQuery({
     queryKey: qk.hub(slug),
     queryFn: async (): Promise<HubDetail | null> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { data } = await client.models.Hub.list({
-          filter: { slug: { eq: slug } },
-          limit: 1,
-        });
-        const hub = data[0];
-        if (!hub) return null;
-        let council: HubCouncil | null = null;
-        if (hub.locationCouncilId) {
-          const res = await client.models.AustralianCouncil.get({ id: hub.locationCouncilId });
-          if (res.data) {
-            council = {
-              name: res.data.name,
-              traditional_custodians: compact(res.data.traditionalCustodians),
-            };
-          }
+      const client = getAwsDataClient();
+      const { data } = await client.models.Hub.list({
+        filter: { slug: { eq: slug } },
+        limit: 1,
+      });
+      const hub = data[0];
+      if (!hub) return null;
+      let council: HubCouncil | null = null;
+      if (hub.locationCouncilId) {
+        const res = await client.models.AustralianCouncil.get({ id: hub.locationCouncilId });
+        if (res.data) {
+          council = {
+            name: res.data.name,
+            traditional_custodians: compact(res.data.traditionalCustodians),
+          };
         }
-        return { ...mapHub(hub), council };
       }
-
-      const { data, error } = await supabase
-        .from("hubs")
-        .select("*, council:australian_councils(name, traditional_custodians)")
-        .eq("slug", slug)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
+      return { ...mapHub(hub), council };
     },
     enabled: slug.length > 0,
   });
 }
 
 /**
- * Create a hub. owner_id must be the caller's profile id; RLS enforces this.
+ * Create a hub. owner_id must be the caller's profile id; AppSync auth enforces this.
  * Returns the created row (with its generated slug).
  */
 export function useCreateHub() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: HubInsert): Promise<HubRow> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { data, errors } = await client.models.Hub.create(toAwsHubInput(input));
-        if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-        if (!data) throw new Error("Hub create failed.");
-        return mapHub(data);
-      }
-      const { data, error } = await supabase.from("hubs").insert(input).select().single();
-      if (error) throw error;
-      return data;
+      const client = getAwsDataClient();
+      const { data, errors } = await client.models.Hub.create(toAwsHubInput(input));
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
+      if (!data) throw new Error("Hub create failed.");
+      return mapHub(data);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.myHubs });
@@ -323,27 +265,17 @@ export function useCreateHub() {
 }
 
 /**
- * Update a hub. RLS ensures only the owner can update their hub.
+ * Update a hub. AppSync auth ensures only the owner can update their hub.
  */
 export function useUpdateHub() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: HubUpdate }): Promise<HubRow> => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { data, errors } = await client.models.Hub.update({ id, ...toAwsHubPatch(patch) });
-        if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-        if (!data) throw new Error("Hub not found.");
-        return mapHub(data);
-      }
-      const { data, error } = await supabase
-        .from("hubs")
-        .update(patch)
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
+      const client = getAwsDataClient();
+      const { data, errors } = await client.models.Hub.update({ id, ...toAwsHubPatch(patch) });
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
+      if (!data) throw new Error("Hub not found.");
+      return mapHub(data);
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: qk.hub(data.slug) });
@@ -354,20 +286,15 @@ export function useUpdateHub() {
 }
 
 /**
- * Delete a hub. RLS ensures only the owner can delete their hub.
+ * Delete a hub. AppSync auth ensures only the owner can delete their hub.
  */
 export function useDeleteHub() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const { errors } = await client.models.Hub.delete({ id });
-        if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-        return;
-      }
-      const { error } = await supabase.from("hubs").delete().eq("id", id);
-      if (error) throw error;
+      const client = getAwsDataClient();
+      const { errors } = await client.models.Hub.delete({ id });
+      if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.myHubs });
@@ -383,30 +310,16 @@ export function useMyHubs() {
   return useQuery({
     queryKey: qk.myHubs,
     queryFn: async (): Promise<HubCard[]> => {
-      // Scope to the signed-in user. RLS lets authenticated users read every
-      // profile, so an unfiltered `.single()` on `profiles` would error — we
-      // must resolve the caller's own profile id explicitly.
       const profileId = await getCurrentProfileId();
       if (!profileId) {
         throw new Error("User not authenticated");
       }
 
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.Hub.list({ filter: { ownerId: { eq: profileId } }, nextToken }),
-        );
-        return rows.sort(byCreatedDesc).map(mapHubCard);
-      }
-
-      const { data, error } = await supabase
-        .from("hubs")
-        .select(HUB_CARD_COLUMNS)
-        .eq("owner_id", profileId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      return data;
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.Hub.list({ filter: { ownerId: { eq: profileId } }, nextToken }),
+      );
+      return rows.sort(byCreatedDesc).map(mapHubCard);
     },
   });
 }
@@ -417,38 +330,14 @@ export function useHubLikeStatus(hubId: string) {
     queryFn: async () => {
       const profileId = await getCurrentProfileId().catch(() => null);
 
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.HubLike.list({ filter: { hubId: { eq: hubId } }, nextToken }),
-        );
-        return {
-          count: rows.length,
-          liked: profileId ? rows.some((r) => r.profileId === profileId) : false,
-        };
-      }
-
-      // Fetch total count.
-      const { count, error: countError } = await supabase
-        .from("hub_likes")
-        .select("*", { count: "exact", head: true })
-        .eq("hub_id", hubId);
-
-      if (countError) throw countError;
-
-      let liked = false;
-      if (profileId) {
-        const { data, error: likeError } = await supabase
-          .from("hub_likes")
-          .select("id")
-          .eq("hub_id", hubId)
-          .eq("profile_id", profileId)
-          .maybeSingle();
-        if (likeError) throw likeError;
-        liked = !!data;
-      }
-
-      return { count: count ?? 0, liked };
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.HubLike.list({ filter: { hubId: { eq: hubId } }, nextToken }),
+      );
+      return {
+        count: rows.length,
+        liked: profileId ? rows.some((r) => r.profileId === profileId) : false,
+      };
     },
     enabled: !!hubId,
   });
@@ -461,33 +350,16 @@ export function useToggleHubLike() {
       const profileId = await getCurrentProfileId();
       if (!profileId) throw new Error("Must be signed in to like a hub");
 
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        if (liked) {
-          const { data } = await client.models.HubLike.list({
-            filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
-            limit: 1,
-          });
-          const row = data[0];
-          if (row) await client.models.HubLike.delete({ id: row.id });
-        } else {
-          await client.models.HubLike.create({ hubId, profileId });
-        }
-        return;
-      }
-
+      const client = getAwsDataClient();
       if (liked) {
-        const { error } = await supabase
-          .from("hub_likes")
-          .delete()
-          .eq("hub_id", hubId)
-          .eq("profile_id", profileId);
-        if (error) throw error;
+        const { data } = await client.models.HubLike.list({
+          filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
+          limit: 1,
+        });
+        const row = data[0];
+        if (row) await client.models.HubLike.delete({ id: row.id });
       } else {
-        const { error } = await supabase
-          .from("hub_likes")
-          .insert({ hub_id: hubId, profile_id: profileId });
-        if (error) throw error;
+        await client.models.HubLike.create({ hubId, profileId });
       }
     },
     onSuccess: (_, { hubId }) => {
@@ -502,38 +374,14 @@ export function useHubFollowStatus(hubId: string) {
     queryFn: async () => {
       const profileId = await getCurrentProfileId().catch(() => null);
 
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const rows = await collectAll((nextToken) =>
-          client.models.HubFollow.list({ filter: { hubId: { eq: hubId } }, nextToken }),
-        );
-        return {
-          count: rows.length,
-          followed: profileId ? rows.some((r) => r.profileId === profileId) : false,
-        };
-      }
-
-      // Fetch total count.
-      const { count, error: countError } = await supabase
-        .from("hub_follows")
-        .select("*", { count: "exact", head: true })
-        .eq("hub_id", hubId);
-
-      if (countError) throw countError;
-
-      let followed = false;
-      if (profileId) {
-        const { data, error: followError } = await supabase
-          .from("hub_follows")
-          .select("id")
-          .eq("hub_id", hubId)
-          .eq("profile_id", profileId)
-          .maybeSingle();
-        if (followError) throw followError;
-        followed = !!data;
-      }
-
-      return { count: count ?? 0, followed };
+      const client = getAwsDataClient();
+      const rows = await collectAll((nextToken) =>
+        client.models.HubFollow.list({ filter: { hubId: { eq: hubId } }, nextToken }),
+      );
+      return {
+        count: rows.length,
+        followed: profileId ? rows.some((r) => r.profileId === profileId) : false,
+      };
     },
     enabled: !!hubId,
   });
@@ -546,33 +394,16 @@ export function useToggleHubFollow() {
       const profileId = await getCurrentProfileId();
       if (!profileId) throw new Error("Must be signed in to follow a hub");
 
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        if (followed) {
-          const { data } = await client.models.HubFollow.list({
-            filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
-            limit: 1,
-          });
-          const row = data[0];
-          if (row) await client.models.HubFollow.delete({ id: row.id });
-        } else {
-          await client.models.HubFollow.create({ hubId, profileId });
-        }
-        return;
-      }
-
+      const client = getAwsDataClient();
       if (followed) {
-        const { error } = await supabase
-          .from("hub_follows")
-          .delete()
-          .eq("hub_id", hubId)
-          .eq("profile_id", profileId);
-        if (error) throw error;
+        const { data } = await client.models.HubFollow.list({
+          filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
+          limit: 1,
+        });
+        const row = data[0];
+        if (row) await client.models.HubFollow.delete({ id: row.id });
       } else {
-        const { error } = await supabase
-          .from("hub_follows")
-          .insert({ hub_id: hubId, profile_id: profileId });
-        if (error) throw error;
+        await client.models.HubFollow.create({ hubId, profileId });
       }
     },
     onSuccess: (_, { hubId }) => {
@@ -589,35 +420,15 @@ export function useMyFollowedHubs() {
       const profileId = await getCurrentProfileId().catch(() => null);
       if (!profileId) return [];
 
-      if (isAwsBackend) {
-        const client = getAwsDataClient();
-        const follows = await collectAll((nextToken) =>
-          client.models.HubFollow.list({ filter: { profileId: { eq: profileId } }, nextToken }),
-        );
-        if (follows.length === 0) return [];
-        const hubs = await Promise.all(
-          follows.map((f) => client.models.Hub.get({ id: f.hubId })),
-        );
-        return hubs.flatMap((r) => (r.data ? [mapHubCard(r.data)] : []));
-      }
-
-      const { data: follows, error: followError } = await supabase
-        .from("hub_follows")
-        .select("hub_id")
-        .eq("profile_id", profileId);
-
-      if (followError) throw followError;
-      if (!follows || follows.length === 0) return [];
-
-      const hubIds = follows.map((f) => f.hub_id);
-
-      const { data: hubs, error: hubsError } = await supabase
-        .from("hubs")
-        .select(HUB_CARD_COLUMNS)
-        .in("id", hubIds);
-
-      if (hubsError) throw hubsError;
-      return hubs;
+      const client = getAwsDataClient();
+      const follows = await collectAll((nextToken) =>
+        client.models.HubFollow.list({ filter: { profileId: { eq: profileId } }, nextToken }),
+      );
+      if (follows.length === 0) return [];
+      const hubs = await Promise.all(
+        follows.map((f) => client.models.Hub.get({ id: f.hubId })),
+      );
+      return hubs.flatMap((r) => (r.data ? [mapHubCard(r.data)] : []));
     },
   });
 }
