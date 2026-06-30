@@ -1,0 +1,37 @@
+# AWS Amplify Hosting build spec — Amplify Gen 2 fullstack (per-branch).
+#
+# Connecting this repo to Amplify Hosting (GitHub) deploys BOTH a persistent
+# per-branch backend AND the web frontend on every push:
+#   • backend phase  → `ampx pipeline-deploy` stands up Cognito/AppSync/DynamoDB/
+#     S3/Lambda for the branch and writes amplify_outputs.json.
+#   • frontend phase → aws-env-from-outputs.mjs turns that into the EXPO_PUBLIC_*
+#     vars, then `expo export` builds the static web app (dist/).
+# So there are NO env vars to set by hand in the console — the build wires itself.
+#
+# Branch secrets to set once (Amplify Console → Hosting → Secrets, or
+# `npx ampx secret set --branch <branch>`): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET.
+version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        # amplify_outputs.json (from the backend phase) → EXPO_PUBLIC_* in .env
+        - node scripts/aws-env-from-outputs.mjs
+    build:
+      commands:
+        - npx expo export --platform web
+  artifacts:
+    baseDirectory: dist
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - .npm/**/*
+      - node_modules/**/*
