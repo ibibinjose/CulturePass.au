@@ -1,20 +1,20 @@
 ---
 title: "Project structure"
-description: "Tour the app, components, features, lib, and supabase directories so you know where routes, UI primitives, queries, and migrations live."
+description: "Tour the app, components, features, lib, and amplify directories so you know where routes, UI primitives, queries, and backend resources live."
 ---
 
-CulturePass is one Expo app that runs on iOS, Android, and web. The codebase is organised so routes, UI primitives, feature logic, shared utilities, and the database live in clearly separated places.
+CulturePass is one Expo app that runs on iOS, Android, and web, backed by an AWS Amplify Gen 2 stack. The codebase is organised so routes, UI primitives, feature logic, shared utilities, and the backend live in clearly separated places.
 
 ## Top-level layout
 
 ```
 app/           # expo-router routes (file-based)
+amplify/       # AWS Amplify Gen 2 backend (auth, data, storage, functions)
 components/    # shared UI primitives and cultural components
 features/      # per-domain data layer (queries, mutations, stores)
-lib/           # cross-cutting utilities (theme, query client, validation, supabase)
-supabase/      # local stack config, migrations, seed data, edge functions
+lib/           # cross-cutting utilities (theme, query client, validation, AWS client)
 assets/        # fonts, images, icons
-scripts/       # one-off Node scripts (data extraction, config checks)
+scripts/       # one-off Node scripts (data extraction, env wiring, migration)
 ```
 
 ## `app/` — routes
@@ -41,29 +41,42 @@ Use this directory when you want to find or add a screen.
 
 ## `features/` — domain logic
 
-Each subdirectory groups the data layer for one domain — queries, mutations, Zustand stores, and domain-specific cards or list items. Examples include `auth/` (session and current profile helpers), `hubs/` (hub queries, mutations, draft store), `profiles/`, and `reference/` (states and councils).
+Each subdirectory groups the data layer for one domain — queries, mutations, Zustand stores, and domain-specific cards or list items. Examples include `auth/` (Cognito session and current profile helpers), `hubs/`, `events/`, `tickets/`, `profiles/`, `chat/`, `notifications/`, and `reference/` (states and councils).
+
+Each domain's `api.ts` talks to AppSync through the typed Amplify Data client. The raw GraphQL records are converted to and from app-shaped domain models through mappers in `lib/aws/map.ts`, so feature code stays decoupled from the underlying schema.
 
 When adding a new domain, mirror this pattern instead of putting queries in the route file.
 
 ## `lib/` — shared utilities
 
+- **`backend.ts`** — backend seam. Exports `BACKEND`, `isAwsBackend`, and `isSupabaseBackend` so code that needs to branch on backend reads from one place. The current build is AWS-only.
+- **`aws/`** — Amplify client setup and helpers: `config.ts` (Amplify configuration from env), `auth.ts` (Cognito helpers), `data.ts` (typed AppSync client factory), `list.ts` (pagination), `map.ts` (record ↔ domain-model mappers).
 - **`constants.ts`** — controlled vocabularies and labels (single source of truth for things like categories and statuses).
 - **`navigation.ts`** — shared app map used by the top nav, mobile tabs, and footer, so all three stay aligned as routes evolve.
 - **`theme.ts`** — raw JS design tokens that mirror `tailwind.config.js` for use in places where Tailwind classes aren't available.
 - **`query.ts`** — TanStack Query client setup and query-key conventions.
 - **`storage.ts`** — cross-platform key/value store (used for wizard drafts).
-- **`supabase/`** — Supabase client and generated `database.types.ts`.
 - **`validation/`** — Zod schemas, split into draft and publish variants per entity.
 
-## `supabase/` — backend
+## `amplify/` — backend
 
-- **`config.toml`** — local stack configuration.
-- **`migrations/`** — ordered SQL migrations: extensions → reference data → profiles → hubs → events.
-- **`seed.sql`** — generated seed (Australian states and NSW councils).
-- **`seed_sources/`** — source CSVs used by the seed generator.
-- **`functions/`** — Supabase Edge Functions (deployed via `npm run functions:deploy`).
+The Amplify Gen 2 backend is defined entirely in TypeScript. `amplify/backend.ts` composes the resources below; `npx ampx sandbox` deploys them into your personal AWS account and writes `amplify_outputs.json` for the client.
 
-Always add a migration for schema changes and regenerate types with `npm run db:types` afterwards.
+- **`auth/`** — Cognito user pool, app client, and identity pool. Email sign-up with link-style verification; an `admin` group grants elevated access in the data layer.
+- **`data/`** — Amplify Data schema (AppSync + DynamoDB). Models include `Profile`, `Hub`, `Event`, `EventTicketType`, `EventRsvp`, `TicketOrder`, `Conversation`, `Message`, `Notification`, and the reference tables `AustralianState` / `AustralianCouncil`. Authorization rules wire owner, public, and `admin`-group access, plus IAM access for the Lambdas.
+- **`storage/`** — S3 bucket for user-uploaded media (hub and event imagery, profile avatars).
+- **`functions/`** — Lambdas:
+  - **`tickets-checkout/`** — creates a Stripe Checkout Session and holds inventory atomically before the customer pays.
+  - **`stripe-webhook/`** — verifies the Stripe signature and finalises orders. Exposed via a public Function URL because Stripe POSTs to it directly.
+  - **`get-taken-seats/`** — returns currently held or sold seats for an event.
+  - **`post-confirmation/`** — Cognito post-confirmation trigger that creates a `Profile` for newly confirmed users (the AWS equivalent of the legacy `handle_new_user` SQL trigger).
+  - **`dev-seed/`** — dev-only helper that seeds a buyer Profile plus a published paid Event so the Stripe flow can be exercised end-to-end.
+
+Server-side secrets (Stripe keys) are set with `npx ampx sandbox secret set` and are never bundled into the client.
+
+## Migrating from Supabase
+
+For anyone moving an existing CulturePass dataset off the legacy Supabase Postgres database, `scripts/migrate-supabase-to-dynamo.mjs` is a one-shot cutover that reads from Supabase and writes through AppSync (with IAM auth) in dependency order — reference data, profiles, hubs, events, tickets, messages, and the rest. See the [Quickstart](/quickstart#migrating-an-existing-dataset) for usage. The script is not part of normal local development.
 
 ## Where to put new code
 
@@ -74,4 +87,4 @@ Always add a migration for schema changes and regenerate types with `npm run db:
 | A cultural surface | `components/cultural/` (and read the cultural respect rules first) |
 | A query, mutation, or store for an entity | `features/<domain>/` |
 | A Zod schema | `lib/validation/` |
-| A schema change | `supabase/migrations/` + regenerate types |
+| A new data model, auth rule, storage path, or Lambda | `amplify/` |

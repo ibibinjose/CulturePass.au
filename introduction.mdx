@@ -1,6 +1,6 @@
 ---
 title: "Introduction to CulturePass Australia"
-description: "Learn what CulturePass Australia is, the Expo, Supabase, and NativeWind stack it runs on, and where to start as a new contributor."
+description: "Learn what CulturePass Australia is, the Expo and AWS Amplify stack it runs on, and where to start as a new contributor."
 ---
 
 CulturePass Australia is a cultural platform for discovering, creating, and connecting through cultural experiences across Australian states, cities, and councils — with First Nations voices and Welcome to Country at the centre.
@@ -17,7 +17,11 @@ CulturePass is a cross-platform app (iOS, Android, and web) where people can:
 ## Built with
 
 - **Expo (React Native + Web)** on Expo SDK 53 — one codebase across iOS, Android, and web.
-- **Supabase** — Postgres, Auth, Storage, and Edge Functions.
+- **AWS Amplify Gen 2** as the backend:
+  - **Amazon Cognito** for auth.
+  - **AWS AppSync + DynamoDB** for the data layer.
+  - **Amazon S3** for media storage.
+  - **AWS Lambda** for server-side flows (Stripe checkout, Stripe webhooks, post-confirmation profile creation, dev seed).
 - **TanStack Query** for server state, **Zustand** for client state, **Zod** for validation.
 - **NativeWind + Tailwind** for the design system, with **Inter** as the type face.
 
