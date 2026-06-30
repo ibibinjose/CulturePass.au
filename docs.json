@@ -26,6 +26,12 @@
             "pages": [
               "design-system"
             ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "payments/stripe-ticketing"
+            ]
           }
         ]
       }

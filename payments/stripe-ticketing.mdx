@@ -1,0 +1,91 @@
+---
+title: "Stripe ticketing"
+description: "How paid event tickets work end-to-end: the tickets-checkout Lambda, the Stripe webhook, the secrets you need, and the routes the app exposes."
+---
+
+CulturePass sells paid event tickets through **Stripe Checkout**, driven entirely server-side. The Stripe secret key never touches the client, so the same flow works on web, iOS, and Android without a native Stripe module or custom dev build.
+
+Use this page when you are:
+
+- Wiring up Stripe for a new environment (sandbox, staging, or production).
+- Debugging a paid-ticket purchase that did not fulfil.
+- Adding or changing the checkout / fulfilment behaviour.
+
+## Architecture
+
+Two Amplify Lambda functions back the flow, plus a set of client routes that hand the buyer off to Stripe and back.
+
+| Piece | Role |
+| --- | --- |
+| `tickets-checkout` Lambda | AppSync custom-mutation handler. The Cognito-authenticated buyer calls the `ticketsCheckout` mutation; the Lambda resolves prices from DynamoDB, writes a `pending` `TicketOrder`, creates a Stripe Checkout Session, and returns its URL. |
+| `stripe-webhook` Lambda | The fulfilment source of truth. Exposed via a public Lambda Function URL (no Cognito auth) so Stripe can POST raw events to it. Verifies the Stripe signature and flips `TicketOrder` rows to `paid`, `cancelled`, or `refunded`. |
+| `/event/[id]` | Shows **Buy ticket · $X** when the event is paid and has no external `ticket_url`. |
+| `/tickets` | The signed-in buyer's ticket wallet. |
+| `/tickets/success` | Return URL after a successful Stripe Checkout session. |
+| `/tickets/cancel` | Return URL when the buyer abandons checkout. |
+
+Two rules keep the flow trustworthy:
+
+- **Prices always come from DynamoDB.** The client only sends `eventId` and `quantity` (or a cart of ticket-type ids and quantities). The Lambda looks the prices up server-side, so a tampered client price can never be charged.
+- **Fulfilment is webhook-driven.** The `/tickets/success` redirect is purely cosmetic. Orders are only marked `paid` once `stripe-webhook` has verified a `checkout.session.completed` event.
+
+## Required server-side secrets
+
+Both Lambdas read their Stripe credentials from Amplify secrets — never from `.env` files or `EXPO_PUBLIC_` variables.
+
+| Secret | Used by | Where to get it |
+| --- | --- | --- |
+| `STRIPE_SECRET_KEY` | `tickets-checkout`, `stripe-webhook` | Stripe dashboard → **Developers → API keys**. Use a `sk_test_…` key in sandbox and a `sk_live_…` key in production. |
+| `STRIPE_WEBHOOK_SECRET` | `stripe-webhook` | The signing secret (`whsec_…`) shown when you create the webhook endpoint in Stripe. |
+
+`SITE_URL` is read from the environment (not a secret). It defaults to `https://culturepass.au` and is used to build the Stripe `success_url` and `cancel_url`. Override it locally with `SITE_URL=http://localhost:8081` before running `ampx sandbox` so test redirects come back to your dev server.
+
+### Set the secrets
+
+Use the Amplify Gen 2 CLI to write each secret into the sandbox or branch environment you are working on:
+
+```bash
+npx ampx sandbox secret set STRIPE_SECRET_KEY
+npx ampx sandbox secret set STRIPE_WEBHOOK_SECRET
+```
+
+The CLI prompts for the value so it never lands in shell history. For a deployed branch, set the same secrets through the Amplify console (**Hosting → Secrets**) for that branch.
+
+## Wire up the webhook endpoint
+
+Stripe needs a public URL to POST events to. Amplify exposes the `stripe-webhook` Lambda through a Function URL that is printed in the backend outputs as `stripeWebhookUrl`.
+
+1. Deploy the backend (`npx ampx sandbox` for local, or push a branch for a deployed environment).
+2. Grab the Function URL from the Amplify outputs — it looks like `https://<id>.lambda-url.<region>.on.aws/`.
+3. In the Stripe dashboard, open **Developers → Webhooks → Add endpoint** and paste the URL.
+4. Subscribe the endpoint to:
+   - `checkout.session.completed`
+   - `checkout.session.expired`
+   - `charge.refunded`
+5. Reveal the signing secret (`whsec_…`) and store it:
+
+   ```bash
+   npx ampx sandbox secret set STRIPE_WEBHOOK_SECRET
+   ```
+
+6. Redeploy so the Lambda picks up the new secret.
+
+When the webhook receives a `checkout.session.completed` event, the Lambda verifies the signature with `STRIPE_WEBHOOK_SECRET`, looks up the matching `TicketOrder`, and marks it `paid`. `checkout.session.expired` and `charge.refunded` release any held capacity or seats and move the order to `cancelled` or `refunded`.
+
+## Local testing
+
+For end-to-end testing without exposing the sandbox to the internet, forward Stripe events to your local Lambda with the Stripe CLI:
+
+```bash
+npx ampx sandbox
+stripe listen --forward-to <stripeWebhookUrl-from-amplify-outputs>
+```
+
+The `stripe listen` command prints a temporary `whsec_…`. Use it as `STRIPE_WEBHOOK_SECRET` for the local run, then trigger a purchase with the Stripe test card `4242 4242 4242 4242` (any future expiry, any CVC).
+
+## Going to production
+
+- Swap `STRIPE_SECRET_KEY` from a `sk_test_…` to a `sk_live_…` key on the production branch.
+- Recreate the webhook endpoint in **live mode** against the production Function URL and store the new `whsec_…` as `STRIPE_WEBHOOK_SECRET` on that branch.
+- Set `SITE_URL` to the production web origin so post-checkout redirects return to the right place.
+- Issue refunds from the Stripe dashboard — the `charge.refunded` handler will mark the corresponding `TicketOrder` as `refunded` automatically.
