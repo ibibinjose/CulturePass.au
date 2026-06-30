@@ -374,7 +374,7 @@ export default function DiscoverScreen() {
       </View>
 
       {/* Search & Location block */}
-      <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-12 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-4">
+      <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-10 md:h-12 gap-2 shadow-subtle w-full max-w-3xl mt-4">
         <View className="flex-1 flex-row items-center h-full">
           <Input
             value={search}
@@ -405,18 +405,18 @@ export default function DiscoverScreen() {
       </View>
 
       {/* Search Filter Toggle and Collapsible Panel */}
-      <View className="flex-row flex-wrap items-center gap-3 mt-5 w-full max-w-4xl">
+      <View className="flex-row flex-wrap items-center gap-3 mt-3.5 w-full max-w-4xl">
         <Pressable
           onPress={() => setShowFilterPanel(!showFilterPanel)}
           accessibilityRole="button"
           accessibilityState={{ expanded: showFilterPanel }}
           accessibilityLabel={`Filters${activeFilterCount > 0 ? `, ${activeFilterCount} active` : ""}`}
           className={cn(
-            "h-11 px-5 rounded-full border flex-row items-center gap-2 active:opacity-75 shadow-sm",
+            "h-8.5 px-3.5 rounded-full border flex-row items-center gap-2 active:opacity-75 shadow-sm",
             showFilterPanel || activeFilterCount > 0 ? "border-ink bg-ink" : "border-linen bg-card"
           )}
         >
-          <Icon name="filter" size={15} color={showFilterPanel || activeFilterCount > 0 ? colors.paper : colors.ink} />
+          <Icon name="filter" size={14} color={showFilterPanel || activeFilterCount > 0 ? colors.paper : colors.ink} />
           <Text className={cn("text-xs font-heading font-semibold", showFilterPanel || activeFilterCount > 0 ? "text-paper" : "text-ink")}>
             Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
           </Text>
@@ -425,12 +425,12 @@ export default function DiscoverScreen() {
         <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
 
         {activeFilterCount > 0 ? (
-          <Button label="Clear all" variant="outline" size="sm" className="h-9 px-3 rounded-full" onPress={clearFilters} />
+          <Button label="Clear all" variant="outline" size="sm" className="h-8 px-2.5 rounded-full" onPress={clearFilters} />
         ) : null}
       </View>
 
       {showFilterPanel && (
-        <View className="w-full max-w-4xl border border-linen bg-card rounded-2xl p-5 mt-4 gap-5 shadow-card">
+        <View className="w-full max-w-4xl border border-linen bg-card rounded-2xl p-4 mt-3 gap-3.5 shadow-card">
           <View className="flex-row items-center justify-between border-b border-linen pb-2.5">
             <Text className="font-heading text-sm font-bold text-ink">Discover Filters</Text>
             <Pressable
@@ -460,12 +460,12 @@ export default function DiscoverScreen() {
                     accessibilityState={{ selected: on }}
                     accessibilityLabel={opt}
                     className={cn(
-                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      "px-2 py-1 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
                       on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
                     )}
                   >
                     {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
-                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                    <Text className={cn("text-[11px] font-medium", on ? "text-paper" : "text-ink")}>
                       {opt}
                     </Text>
                   </Pressable>
@@ -491,12 +491,12 @@ export default function DiscoverScreen() {
                     accessibilityState={{ selected: on }}
                     accessibilityLabel={EVENT_TYPE_LABELS[type]}
                     className={cn(
-                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      "px-2 py-1 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
                       on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
                     )}
                   >
                     {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
-                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                    <Text className={cn("text-[11px] font-medium", on ? "text-paper" : "text-ink")}>
                       {EVENT_TYPE_LABELS[type]}
                     </Text>
                   </Pressable>
@@ -522,12 +522,12 @@ export default function DiscoverScreen() {
                     accessibilityState={{ selected: on }}
                     accessibilityLabel={HUB_TYPE_LABELS[type]}
                     className={cn(
-                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      "px-2 py-1 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
                       on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
                     )}
                   >
                     {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
-                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                    <Text className={cn("text-[11px] font-medium", on ? "text-paper" : "text-ink")}>
                       {HUB_TYPE_LABELS[type]}
                     </Text>
                   </Pressable>
@@ -540,7 +540,7 @@ export default function DiscoverScreen() {
 
       {/* Active Filter Chips Row */}
       {activeFilterCount > 0 && (
-        <View className="flex-row flex-wrap items-center gap-2 mt-3 w-full max-w-4xl">
+        <View className="flex-row flex-wrap items-center gap-2 mt-2 w-full max-w-4xl">
           <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted mr-1">Active Filters:</Text>
           {interests.map((opt) => (
             <Pressable
@@ -548,9 +548,9 @@ export default function DiscoverScreen() {
               onPress={() => setInterests(cur => cur.filter(x => x !== opt))}
               accessibilityRole="button"
               accessibilityLabel={`Remove ${opt} filter`}
-              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+              className="bg-sand hover:bg-linen px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
             >
-              <Text className="text-xs text-ink">{opt}</Text>
+              <Text className="text-[10px] text-ink">{opt}</Text>
               <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
             </Pressable>
           ))}
@@ -560,9 +560,9 @@ export default function DiscoverScreen() {
               onPress={() => toggleCategory(type)}
               accessibilityRole="button"
               accessibilityLabel={`Remove ${EVENT_TYPE_LABELS[type]} filter`}
-              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+              className="bg-sand hover:bg-linen px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
             >
-              <Text className="text-xs text-ink">{EVENT_TYPE_LABELS[type]}</Text>
+              <Text className="text-[10px] text-ink">{EVENT_TYPE_LABELS[type]}</Text>
               <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
             </Pressable>
           ))}
@@ -572,9 +572,9 @@ export default function DiscoverScreen() {
               onPress={() => toggleHubType(type)}
               accessibilityRole="button"
               accessibilityLabel={`Remove ${HUB_TYPE_LABELS[type]} filter`}
-              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+              className="bg-sand hover:bg-linen px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
             >
-              <Text className="text-xs text-ink">{HUB_TYPE_LABELS[type]}</Text>
+              <Text className="text-[10px] text-ink">{HUB_TYPE_LABELS[type]}</Text>
               <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
             </Pressable>
           ))}
@@ -584,9 +584,9 @@ export default function DiscoverScreen() {
               onPress={() => setFirstNations(false)}
               accessibilityRole="button"
               accessibilityLabel="Remove First Nations Spotlight filter"
-              className="bg-country-ochre/15 px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-country-ochre/30 active:opacity-75"
+              className="bg-country-ochre/15 px-2 py-0.5 rounded-full flex-row items-center gap-1 border border-country-ochre/30 active:opacity-75"
             >
-              <Text className="text-xs text-country-red font-semibold">First Nations Spotlight</Text>
+              <Text className="text-[10px] text-country-red font-semibold">First Nations Spotlight</Text>
               <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
             </Pressable>
           )}
@@ -598,7 +598,7 @@ export default function DiscoverScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerClassName="gap-2 px-gutter py-2"
-        className="-mx-gutter px-gutter mt-5"
+        className="-mx-gutter px-gutter mt-3.5"
       >
         {EVENT_TYPES.map((type) => {
           const on = categories.includes(type);
@@ -607,13 +607,13 @@ export default function DiscoverScreen() {
               key={type}
               onPress={() => toggleCategory(type)}
               className={cn(
-                "rounded-full border px-4 py-2 active:opacity-85",
+                "rounded-full border px-2.5 py-1 active:opacity-85",
                 on ? "border-ink bg-ink" : "border-linen/70 bg-card"
               )}
             >
               <Text
                 className={cn(
-                  "text-[10px] font-heading uppercase tracking-[1px] text-center",
+                  "text-[9px] font-heading uppercase tracking-[1px] text-center",
                   on ? "text-paper font-semibold" : "text-ink"
                 )}
               >
@@ -625,14 +625,14 @@ export default function DiscoverScreen() {
       </ScrollView>
 
       {/* Home Switcher Tabs */}
-      <View className="mt-6 mb-4 flex-row self-start rounded-full border border-linen bg-card p-1">
-        <Pressable onPress={() => setHomeTab("discover")} className={cn("rounded-full px-4 py-2", homeTab === "discover" && "bg-ink")}>
-          <Text className={cn("font-heading text-sm", homeTab === "discover" ? "text-paper font-semibold" : "text-ink-faint")}>
+      <View className="mt-4 mb-2 flex-row self-start rounded-full border border-linen bg-card p-1">
+        <Pressable onPress={() => setHomeTab("discover")} className={cn("rounded-full px-3.5 py-1.5", homeTab === "discover" && "bg-ink")}>
+          <Text className={cn("font-heading text-xs", homeTab === "discover" ? "text-paper font-semibold" : "text-ink-faint")}>
             Discover Feed
           </Text>
         </Pressable>
-        <Pressable onPress={() => setHomeTab("council")} className={cn("rounded-full px-4 py-2", homeTab === "council" && "bg-ink")}>
-          <Text className={cn("font-heading text-sm", homeTab === "council" ? "text-paper font-semibold" : "text-ink-faint")}>
+        <Pressable onPress={() => setHomeTab("council")} className={cn("rounded-full px-3.5 py-1.5", homeTab === "council" && "bg-ink")}>
+          <Text className={cn("font-heading text-xs", homeTab === "council" ? "text-paper font-semibold" : "text-ink-faint")}>
             My Council
           </Text>
         </Pressable>

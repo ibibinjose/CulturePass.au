@@ -40,15 +40,15 @@ const SPINNER: Record<Variant, string> = {
 };
 
 const SIZE: Record<Size, string> = {
-  sm: "h-10 px-4 rounded-lg",
-  md: "h-12 px-5 rounded-xl",
-  lg: "h-14 px-7 rounded-xl",
+  sm: "h-8 px-3 rounded-lg",
+  md: "h-10 px-4 rounded-xl",
+  lg: "h-12 px-5.5 rounded-xl",
 };
 
 const LABEL_SIZE: Record<Size, string> = {
-  sm: "text-sm",
-  md: "text-base",
-  lg: "text-base",
+  sm: "text-xs",
+  md: "text-sm",
+  lg: "text-sm",
 };
 
 export interface ButtonProps extends Omit<PressableProps, "children"> {

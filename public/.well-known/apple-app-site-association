@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "7GT3DTNP6H.au.com.culturepass.app",
+        "paths": ["/l/*", "/event/*", "/hub/*", "/profile/*"]
+      }
+    ]
+  }
+}

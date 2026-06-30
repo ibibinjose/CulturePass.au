@@ -13,6 +13,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "au.com.culturepass.app",
       "buildNumber": "1",
+      "associatedDomains": [
+        "applinks:culturepass.au",
+        "applinks:www.culturepass.au"
+      ],
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "CulturePass Australia uses your location to show cultural events, creative businesses, and venues in your local area.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "CulturePass Australia uses your location to show cultural events, creative businesses, and venues in your local area.",
@@ -25,6 +29,28 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "culturepass.au",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.culturepass.au",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",

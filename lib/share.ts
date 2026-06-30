@@ -12,8 +12,12 @@ export function shareUrl(path: string): string {
   if (Platform.OS === "web" && typeof window !== "undefined") {
     return new URL(path, window.location.origin).toString();
   }
-  // Native: a deep link into the app (or the prod scheme/host once configured).
-  return Linking.createURL(path);
+  // Native: use universal links in production standalone builds, but local Expo Go linking in dev.
+  if (__DEV__) {
+    return Linking.createURL(path);
+  }
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `https://culturepass.au${cleanPath}`;
 }
 
 export type ShareResult = "shared" | "copied" | "cancelled" | "failed";

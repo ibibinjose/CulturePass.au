@@ -117,7 +117,7 @@ export default function CouncilsDirectoryScreen() {
       </View>
 
       {/* Filter Section */}
-      <View className="mt-6 gap-4">
+      <View className="mt-4 gap-3">
         {/* Search */}
         <SearchInput
           placeholder="Search by council name, state, or traditional country..."
@@ -141,7 +141,7 @@ export default function CouncilsDirectoryScreen() {
             <Pressable
               onPress={() => setStateFilter("ALL")}
               className={cn(
-                "h-10 items-center justify-center rounded-full border px-4 active:opacity-85",
+                "h-8 items-center justify-center rounded-full border px-3 active:opacity-85",
                 stateFilter === "ALL" ? "border-ink bg-ink" : "border-linen/70 bg-card"
               )}
             >
@@ -154,7 +154,7 @@ export default function CouncilsDirectoryScreen() {
                 key={s.code}
                 onPress={() => setStateFilter(s.code)}
                 className={cn(
-                  "h-10 items-center justify-center rounded-full border px-4 active:opacity-85",
+                  "h-8 items-center justify-center rounded-full border px-3 active:opacity-85",
                   stateFilter === s.code ? "border-ink bg-ink" : "border-linen/70 bg-card"
                 )}
               >
@@ -185,7 +185,7 @@ export default function CouncilsDirectoryScreen() {
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
                   className={cn(
-                    "flex-1 items-center justify-center py-2.5 rounded-lg active:opacity-80",
+                    "flex-1 items-center justify-center py-1.5 rounded-lg active:opacity-80",
                     on ? "bg-ink" : "bg-transparent",
                   )}
                 >

@@ -51,13 +51,13 @@ export function MultiSelectFilter({
         accessibilityRole="button"
         accessibilityLabel={`${label} filter`}
         className={cn(
-          "h-11 flex-row items-center gap-2 self-start rounded-pill border px-4",
+          "h-8.5 flex-row items-center gap-2 self-start rounded-pill border px-3",
           active ? "border-ink bg-ink" : "border-linen bg-card active:bg-sand",
           className,
         )}
       >
-        <Icon name={icon} size={16} color={active ? colors.paper : colors.inkMuted} />
-        <Text variant="label" className={cn("font-heading text-sm", active ? "text-paper" : "text-ink")}>
+        <Icon name={icon} size={14} color={active ? colors.paper : colors.inkMuted} />
+        <Text variant="label" className={cn("font-heading text-xs", active ? "text-paper" : "text-ink")}>
           {pillText}
         </Text>
         {active ? (

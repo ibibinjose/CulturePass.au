@@ -17,7 +17,7 @@ export function Chip({ label, selected, onPress, className }: ChipProps) {
       accessibilityRole="button"
       accessibilityState={{ selected }}
       className={cn(
-        "rounded-pill border px-4 py-2",
+        "rounded-pill border px-2.5 py-1",
         selected
           ? "border-ink bg-ink"
           : "border-linen bg-card active:border-ink/30 active:bg-sand",
@@ -26,7 +26,7 @@ export function Chip({ label, selected, onPress, className }: ChipProps) {
     >
       <Text
         variant="label"
-        className={cn("font-heading text-sm", selected ? "text-paper" : "text-ink-muted")}
+        className={cn("font-heading text-xs", selected ? "text-paper" : "text-ink-muted")}
       >
         {label}
       </Text>

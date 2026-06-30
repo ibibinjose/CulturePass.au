@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "au.com.culturepass.app",
+      "sha256_cert_fingerprints": [
+        "99:8F:9D:B0:14:2F:F5:83:6D:24:02:A6:DD:90:3C:0F:42:95:2F:7D:6F:84:63:71:1C:AC:1B:C9:E2:38:69:EC"
+      ]
+    }
+  }
+]

@@ -111,7 +111,7 @@ export default function CommunitiesScreen() {
       </View>
 
       {/* State jurisdiction — edge-to-edge scroller */}
-      <View className="mt-5 gap-2">
+      <View className="mt-3.5 gap-2">
         <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
           State jurisdiction
         </Text>
@@ -140,7 +140,7 @@ export default function CommunitiesScreen() {
       </View>
 
       {/* Community type — edge-to-edge scroller */}
-      <View className="mt-4 gap-2">
+      <View className="mt-3 gap-2">
         <View className="flex-row items-center justify-between">
           <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
             Community type
@@ -162,13 +162,13 @@ export default function CommunitiesScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
                 className={cn(
-                  "h-10 flex-row items-center rounded-full border px-4 active:opacity-80",
+                  "h-8 flex-row items-center rounded-full border px-3 active:opacity-80",
                   on ? "border-ink bg-ink" : "border-linen bg-card",
                 )}
               >
                 <Text
                   className={cn(
-                    "text-xs font-heading",
+                    "text-[11px] font-heading",
                     on ? "text-paper font-semibold" : "text-ink-muted",
                   )}
                 >
@@ -181,7 +181,7 @@ export default function CommunitiesScreen() {
       </View>
 
       {/* Results toolbar */}
-      <View className="mt-6 mb-4 flex-row items-center justify-between border-b border-linen pb-3">
+      <View className="mt-4 mb-2 flex-row items-center justify-between border-b border-linen pb-2">
         <View className="flex-row items-baseline gap-2">
           <Text className="font-display text-lg text-ink tracking-tight">
             {isLoading ? "Searching…" : count === 1 ? "1 community" : `${count} communities`}
@@ -203,7 +203,7 @@ export default function CommunitiesScreen() {
 
       {/* Grid */}
       {!isLoading && !isError && profiles && profiles.length > 0 ? (
-        <View className="gap-3 mb-6 bg-sand/10 border border-linen/35 p-5 rounded-3xl">
+        <View className="gap-3 mb-6 bg-sand/10 border border-linen/35 p-3.5 rounded-2xl">
           <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
             People & Professionals ({profiles.length})
           </Text>
@@ -338,7 +338,7 @@ function StatePill({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={cn(
-        "h-10 flex-row items-center gap-1.5 rounded-full border px-4 active:opacity-80",
+        "h-8.5 flex-row items-center gap-1.5 rounded-full border px-3 active:opacity-80",
         active ? "border-pink-500 bg-pink-500" : "border-linen bg-card",
       )}
     >
@@ -361,7 +361,7 @@ function FirstNationsToggle({ active, onPress }: { active: boolean; onPress: () 
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={cn(
-        "h-9 flex-row items-center gap-1.5 rounded-full border px-3.5 active:opacity-80",
+        "h-8 flex-row items-center gap-1.5 rounded-full border px-3 active:opacity-80",
         active ? "border-country-black bg-country-black" : "border-linen bg-card",
       )}
     >
@@ -383,7 +383,7 @@ function SortChip({ label, active, onPress }: { label: string; active: boolean; 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={cn("rounded-full px-3.5 py-2 active:opacity-80", active ? "bg-ink" : "bg-transparent")}
+      className={cn("rounded-full px-2.5 py-1.5 active:opacity-80", active ? "bg-ink" : "bg-transparent")}
     >
       <Text className={cn("text-[11px] font-heading", active ? "text-paper font-semibold" : "text-ink-muted")}>
         {label}

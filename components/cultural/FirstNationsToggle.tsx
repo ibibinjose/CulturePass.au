@@ -10,7 +10,7 @@ export function FirstNationsToggle({ active, onPress }: { active: boolean; onPre
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       className={cn(
-        "h-8 flex-row items-center gap-1.5 self-start rounded-full border px-3",
+        "h-8.5 flex-row items-center gap-1.5 self-start rounded-full border px-3",
         active ? "border-country-black bg-country-black" : "border-linen/70 bg-card active:bg-sand",
       )}
     >
