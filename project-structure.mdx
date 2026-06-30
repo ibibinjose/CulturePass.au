@@ -1,0 +1,77 @@
+---
+title: "Project structure"
+description: "Tour the app, components, features, lib, and supabase directories so you know where routes, UI primitives, queries, and migrations live."
+---
+
+CulturePass is one Expo app that runs on iOS, Android, and web. The codebase is organised so routes, UI primitives, feature logic, shared utilities, and the database live in clearly separated places.
+
+## Top-level layout
+
+```
+app/           # expo-router routes (file-based)
+components/    # shared UI primitives and cultural components
+features/      # per-domain data layer (queries, mutations, stores)
+lib/           # cross-cutting utilities (theme, query client, validation, supabase)
+supabase/      # local stack config, migrations, seed data, edge functions
+assets/        # fonts, images, icons
+scripts/       # one-off Node scripts (data extraction, config checks)
+```
+
+## `app/` — routes
+
+Routes are file-based via `expo-router`. The root `_layout.tsx` wires up providers, fonts, and the root stack. Notable areas:
+
+- **`index.tsx`** — personalised discovery home (search, filters, featured hubs and events).
+- **`explore/`** — hub and event discovery with filters.
+- **`calendar/`** — month view and upcoming event list.
+- **`state/[code].tsx`** — hubs grouped by state or territory.
+- **`hub/[slug].tsx`** — hub profile, including a prominent Welcome to Country surface.
+- **`event/[id].tsx`** — event detail, tickets, share, save.
+- **`messages/`**, **`notifications/`**, **`tickets/`** — authenticated inbox, notification centre, and ticket wallet.
+- **`settings/`** — account, privacy, notifications, about.
+- **`onboarding/`** — interest and location preference setup.
+- **`create/`** — chooser plus wizards for hubs, events, and Professional Public Profiles.
+
+Use this directory when you want to find or add a screen.
+
+## `components/` — UI
+
+- **`components/ui/`** — design-system primitives (`Text`, `Button`, `Card`, and similar). Reach for these instead of building raw React Native views, so type ramps, spacing, and theming stay consistent.
+- **`components/cultural/`** — sanctioned cultural components like `AcknowledgementBar`, `WelcomeToCountry`, and `IndigenousLedBadge`. See [Design system](/design-system#cultural-respect) for the rules around these.
+
+## `features/` — domain logic
+
+Each subdirectory groups the data layer for one domain — queries, mutations, Zustand stores, and domain-specific cards or list items. Examples include `auth/` (session and current profile helpers), `hubs/` (hub queries, mutations, draft store), `profiles/`, and `reference/` (states and councils).
+
+When adding a new domain, mirror this pattern instead of putting queries in the route file.
+
+## `lib/` — shared utilities
+
+- **`constants.ts`** — controlled vocabularies and labels (single source of truth for things like categories and statuses).
+- **`navigation.ts`** — shared app map used by the top nav, mobile tabs, and footer, so all three stay aligned as routes evolve.
+- **`theme.ts`** — raw JS design tokens that mirror `tailwind.config.js` for use in places where Tailwind classes aren't available.
+- **`query.ts`** — TanStack Query client setup and query-key conventions.
+- **`storage.ts`** — cross-platform key/value store (used for wizard drafts).
+- **`supabase/`** — Supabase client and generated `database.types.ts`.
+- **`validation/`** — Zod schemas, split into draft and publish variants per entity.
+
+## `supabase/` — backend
+
+- **`config.toml`** — local stack configuration.
+- **`migrations/`** — ordered SQL migrations: extensions → reference data → profiles → hubs → events.
+- **`seed.sql`** — generated seed (Australian states and NSW councils).
+- **`seed_sources/`** — source CSVs used by the seed generator.
+- **`functions/`** — Supabase Edge Functions (deployed via `npm run functions:deploy`).
+
+Always add a migration for schema changes and regenerate types with `npm run db:types` afterwards.
+
+## Where to put new code
+
+| You're adding… | Put it in… |
+| --- | --- |
+| A new screen or route | `app/<route>.tsx` |
+| A reusable UI primitive | `components/ui/` |
+| A cultural surface | `components/cultural/` (and read the cultural respect rules first) |
+| A query, mutation, or store for an entity | `features/<domain>/` |
+| A Zod schema | `lib/validation/` |
+| A schema change | `supabase/migrations/` + regenerate types |
