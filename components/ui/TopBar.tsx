@@ -276,9 +276,9 @@ export function TopBar() {
         <View className="flex-1" />
 
         {/* Live date + time + weather */}
-        <Clock now={now} weather={weather} compact={!isWide} />
+        {isWide ? <Clock now={now} weather={weather} compact={false} /> : null}
 
-        <View className="flex-1" />
+        {isWide ? <View className="flex-1" /> : null}
 
         {/* Right-hand actions */}
         {isWide && isAuthenticated ? (
@@ -301,11 +301,30 @@ export function TopBar() {
             </Text>
           </Pressable>
         ) : (
-          <HamburgerButton
-            hasUnread={hasUnread}
-            unread={unread}
-            onPress={() => setMenu("nav")}
-          />
+          <View className="flex-row items-center gap-2">
+            {isAuthenticated ? (
+              <Pressable
+                onPress={() => router.push("/notifications")}
+                hitSlop={8}
+                accessibilityLabel={hasUnread ? `Notifications, ${unread} unread` : "Notifications"}
+                className="relative h-10 w-10 items-center justify-center rounded-pill border border-linen bg-card active:bg-sand"
+              >
+                <Icon name="bell" size={19} color={colors.ink} />
+                {hasUnread ? (
+                  <View className="absolute -right-0.5 -top-0.5 h-4 min-w-4 items-center justify-center rounded-pill border border-paper bg-gold-500 px-1">
+                    <Text className="font-heading text-[10px] leading-none text-ink">
+                      {unread > 9 ? "9+" : unread}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            ) : null}
+            <HamburgerButton
+              hasUnread={false}
+              unread={unread}
+              onPress={() => setMenu("nav")}
+            />
+          </View>
         )}
       </View>
 

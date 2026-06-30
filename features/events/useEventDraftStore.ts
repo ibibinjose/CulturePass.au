@@ -20,6 +20,9 @@ export interface EventDraft {
   images: { url: string; alt?: string }[];
   tags: string[];
   cultural_focus: string[];
+  is_online?: boolean;
+  venue_address?: string;
+  online_url?: string;
 }
 
 export const EMPTY_EVENT_DRAFT = (hubId = ""): EventDraft => ({
@@ -39,6 +42,9 @@ export const EMPTY_EVENT_DRAFT = (hubId = ""): EventDraft => ({
   images: [],
   tags: [],
   cultural_focus: [],
+  is_online: false,
+  venue_address: "",
+  online_url: "",
 });
 
 export const EVENT_WIZARD_STEPS = ["Details", "Date & Time", "Location", "Tickets", "Classification", "Review"] as const;

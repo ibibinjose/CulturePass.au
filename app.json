@@ -2,6 +2,7 @@
   "expo": {
     "name": "CulturePass",
     "slug": "culturepass-australia",
+    "owner": "culturestudios",
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "culturepass",
@@ -51,6 +52,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "86f81a40-2734-4f47-a1b2-02d4d7c8431d"
+      }
     }
   }
 }

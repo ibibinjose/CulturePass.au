@@ -72,7 +72,37 @@ export default function CreateEventScreen() {
 
     // Validate draft before submission
     const schema = publish ? eventPublishSchema : eventDraftSchema;
-    const parsed = schema.safeParse(draft);
+    
+    // Construct database payload
+    // Combine venue address and city suburb for physical events
+    const locationCity = draft.is_online
+      ? "Online"
+      : [draft.venue_address, draft.location_city].filter(Boolean).join(", ");
+
+    // If online, prioritize online_url for stream/tickets link
+    const ticketUrl = draft.is_online
+      ? (draft.online_url || draft.ticket_url)
+      : draft.ticket_url;
+
+    // We can also prepend the stream link to description
+    let finalDescription = draft.description || "";
+    if (draft.is_online && draft.online_url) {
+      finalDescription = `**Stream Link:** ${draft.online_url}\n\n${finalDescription}`;
+    }
+
+    const payload = {
+      ...draft,
+      location_city: locationCity || null,
+      ticket_url: ticketUrl || null,
+      description: finalDescription || null,
+    };
+
+    // Remove temp local fields to satisfy validation and Supabase table schema
+    delete (payload as any).is_online;
+    delete (payload as any).venue_address;
+    delete (payload as any).online_url;
+
+    const parsed = schema.safeParse(payload);
     if (!parsed.success) {
       setBanner(parsed.error.issues[0]?.message ?? "Please check your details.");
       return;
@@ -299,90 +329,127 @@ function StepLocation({ draft, update }: StepProps) {
     <Card className="p-5 gap-5 border border-linen bg-card">
       <StepHeading
         title="Where is it happening?"
-        subtitle="Select a state and local council so your event appears in the correct feed."
+        subtitle="Specify whether this event is online or has a physical venue."
       />
 
-      <Field label="State" optional>
-        <View className="flex-row flex-wrap gap-2">
-          {AUSTRALIAN_STATES.map((s) => (
-            <Button
-              key={s.code}
-              label={s.code}
-              variant={draft.location_state === s.code ? "primary" : "outline"}
-              size="sm"
-              onPress={() => {
-                update({
-                  location_state: draft.location_state === s.code ? "" : s.code,
-                  location_council_id: undefined,
-                });
-                setCouncilSearch("");
-              }}
-            />
-          ))}
-        </View>
-      </Field>
+      <Toggle
+        label="This is an online / virtual event"
+        enabled={!!draft.is_online}
+        onToggle={(is_online) => {
+          update({
+            is_online,
+            location_state: "",
+            location_council_id: undefined,
+            location_city: is_online ? "Online" : "",
+            venue_address: "",
+          });
+          setCouncilSearch("");
+        }}
+      />
 
-      {draft.location_state ? (
-        <Field label="Local Council (LGA)" optional>
-          <View className="gap-2">
-            <Text className="text-[10px] text-ink-faint">
-              Assigning this lets your event appear on the local My Council board.
-            </Text>
-            {councils && councils.length > 0 ? (
-              <>
-                <Input
-                  value={councilSearch}
-                  onChangeText={setCouncilSearch}
-                  placeholder="Search councils…"
-                  className="mb-1"
-                />
-                <View className="max-h-48 rounded-2xl border border-linen bg-card overflow-hidden">
-                  <ScrollView nestedScrollEnabled className="p-2 gap-1">
-                    {(() => {
-                      const filtered = councils.filter((c) =>
-                        c.name.toLowerCase().includes(councilSearch.trim().toLowerCase())
-                      );
-                      if (filtered.length === 0) {
-                        return (
-                          <View className="p-3 items-center">
-                            <Text variant="caption" tone="faint">No councils match</Text>
-                          </View>
-                        );
-                      }
-                      return filtered.map((c) => {
-                        const selected = draft.location_council_id === c.id;
-                        return (
-                          <Pressable
-                            key={c.id}
-                            onPress={() => update({ location_council_id: selected ? undefined : c.id })}
-                            className={cn(
-                              "px-3 py-2 rounded-xl flex-row items-center justify-between active:bg-sand",
-                              selected ? "bg-sand" : "bg-transparent"
-                            )}
-                          >
-                            <Text className="text-xs font-heading text-ink">{c.name}</Text>
-                            {selected && <Icon name="check" size={14} color={colors.pink} />}
-                          </Pressable>
-                        );
-                      });
-                    })()}
-                  </ScrollView>
-                </View>
-              </>
-            ) : (
-              <Text variant="caption" tone="faint">Loading councils list...</Text>
-            )}
-          </View>
+      {draft.is_online ? (
+        <Field label="Online Streaming / Join URL">
+          <Input
+            value={draft.online_url || ""}
+            onChangeText={(online_url) => update({ online_url })}
+            placeholder="e.g. https://zoom.us/j/... or YouTube Live stream URL"
+            autoCapitalize="none"
+            keyboardType="url"
+          />
         </Field>
-      ) : null}
+      ) : (
+        <>
+          <Field label="Venue / Street Address" optional>
+            <Input
+              value={draft.venue_address || ""}
+              onChangeText={(venue_address) => update({ venue_address })}
+              placeholder="e.g. Sydney Town Hall, 483 George St"
+            />
+          </Field>
 
-      <Field label="City / Suburb" optional>
-        <Input
-          value={draft.location_city}
-          onChangeText={(location_city) => update({ location_city })}
-          placeholder="e.g. Sydney"
-        />
-      </Field>
+          <Field label="City / Suburb">
+            <Input
+              value={draft.location_city === "Online" ? "" : draft.location_city}
+              onChangeText={(location_city) => update({ location_city })}
+              placeholder="e.g. Sydney"
+            />
+          </Field>
+
+          <Field label="State" optional>
+            <View className="flex-row flex-wrap gap-2">
+              {AUSTRALIAN_STATES.map((s) => (
+                <Button
+                  key={s.code}
+                  label={s.code}
+                  variant={draft.location_state === s.code ? "primary" : "outline"}
+                  size="sm"
+                  onPress={() => {
+                    update({
+                      location_state: draft.location_state === s.code ? "" : s.code,
+                      location_council_id: undefined,
+                    });
+                    setCouncilSearch("");
+                  }}
+                />
+              ))}
+            </View>
+          </Field>
+
+          {draft.location_state ? (
+            <Field label="Local Council (LGA)" optional>
+              <View className="gap-2">
+                <Text className="text-[10px] text-ink-faint">
+                  Assigning this lets your event appear on the local My Council board.
+                </Text>
+                {councils && councils.length > 0 ? (
+                  <>
+                    <Input
+                      value={councilSearch}
+                      onChangeText={setCouncilSearch}
+                      placeholder="Search councils…"
+                      className="mb-1"
+                    />
+                    <View className="max-h-48 rounded-2xl border border-linen bg-card overflow-hidden">
+                      <ScrollView nestedScrollEnabled className="p-2 gap-1">
+                        {(() => {
+                          const filtered = councils.filter((c) =>
+                            c.name.toLowerCase().includes(councilSearch.trim().toLowerCase())
+                          );
+                          if (filtered.length === 0) {
+                            return (
+                              <View className="p-3 items-center">
+                                <Text variant="caption" tone="faint">No councils match</Text>
+                              </View>
+                            );
+                          }
+                          return filtered.map((c) => {
+                            const selected = draft.location_council_id === c.id;
+                            return (
+                              <Pressable
+                                key={c.id}
+                                onPress={() => update({ location_council_id: selected ? undefined : c.id })}
+                                className={cn(
+                                  "px-3 py-2 rounded-xl flex-row items-center justify-between active:bg-sand",
+                                  selected ? "bg-sand" : "bg-transparent"
+                                )}
+                              >
+                                <Text className="text-xs font-heading text-ink">{c.name}</Text>
+                                {selected && <Icon name="check" size={14} color={colors.pink} />}
+                              </Pressable>
+                            );
+                          });
+                        })()}
+                      </ScrollView>
+                    </View>
+                  </>
+                ) : (
+                  <Text variant="caption" tone="faint">Loading councils list...</Text>
+                )}
+              </View>
+            </Field>
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }
@@ -465,7 +532,9 @@ function StepReview({ draft, onEditStep, myHubs }: StepProps & { onEditStep: (st
   const [viewMode, setViewMode] = useState<"summary" | "preview">("summary");
   const router = useRouter();
 
-  const place = [draft.location_city, draft.location_state].filter(Boolean).join(", ");
+  const place = draft.is_online
+    ? "Online Event"
+    : [draft.venue_address, draft.location_city, draft.location_state].filter(Boolean).join(", ");
   const coverUrl = draft.images?.[0]?.url ?? null;
   const price = draft.is_free ? "Free" : draft.price ? `$${draft.price}` : "Ticketed";
 
@@ -528,9 +597,13 @@ function StepReview({ draft, onEditStep, myHubs }: StepProps & { onEditStep: (st
               <View className="flex-1">
                 <Text className="text-[10px] uppercase font-heading text-ink-faint tracking-widest">Location</Text>
                 <Text className="font-heading text-sm text-ink mt-0.5">
-                  {draft.location_city || ""}{draft.location_state ? `, ${draft.location_state}` : ""}
-                  {!draft.location_city && !draft.location_state ? "Not set" : ""}
+                  {place || "Not set"}
                 </Text>
+                {draft.is_online && draft.online_url ? (
+                  <Text className="text-xs text-pink mt-1 font-semibold" numberOfLines={1}>
+                    Link: {draft.online_url}
+                  </Text>
+                ) : null}
               </View>
               <Button label="Edit" variant="ghost" size="sm" onPress={() => onEditStep(2)} />
             </View>
@@ -632,13 +705,18 @@ function StepReview({ draft, onEditStep, myHubs }: StepProps & { onEditStep: (st
 
             <View className="flex-row items-start gap-4">
               <View className="h-11 w-11 items-center justify-center rounded-2xl bg-sand/60">
-                <Icon name="map-pin" size={20} color={colors.ink} />
+                <Icon name={draft.is_online ? "globe" : "map-pin"} size={20} color={colors.ink} />
               </View>
               <View className="flex-1">
                 <Text variant="caption" tone="faint">Location</Text>
                 <Text variant="label" className="text-base font-heading text-ink mt-0.5">
                   {place || "Location to be announced"}
                 </Text>
+                {draft.is_online && draft.online_url ? (
+                  <Text variant="caption" tone="pink" className="font-heading mt-1 font-bold">
+                    {draft.online_url}
+                  </Text>
+                ) : null}
               </View>
             </View>
 

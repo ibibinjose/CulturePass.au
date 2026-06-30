@@ -22,11 +22,20 @@ import { AuthProvider } from "@/features/auth/AuthProvider";
 import {
   BottomTabBar,
   TopBar,
+  ToastProvider,
+  ConfirmProvider,
 } from "@/components/ui";
 import { OnboardingGate } from "@/features/onboarding/OnboardingGate";
 import { NotificationsRealtime } from "@/features/notifications/NotificationsRealtime";
+import { isAwsBackend } from "@/lib/backend";
+import { configureAmplify } from "@/lib/aws/config";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// AWS migration (additive cutover): configure Amplify only when the app is run
+// with EXPO_PUBLIC_BACKEND=aws. No-op on the default Supabase build. See
+// docs/AWS_MIGRATION.md.
+if (isAwsBackend) configureAmplify();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -49,6 +58,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
+            <ToastProvider>
+            <ConfirmProvider>
             <StatusBar style="dark" />
             <View style={{ flex: 1, backgroundColor: colors.paper }}>
               <TopBar />
@@ -111,6 +122,8 @@ export default function RootLayout() {
               <OnboardingGate />
               <NotificationsRealtime />
             </View>
+            </ConfirmProvider>
+            </ToastProvider>
           </AuthProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

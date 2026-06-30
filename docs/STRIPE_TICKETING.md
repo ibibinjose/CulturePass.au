@@ -69,10 +69,30 @@ stripe listen --forward-to localhost:54321/functions/v1/stripe-webhook
 
 Use Stripe test card `4242 4242 4242 4242`, any future expiry/CVC.
 
+## Multi‑type carts, dates & assigned seating
+
+Events can define tiered tickets in `event_ticket_types` and (optionally)
+multiple show dates (`events.event_dates`) and assigned seating
+(`events.has_assigned_seating` + `seating_layout`). The buyer picks a date, a
+mix of ticket types, and — for seated events — specific seats in
+`TicketBookingModal`.
+
+When a cart has ticket types, `tickets-checkout` calls the
+`create_pending_ticket_order` RPC, which (under a per‑event/date advisory lock):
+resolves each line's price from `event_ticket_types`, enforces per‑type
+capacity, rejects already‑held/sold seats, inserts the `pending` order with the
+full `line_items` breakdown, and increments `sold_count` (the **hold**). Stripe
+then gets one session with **one line item per ticket type**. Sessions are
+created with `expires_at` = +30 min; on `checkout.session.expired` (or refund)
+the `ticket_orders_release_holds` trigger gives the held `sold_count` back.
+Events with no ticket types still use the legacy single‑price path
+(`events.price`). The seat chart reads occupancy via the privacy‑safe
+`get_taken_seats` RPC (seat labels only, no buyer data).
+
 ## Notes & next steps
 
-- Capacity is enforced best‑effort (counts paid quantities at checkout). For
-  high‑contention sales add a DB reservation/locking step.
+- Tiered events now reserve capacity/seats atomically (see above). The legacy
+  single‑price path remains best‑effort (counts paid quantities at checkout).
 - Native return UX: after paying in the browser the user taps back to the app.
   For a seamless return, add `expo-web-browser` + a deep‑link `SITE_URL`.
 - Refunds: issue from the Stripe dashboard; the `charge.refunded` handler marks

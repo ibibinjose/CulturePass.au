@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { View, Alert, Image as RNImage, Pressable } from "react-native";
+import { View, Image as RNImage, Pressable } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
 import { Button } from "./Button";
 import { Text } from "./Text";
 import { Icon } from "./Icon";
+import { useToast } from "./Toast";
 import { colors } from "@/lib/theme";
 import { supabase } from "@/lib/supabase/client";
 
@@ -31,12 +32,13 @@ export function ImagePickerComponent({
 }: ImagePickerProps) {
   const [previewUri, setPreviewUri] = useState<string | null>(currentImageUrl || null);
   const [uploading, setUploading] = useState(false);
+  const toast = useToast();
 
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert("Permission required", "Please allow access to your media library to upload images.");
+      toast.error("Allow media-library access to upload images.");
       return;
     }
 
@@ -60,7 +62,7 @@ export function ImagePickerComponent({
     const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
 
     if (permissionResult.granted === false) {
-      Alert.alert("Permission required", "Please allow camera access to take photos.");
+      toast.error("Allow camera access to take photos.");
       return;
     }
 
@@ -111,7 +113,7 @@ export function ImagePickerComponent({
       onImageChange(publicUrlData.publicUrl);
     } catch (error) {
       console.error("Upload error:", error);
-      Alert.alert("Upload failed", "Failed to upload image. Please try again.");
+      toast.error("Upload failed — please try again.");
       onImageChange(null);
     } finally {
       setUploading(false);

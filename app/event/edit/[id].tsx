@@ -54,6 +54,15 @@ export default function EditEventScreen() {
   // Narrowed, stable reference so the async handlers below keep the non-null type.
   const ev = event;
 
+  const isOnline = event.location_city?.toLowerCase() === "online";
+  let venueAddress = "";
+  let city = event.location_city ?? "";
+  if (!isOnline && city.includes(",")) {
+    const parts = city.split(",");
+    city = parts.pop()?.trim() ?? "";
+    venueAddress = parts.join(",").trim();
+  }
+
   const initial: EventFormValues = {
     hub_id: event.hub_id,
     type: event.type,
@@ -64,13 +73,16 @@ export default function EditEventScreen() {
     is_free: event.is_free,
     price: event.price ?? undefined,
     ticket_url: event.ticket_url ?? "",
-    location_city: event.location_city ?? "",
+    location_city: isOnline ? "" : city,
     location_state: event.location_state ?? "",
     location_council_id: event.location_council_id ?? undefined,
     capacity: event.capacity ?? undefined,
     images: event.images ?? [],
     tags: event.tags ?? [],
     cultural_focus: event.cultural_focus ?? [],
+    is_online: isOnline,
+    venue_address: venueAddress,
+    online_url: isOnline ? (event.ticket_url ?? "") : "",
   };
 
   const isPublished = event.status === "published";
@@ -88,7 +100,36 @@ export default function EditEventScreen() {
   async function handleSubmit(values: EventFormValues, { publish }: { publish: boolean }) {
     setBanner(null);
     const schema = publish ? eventPublishSchema : eventDraftSchema;
-    const parsed = schema.safeParse(values);
+
+    // Combine venue address and city suburb for physical events
+    const locationCity = values.is_online
+      ? "Online"
+      : [values.venue_address, values.location_city].filter(Boolean).join(", ");
+
+    // If online, prioritize online_url for stream/tickets link
+    const ticketUrl = values.is_online
+      ? (values.online_url || values.ticket_url)
+      : values.ticket_url;
+
+    // Prepend the stream link to description if not already present
+    let finalDescription = values.description || "";
+    if (values.is_online && values.online_url && !finalDescription.includes(values.online_url)) {
+      finalDescription = `**Stream Link:** ${values.online_url}\n\n${finalDescription}`;
+    }
+
+    const payload = {
+      ...values,
+      location_city: locationCity || null,
+      ticket_url: ticketUrl || null,
+      description: finalDescription || null,
+    };
+
+    // Remove temp local fields to satisfy validation and Supabase table schema
+    delete (payload as any).is_online;
+    delete (payload as any).venue_address;
+    delete (payload as any).online_url;
+
+    const parsed = schema.safeParse(payload);
     if (!parsed.success) {
       setBanner(parsed.error.issues[0]?.message ?? "Please check your details.");
       return;

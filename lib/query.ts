@@ -15,6 +15,7 @@ export const queryClient = new QueryClient({
 export const qk = {
   states: ["states"] as const,
   councils: (state?: string) => ["councils", state ?? "all"] as const,
+  councilDetails: (id: string) => ["council-details", id] as const,
   hubs: (filters?: object) => ["hubs", filters ?? {}] as const,
   hubStateCounts: ["hub-state-counts"] as const,
   hub: (slug: string) => ["hub", slug] as const,
@@ -39,6 +40,7 @@ export const qk = {
   eventSaves: (eventId: string) => ["event-saves", eventId] as const,
   eventRsvps: (eventId: string) => ["event-rsvps", eventId] as const,
   eventCohosts: (eventId: string) => ["event-cohosts", eventId] as const,
+  myCohostInvitations: ["my-cohost-invitations"] as const,
   accountSearch: (q: string) => ["account-search", q] as const,
   profileFollows: (profileId: string) => ["profile-follows", profileId] as const,
   profileSubscriptions: (profileId: string) => ["profile-subscriptions", profileId] as const,

@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
-import { supabase } from "@/lib/supabase/client";
 
 import {
   Screen,
@@ -14,10 +20,10 @@ import {
   Icon,
   LocationPicker,
   ANYWHERE,
-  MultiSelectFilter,
   Carousel,
   SectionHeader,
   EmptyCard,
+  useToast,
 } from "@/components/ui";
 import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
 import { colors } from "@/lib/theme";
@@ -25,10 +31,13 @@ import { cn } from "@/lib/utils/cn";
 import { useHubs } from "@/features/hubs/api";
 import { EventCard } from "@/features/events/EventCard";
 import { FeaturedEventCard } from "@/features/events/FeaturedEventCard";
+import { CohostInvitationsBanner } from "@/features/events/CohostInvitationsBanner";
 import { useEvents } from "@/features/events/api";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { parsePreferences } from "@/lib/validation/profile";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
+import { useCouncilDetails, useDetectCouncil } from "@/features/reference/api";
+import { ExploreCities } from "@/features/reference/ExploreCities";
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABELS,
@@ -88,6 +97,53 @@ function groupEventsByDate(eventsList: any[]) {
   return groups;
 }
 
+function getGreeting(name?: string | null) {
+  const hour = new Date().getHours();
+  const dayPart = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const firstName = name?.trim().split(/\s+/)[0];
+  return firstName ? `Good ${dayPart}, ${firstName}` : `Good ${dayPart}`;
+}
+
+function getWhatsOnLabel(locationLabel: string) {
+  return locationLabel === "Australia" ? "What's On Near You" : `What's On ${locationLabel}`;
+}
+
+const FRIENDLY_PLACE_NAMES: Record<string, string> = {
+  "city of sydney": "Sydney",
+  "sydney": "Sydney",
+  "inner west council": "Newtown",
+  "inner west": "Newtown",
+  "city of newcastle": "Newcastle",
+  "newcastle": "Newcastle",
+  "city of melbourne": "Melbourne",
+  "melbourne": "Melbourne",
+  "brisbane city council": "Brisbane",
+  "city of brisbane": "Brisbane",
+  "brisbane": "Brisbane",
+  "city of adelaide": "Adelaide",
+  "adelaide": "Adelaide",
+  "city of perth": "Perth",
+  "perth": "Perth",
+};
+
+function getFriendlyPlaceName(label: string) {
+  if (label === "Anywhere") return "Australia";
+
+  const normalized = label.trim().toLowerCase().replace(/\s+/g, " ");
+  const mapped = FRIENDLY_PLACE_NAMES[normalized];
+  if (mapped) return mapped;
+
+  return label
+    .replace(/^city of\s+/i, "")
+    .replace(/^municipality of\s+/i, "")
+    .replace(/\s+city council$/i, "")
+    .replace(/\s+regional council$/i, "")
+    .replace(/\s+shire council$/i, "")
+    .replace(/\s+shire$/i, "")
+    .replace(/\s+council$/i, "")
+    .trim();
+}
+
 
 
 export default function DiscoverScreen() {
@@ -105,112 +161,21 @@ export default function DiscoverScreen() {
   const query = search.trim();
 
   const [homeTab, setHomeTab] = useState<"discover" | "council">("discover");
-  const [detecting, setDetecting] = useState(false);
-  const [councilDetails, setCouncilDetails] = useState<any>(null);
-  const [councilLoading, setCouncilLoading] = useState(false);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
-  const STATE_NAME_TO_CODE: Record<string, string> = {
-    "new south wales": "NSW",
-    "victoria": "VIC",
-    "queensland": "QLD",
-    "western australia": "WA",
-    "south australia": "SA",
-    "tasmania": "TAS",
-    "australian capital territory": "ACT",
-    "northern territory": "NT",
-  };
+  const toast = useToast();
+  const { detect, detecting } = useDetectCouncil();
+  const { data: councilDetails, isLoading: councilLoading } = useCouncilDetails(
+    location.councilId ?? undefined,
+  );
 
-  const detectLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
+  const handleDetect = async () => {
+    try {
+      setLocation(await detect());
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't detect your location.");
     }
-    setDetecting(true);
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`
-          );
-          if (!res.ok) throw new Error("reverse-geocode");
-          const geo = await res.json();
-          
-          const stateName = geo.address?.state?.toLowerCase();
-          const county = geo.address?.county || geo.address?.city_district || geo.address?.city;
-          
-          if (!stateName || !county) {
-            throw new Error("incomplete-address");
-          }
-
-          const stateCode = STATE_NAME_TO_CODE[stateName];
-          if (!stateCode) {
-            throw new Error("unsupported-state");
-          }
-
-          const { data: councilsData } = await supabase
-            .from("australian_councils")
-            .select("*")
-            .eq("state_code", stateCode);
-
-          if (!councilsData || councilsData.length === 0) {
-            throw new Error("no-councils-in-state");
-          }
-
-          const cleanCounty = county.toLowerCase().replace("council", "").replace("city of", "").trim();
-          const matchedCouncil = councilsData.find((c) => {
-            const cleanName = c.name.toLowerCase().replace("council", "").replace("city of", "").trim();
-            return cleanName.includes(cleanCounty) || cleanCounty.includes(cleanName);
-          }) || councilsData[0];
-
-          if (!matchedCouncil) {
-            throw new Error("no-matched-council");
-          }
-
-          setLocation({
-            state: stateCode as StateCode,
-            councilId: matchedCouncil.id,
-            label: matchedCouncil.name,
-          });
-        } catch (err) {
-          console.error(err);
-          alert("Could not automatically resolve your local council. Please select manually.");
-        } finally {
-          setDetecting(false);
-        }
-      },
-      (error) => {
-        console.error(error);
-        alert("Permission denied or location unavailable.");
-        setDetecting(false);
-      }
-    );
   };
-
-  useEffect(() => {
-    if (!location.councilId) {
-      setCouncilDetails(null);
-      return;
-    }
-    let active = true;
-    setCouncilLoading(true);
-    supabase
-      .from("australian_councils")
-      .select("id, name, slug, state_code, is_metro, population, traditional_custodians")
-      .eq("id", location.councilId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (active && data) {
-          setCouncilDetails(data);
-        }
-        if (active) {
-          setCouncilLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [location.councilId]);
 
   const { data: councilEvents, isLoading: councilEventsLoading } = useEvents({
     councilId: location.councilId ?? undefined,
@@ -276,9 +241,16 @@ export default function DiscoverScreen() {
   const { data: events } = useEvents(eventFilters);
   const { data: hubs, isLoading: hubsLoading, isError: hubsError } = useHubs(hubFilters);
 
+  const now = new Date();
+  const activeEvents = (events ?? []).filter((e) => {
+    if (!e.start_time) return false;
+    const eventTime = e.end_time ? new Date(e.end_time) : new Date(e.start_time);
+    return eventTime >= now;
+  });
+
   const categoryEvents = categories.length
-    ? (events ?? []).filter((e) => categories.includes(e.type))
-    : events ?? [];
+    ? activeEvents.filter((e) => categories.includes(e.type))
+    : activeEvents;
 
   const interestSet = lowerSet(activeInterests);
   const matches = (haystack: (string | null | undefined)[]) =>
@@ -319,6 +291,11 @@ export default function DiscoverScreen() {
 
   const showFnSection = !firstNations && (fnEvents.length > 0 || fnHubs.length > 0);
   const featuredWidth = Math.min(width - 56, 440);
+  const isDesktop = width >= 1024;
+  const isTablet = width >= 768;
+  const gridItemStyle: ViewStyle = {
+    width: isDesktop ? "23.5%" : isTablet ? "48%" : "100%",
+  };
 
   const toggleCategory = (c: EventType) =>
     setCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
@@ -333,29 +310,76 @@ export default function DiscoverScreen() {
     setFirstNations(false);
   };
 
-  const locationLabel = location.label !== "Anywhere" ? location.label : "Australia";
+  const locationLabel = getFriendlyPlaceName(location.label);
+  const greeting = getGreeting(profile?.full_name);
+  const whatsOnLabel = getWhatsOnLabel(locationLabel);
+  const discoverStats = [
+    { label: "Events", value: activeEvents.length },
+    { label: "Communities", value: filteredHubs.length },
+    { label: "Featured", value: featured.length },
+  ];
 
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
       
-      {/* Swiss Editorial Hero Header */}
-      <View className="gap-3 pt-4 pb-2">
-        <Text variant="overline" tone="pink" className="font-bold tracking-[2px]">CulturePass Australia</Text>
-        <Text className="font-display text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold tracking-tighter leading-[1.05]">
-          Find your next{"\n"}experience.
-        </Text>
-        <Text className="font-sans text-sm text-ink-muted max-w-prose mt-1">
-          Explore curated cultural events, local gatherings, and active community groups in {locationLabel}.
-        </Text>
+      {/* Hero Header */}
+      <View className="overflow-hidden rounded-3xl border border-night-line bg-night p-5 md:p-7 shadow-raised">
+        <View className="absolute -right-8 -top-8 h-40 w-40 opacity-25">
+          <Image source={require("../assets/logo.png")} style={{ width: "100%", height: "100%" }} contentFit="contain" />
+        </View>
+
+        <View className="relative gap-5">
+          <View className="flex-row flex-wrap items-center justify-between gap-3">
+            <View className="flex-row items-center gap-3">
+              <View className="h-11 w-11 items-center justify-center rounded-2xl bg-white">
+                <Image source={require("../assets/logo.png")} style={{ width: 36, height: 36 }} contentFit="contain" />
+              </View>
+              <View>
+                <Text className="font-display text-lg text-paper">CulturePass</Text>
+                <Text variant="overline" className="text-night-muted">
+                  Belong anywhere
+                </Text>
+              </View>
+            </View>
+
+            <View className="rounded-pill border border-white/15 bg-white/10 px-3 py-1.5">
+              <Text variant="overline" className="font-bold text-teal-100 tracking-[1.6px]">
+                {locationLabel}
+              </Text>
+            </View>
+          </View>
+
+          <View className="gap-2">
+            <Text className="font-display text-4xl md:text-5xl lg:text-6xl text-paper font-extrabold leading-[1.05]">
+              {greeting}
+              {"\n"}
+              {whatsOnLabel}
+            </Text>
+            <Text className="font-sans text-sm md:text-base text-night-muted max-w-prose">
+              {"Discover what's on this week: cultural events, communities, tickets, and local experiences tailored to your city."}
+            </Text>
+          </View>
+
+          <View className="flex-row flex-wrap gap-2">
+            {discoverStats.map((stat) => (
+              <View key={stat.label} className="min-w-[104px] rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
+                <Text className="font-display text-xl text-paper">{stat.value}</Text>
+                <Text variant="overline" className="text-night-muted">
+                  {stat.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
       </View>
 
-      {/* High-Contrast Search & Location block */}
-      <View className="flex-row items-center border-2 border-ink bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-11 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-4">
+      {/* Search & Location block */}
+      <View className="flex-row items-center border border-linen bg-card rounded-2xl md:rounded-full px-3 md:px-4 h-12 md:h-14 gap-2 shadow-subtle w-full max-w-3xl mt-4">
         <View className="flex-1 flex-row items-center h-full">
           <Input
             value={search}
             onChangeText={setSearch}
-            placeholder="Search events..."
+            placeholder="Discover events near you..."
             returnKeyType="search"
             autoCorrect={false}
             leftIcon={<Icon name="search" size={15} color={colors.inkFaint} />}
@@ -380,44 +404,196 @@ export default function DiscoverScreen() {
         </View>
       </View>
 
-      {/* Clean Horizontal Filter Bar */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ alignItems: "center", gap: 6, paddingRight: 20 }}
-        className="-mx-gutter px-gutter mt-5"
-      >
-        <MultiSelectFilter
-          label="Interests"
-          icon="sparkle"
-          options={INTEREST_OPTIONS as readonly string[]}
-          selected={interests}
-          onChange={setInterests}
-        />
-        <MultiSelectFilter
-          label="Category"
-          icon="filter"
-          options={EVENT_TYPES as readonly string[]}
-          labels={EVENT_TYPE_LABELS as Record<string, string>}
-          selected={categories as string[]}
-          onChange={(next) => setCategories(next as EventType[])}
-        />
-        <MultiSelectFilter
-          label="Page type"
-          icon="grid"
-          options={HUB_TYPES as readonly string[]}
-          labels={HUB_TYPE_LABELS as Record<string, string>}
-          selected={hubTypes as string[]}
-          onChange={(next) => setHubTypes(next as HubType[])}
-        />
-        <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
-        
-        {activeFilterCount > 0 ? (
-          <Button label="Clear filters" variant="outline" size="sm" className="h-8 px-2.5 rounded-lg" onPress={clearFilters} />
-        ) : null}
-      </ScrollView>
+      {/* Search Filter Toggle and Collapsible Panel */}
+      <View className="flex-row flex-wrap items-center gap-3 mt-5 w-full max-w-4xl">
+        <Pressable
+          onPress={() => setShowFilterPanel(!showFilterPanel)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showFilterPanel }}
+          accessibilityLabel={`Filters${activeFilterCount > 0 ? `, ${activeFilterCount} active` : ""}`}
+          className={cn(
+            "h-11 px-5 rounded-full border flex-row items-center gap-2 active:opacity-75 shadow-sm",
+            showFilterPanel || activeFilterCount > 0 ? "border-ink bg-ink" : "border-linen bg-card"
+          )}
+        >
+          <Icon name="filter" size={15} color={showFilterPanel || activeFilterCount > 0 ? colors.paper : colors.ink} />
+          <Text className={cn("text-xs font-heading font-semibold", showFilterPanel || activeFilterCount > 0 ? "text-paper" : "text-ink")}>
+            Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ""}
+          </Text>
+        </Pressable>
 
-      {/* Swiss Text-Only Category navigation list */}
+        <FirstNationsToggle active={firstNations} onPress={() => setFirstNations((v) => !v)} />
+
+        {activeFilterCount > 0 ? (
+          <Button label="Clear all" variant="outline" size="sm" className="h-9 px-3 rounded-full" onPress={clearFilters} />
+        ) : null}
+      </View>
+
+      {showFilterPanel && (
+        <View className="w-full max-w-4xl border border-linen bg-card rounded-2xl p-5 mt-4 gap-5 shadow-card">
+          <View className="flex-row items-center justify-between border-b border-linen pb-2.5">
+            <Text className="font-heading text-sm font-bold text-ink">Discover Filters</Text>
+            <Pressable
+              onPress={() => setShowFilterPanel(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Hide filters panel"
+              className="active:opacity-75"
+            >
+              <Text className="text-xs font-semibold text-ink-muted">Hide panel</Text>
+            </Pressable>
+          </View>
+
+          {/* Interests Section */}
+          <View className="gap-2">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="sparkle" size={13} color={colors.inkMuted} />
+              <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Interests</Text>
+            </View>
+            <View className="flex-row flex-wrap gap-1.5">
+              {INTEREST_OPTIONS.map((opt) => {
+                const on = interests.includes(opt);
+                return (
+                  <Pressable
+                    key={opt}
+                    onPress={() => setInterests(cur => cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt])}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={opt}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
+                    )}
+                  >
+                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
+                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                      {opt}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Categories Section */}
+          <View className="gap-2">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="filter" size={13} color={colors.inkMuted} />
+              <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Categories</Text>
+            </View>
+            <View className="flex-row flex-wrap gap-1.5">
+              {EVENT_TYPES.map((type) => {
+                const on = categories.includes(type);
+                return (
+                  <Pressable
+                    key={type}
+                    onPress={() => toggleCategory(type)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={EVENT_TYPE_LABELS[type]}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
+                    )}
+                  >
+                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
+                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                      {EVENT_TYPE_LABELS[type]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Page Type Section */}
+          <View className="gap-2">
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="grid" size={13} color={colors.inkMuted} />
+              <Text className="text-[10px] font-heading font-bold uppercase tracking-wider text-ink-muted">Page Types</Text>
+            </View>
+            <View className="flex-row flex-wrap gap-1.5">
+              {HUB_TYPES.map((type) => {
+                const on = hubTypes.includes(type);
+                return (
+                  <Pressable
+                    key={type}
+                    onPress={() => toggleHubType(type)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={HUB_TYPE_LABELS[type]}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full border flex-row items-center gap-1.5 active:opacity-85",
+                      on ? "border-ink bg-ink" : "border-linen/75 bg-paper"
+                    )}
+                  >
+                    {on && <Icon name="check" size={10} color={colors.paper} strokeWidth={2.5} />}
+                    <Text className={cn("text-xs font-medium", on ? "text-paper" : "text-ink")}>
+                      {HUB_TYPE_LABELS[type]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Active Filter Chips Row */}
+      {activeFilterCount > 0 && (
+        <View className="flex-row flex-wrap items-center gap-2 mt-3 w-full max-w-4xl">
+          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted mr-1">Active Filters:</Text>
+          {interests.map((opt) => (
+            <Pressable
+              key={`active-int-${opt}`}
+              onPress={() => setInterests(cur => cur.filter(x => x !== opt))}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${opt} filter`}
+              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+            >
+              <Text className="text-xs text-ink">{opt}</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          ))}
+          {categories.map((type) => (
+            <Pressable
+              key={`active-cat-${type}`}
+              onPress={() => toggleCategory(type)}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${EVENT_TYPE_LABELS[type]} filter`}
+              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+            >
+              <Text className="text-xs text-ink">{EVENT_TYPE_LABELS[type]}</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          ))}
+          {hubTypes.map((type) => (
+            <Pressable
+              key={`active-hub-${type}`}
+              onPress={() => toggleHubType(type)}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${HUB_TYPE_LABELS[type]} filter`}
+              className="bg-sand hover:bg-linen px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-linen active:opacity-75"
+            >
+              <Text className="text-xs text-ink">{HUB_TYPE_LABELS[type]}</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          ))}
+          {firstNations && (
+            <Pressable
+              key="active-fn"
+              onPress={() => setFirstNations(false)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove First Nations Spotlight filter"
+              className="bg-country-ochre/15 px-2.5 py-1 rounded-full flex-row items-center gap-1 border border-country-ochre/30 active:opacity-75"
+            >
+              <Text className="text-xs text-country-red font-semibold">First Nations Spotlight</Text>
+              <Icon name="close" size={10} color={colors.inkMuted} strokeWidth={2.5} />
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* Category navigation */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -449,23 +625,22 @@ export default function DiscoverScreen() {
       </ScrollView>
 
       {/* Home Switcher Tabs */}
-      <View className="flex-row gap-6 border-b border-linen mt-6 mb-4">
-        <Pressable onPress={() => setHomeTab("discover")} className="items-center">
-          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "discover" ? "text-ink font-semibold" : "text-ink-faint")}>
+      <View className="mt-6 mb-4 flex-row self-start rounded-full border border-linen bg-card p-1">
+        <Pressable onPress={() => setHomeTab("discover")} className={cn("rounded-full px-4 py-2", homeTab === "discover" && "bg-ink")}>
+          <Text className={cn("font-heading text-sm", homeTab === "discover" ? "text-paper font-semibold" : "text-ink-faint")}>
             Discover Feed
           </Text>
-          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "discover" ? "bg-pink-500" : "bg-transparent")} />
         </Pressable>
-        <Pressable onPress={() => setHomeTab("council")} className="items-center">
-          <Text className={cn("pb-2.5 font-heading text-sm", homeTab === "council" ? "text-ink font-semibold" : "text-ink-faint")}>
+        <Pressable onPress={() => setHomeTab("council")} className={cn("rounded-full px-4 py-2", homeTab === "council" && "bg-ink")}>
+          <Text className={cn("font-heading text-sm", homeTab === "council" ? "text-paper font-semibold" : "text-ink-faint")}>
             My Council
           </Text>
-          <View className={cn("h-0.5 w-full rounded-pill", homeTab === "council" ? "bg-pink-500" : "bg-transparent")} />
         </Pressable>
       </View>
 
       {homeTab === "discover" ? (
         <>
+          <CohostInvitationsBanner />
           {/* Curated featured slider */}
           {featured.length > 0 ? (
             <View className="mt-6 gap-4">
@@ -483,9 +658,14 @@ export default function DiscoverScreen() {
             </View>
           ) : null}
 
+          {/* Explore Cities — nationwide discovery rail */}
+          <View className="mt-8">
+            <ExploreCities />
+          </View>
+
           {/* First Nations acknowledgement banner */}
           {showFnSection ? (
-            <View className="mt-8 rounded-3xl border-2 border-country-red bg-card p-5 gap-4 shadow-card">
+            <View className="mt-8 rounded-2xl border border-country-ochre/40 bg-card p-5 gap-4 shadow-card">
               <View className="flex-row items-center gap-1.5 border-b border-linen pb-3">
                 <View className="h-2 w-2 rounded-full bg-country-ochre" />
                 <Text variant="overline" className="text-country-red font-bold tracking-[2px]">
@@ -532,155 +712,155 @@ export default function DiscoverScreen() {
             </View>
           ) : null}
 
-          {/* Main Two-Column Layout */}
-          <View className="mt-8 gap-8 lg:flex-row lg:items-start lg:gap-10">
+          {/* Main Full-Width Feed Layout */}
+          <View className="mt-8 gap-8 w-full">
             
-            {/* Left Column: Grouped Calendar List (Luma Style) */}
-            <View className="flex-1 gap-6">
-              
-              {/* For You events feed */}
-              {hasForYou ? (
-                <View className="gap-3">
-                  <SectionHeader eyebrow="Tailored to you" title="Recommended" />
-                  <View className="gap-3 md:flex-row md:flex-wrap">
-                    {forYouEvents.slice(0, 4).map((event) => (
-                      <View key={event.id} className="w-full md:w-[calc(50%-6px)]">
-                        <EventCard event={event} />
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : null}
-
-              {/* Eventbrite-Style Grid listing */}
-              {comingUp.length > 0 ? (
-                <View className="gap-6">
-                  <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3 mt-2">
-                    <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Upcoming events</Text>
-                    <Pressable onPress={() => router.push("/calendar")} className="active:opacity-75">
-                      <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">Calendar view</Text>
-                    </Pressable>
-                  </View>
-
-                  <View className="flex-row flex-wrap gap-5 mt-2">
-                    {comingUp.map((event) => (
-                      <View key={event.id} className="w-full md:w-[calc(50%-10px)] lg:w-[calc(50%-10px)]">
-                        <EventCard event={event} />
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ) : (
-                <EmptyCard
-                  title="No events found"
-                  body="Try clearing some search filters or changing locations."
-                  action="Add event"
-                  onPress={() => router.push("/create/event")}
-                />
-              )}
-
-            </View>
-
-            {/* Right Column: Calendars & Hubs List (Luma Style) */}
-            <View className="w-full lg:w-[320px] gap-6">
+            {/* For You events feed */}
+            {hasForYou ? (
               <View className="gap-3">
-                <View className="flex-row items-baseline justify-between border-t-2 border-ink pt-3">
-                  <Text variant="heading" className="font-heading text-xl text-ink tracking-tight">Active hubs</Text>
-                  <Pressable onPress={() => router.push("/my-hubs")} className="active:opacity-75">
-                    <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">My hubs</Text>
+                <SectionHeader eyebrow="Tailored to you" title="Recommended" />
+                <View className="flex-row flex-wrap gap-5 mt-2">
+                  {forYouEvents.slice(0, 4).map((event) => (
+                    <View key={event.id} style={gridItemStyle}>
+                      <EventCard event={event} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* EventGrid listing */}
+            {comingUp.length > 0 ? (
+              <View className="gap-6">
+                <View className="flex-row items-baseline justify-between border-t border-linen pt-5 mt-2">
+                  <Text variant="heading" className="font-heading text-xl text-ink font-extrabold">Upcoming events</Text>
+                  <Pressable onPress={() => router.push("/calendar")} className="active:opacity-75">
+                    <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">Calendar view</Text>
                   </Pressable>
                 </View>
 
-                {/* Quick Hub Purpose scroll */}
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerClassName="gap-2 pr-4 pt-1"
-                  className="-mx-gutter px-gutter mt-2"
-                >
-                  {HUB_TYPES.map((type) => {
-                    const on = hubTypes.includes(type);
+                <View className="flex-row flex-wrap gap-5 mt-2">
+                  {comingUp.map((event) => (
+                    <View key={event.id} style={gridItemStyle}>
+                      <EventCard event={event} />
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <EmptyCard
+                title="No events found"
+                body="Try clearing some search filters or changing locations."
+                action="Add event"
+                onPress={() => router.push("/create/event")}
+              />
+            )}
+
+            {/* Active Hubs Section */}
+            <View className="gap-6 mt-8 border-t border-linen pt-6">
+              <View className="flex-row items-baseline justify-between">
+                <Text variant="heading" className="font-heading text-xl text-ink font-extrabold">Active hubs</Text>
+                <Pressable onPress={() => router.push("/my-hubs")} className="active:opacity-75">
+                  <Text variant="overline" tone="pink" className="font-bold tracking-[1px]">My hubs</Text>
+                </Pressable>
+              </View>
+
+              {/* Hub Type Filters */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerClassName="gap-2 pr-4 pt-1"
+                className="-mx-gutter px-gutter mt-2"
+              >
+                {HUB_TYPES.map((type) => {
+                  const on = hubTypes.includes(type);
+                  return (
+                    <Pressable
+                      key={type}
+                      onPress={() => toggleHubType(type)}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 active:opacity-85",
+                        on ? "border-ink bg-ink" : "border-linen/70 bg-card"
+                      )}
+                    >
+                      <Text className={cn("text-[9px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
+                        {HUB_TYPE_LABELS[type].split(" ")[0]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+
+              {hubsLoading ? (
+                <Card className="p-4 items-center"><Text variant="caption" tone="faint">Loading hubs...</Text></Card>
+              ) : hubsError ? (
+                <Card className="p-4 items-center"><Text variant="caption" tone="muted">Could not load hubs.</Text></Card>
+              ) : hubResults.length > 0 ? (
+                <View className="flex-row flex-wrap gap-5 mt-2">
+                  {hubResults.map((hub) => {
+                    const images = (hub.images ?? []).filter((img: any) => img && img.url);
+                    const logoUrl =
+                      images.find((img: any) => img.type === "logo")?.url ??
+                      images.find((img: any) => img.type !== "logo")?.url ??
+                      images[0]?.url ??
+                      null;
+                    const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
+
                     return (
-                      <Pressable
-                        key={type}
-                        onPress={() => toggleHubType(type)}
-                        className={cn(
-                          "rounded-full border px-3 py-1.5 active:opacity-85",
-                          on ? "border-ink bg-ink" : "border-linen/70 bg-card"
-                        )}
-                      >
-                        <Text className={cn("text-[9px] font-heading uppercase tracking-wider", on ? "text-paper" : "text-ink-muted")}>
-                          {HUB_TYPE_LABELS[type].split(" ")[0]}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-
-                {/* Hubs Listing */}
-                {hubsLoading ? (
-                  <Card className="p-4 items-center"><Text variant="caption" tone="faint">Loading hubs...</Text></Card>
-                ) : hubsError ? (
-                  <Card className="p-4 items-center"><Text variant="caption" tone="muted">Could not load hubs.</Text></Card>
-                ) : hubResults.length > 0 ? (
-                  <View className="gap-1 mt-2">
-                    {hubResults.map((hub) => {
-                      const images = (hub.images ?? []).filter((img: any) => img && img.url);
-                      const logoUrl =
-                        images.find((img: any) => img.type === "logo")?.url ??
-                        images.find((img: any) => img.type !== "logo")?.url ??
-                        images[0]?.url ??
-                        null;
-                      const place = [hub.location_city, hub.location_state].filter(Boolean).join(", ");
-
-                      return (
+                      <View key={hub.slug} style={gridItemStyle}>
                         <Pressable
-                          key={hub.slug}
                           onPress={() => router.push(`/hub/${hub.slug}`)}
-                          className="flex-row items-center gap-3 py-2.5 border-b border-linen/15 active:opacity-75"
+                          className="bg-card border border-linen p-4 rounded-2xl h-full justify-between active:opacity-75 shadow-sm"
                         >
-                          {logoUrl ? (
-                            <Image
-                              source={{ uri: logoUrl }}
-                              style={{ width: 36, height: 36, borderRadius: 18 }}
-                              contentFit="cover"
-                            />
-                          ) : (
-                            <View className="h-9 w-9 items-center justify-center rounded-full bg-sand">
-                              <Text className="font-heading text-sm text-ink-muted">
-                                {hub.name.charAt(0).toUpperCase()}
+                          <View className="flex-row items-center gap-3">
+                            {logoUrl ? (
+                              <Image
+                                source={{ uri: logoUrl }}
+                                style={{ width: 44, height: 44, borderRadius: 22 }}
+                                contentFit="cover"
+                              />
+                            ) : (
+                              <View className="h-11 w-11 items-center justify-center rounded-full bg-sand">
+                                <Text className="font-heading text-lg text-ink-muted">
+                                  {hub.name.charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
+                            
+                            <View className="flex-1 min-w-0">
+                              <View className="flex-row items-center gap-1">
+                                <Text className="text-sm font-heading text-ink truncate font-semibold">{hub.name}</Text>
+                                {hub.indigenous_led && (
+                                  <View className="h-3.5 w-3.5 rounded-full bg-country-ochre items-center justify-center">
+                                    <View className="h-2 w-2 rounded-full bg-country-red" />
+                                  </View>
+                                )}
+                              </View>
+                              <Text className="text-[10px] text-ink-faint mt-0.5 truncate">
+                                {HUB_TYPE_LABELS[hub.type]}
                               </Text>
                             </View>
-                          )}
-                          
-                          <View className="flex-1 min-w-0">
-                            <View className="flex-row items-center gap-1">
-                              <Text className="text-xs font-heading text-ink truncate">{hub.name}</Text>
-                              {hub.indigenous_led && (
-                                <View className="h-3 w-3 rounded-full bg-country-ochre items-center justify-center">
-                                  <View className="h-1.5 w-1.5 rounded-full bg-country-red" />
-                                </View>
-                              )}
-                            </View>
-                            <Text className="text-[10px] text-ink-faint mt-0.5 truncate">
-                              {HUB_TYPE_LABELS[hub.type]} · {place || "Australia"}
-                            </Text>
                           </View>
-                          
-                          <Icon name="arrow-right" size={13} color={colors.inkFaint} />
+
+                          <View className="flex-row items-center justify-between mt-4 pt-3 border-t border-linen/30">
+                            <Text className="text-[10px] text-ink-muted truncate flex-1">
+                              {place || "Australia"}
+                            </Text>
+                            <Icon name="arrow-right" size={14} color={colors.inkFaint} />
+                          </View>
                         </Pressable>
-                      );
-                    })}
-                  </View>
-                ) : (
-                  <EmptyCard
-                    title="No hubs matching"
-                    body="Try modifying your state or category filters."
-                    action="Create a page"
-                    onPress={() => router.push("/create/hub")}
-                  />
-                )}
-              </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : (
+                <EmptyCard
+                  title="No hubs matching"
+                  body="Try modifying your state or category filters."
+                  action="Create a page"
+                  onPress={() => router.push("/create/hub")}
+                />
+              )}
             </View>
 
           </View>
@@ -704,7 +884,7 @@ export default function DiscoverScreen() {
                 variant="primary"
                 size="sm"
                 leftIcon={detecting ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Icon name="map-pin" size={14} color="#FFFFFF" />}
-                onPress={detectLocation}
+                onPress={handleDetect}
                 disabled={detecting}
               />
             </Card>
@@ -715,14 +895,14 @@ export default function DiscoverScreen() {
             </Card>
           ) : councilDetails ? (
             <View className="mt-4 gap-6">              {/* Council details card */}
-              <View className="rounded-3xl border-2 border-ink bg-card p-6 gap-4 shadow-card">
+              <View className="rounded-2xl border border-linen bg-card p-6 gap-4 shadow-card">
                 <View className="flex-row items-center gap-2">
                   <Icon name="map-pin" size={16} color={colors.pink} />
                   <Text variant="overline" tone="pink" className="text-2xs font-bold tracking-widest text-pink-600">
                     Local Government Area
                   </Text>
                 </View>
-                <Text className="font-display text-3xl text-ink tracking-tight font-extrabold">
+                <Text className="font-display text-3xl text-ink font-extrabold">
                   {councilDetails.name}
                 </Text>
                 

@@ -29,7 +29,7 @@ import {
 } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
 import { useMyHubs } from "@/features/hubs/api";
-import { useBuyTicket } from "@/features/tickets/api";
+import { TicketBookingModal } from "@/features/tickets/TicketBookingModal";
 import {
   useEventCohosts,
   useRespondToCohost,
@@ -48,7 +48,7 @@ export default function EventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: event, isLoading, isError } = useEvent(id ?? "");
   const { data: profile } = useMyProfile();
-  const buyTicket = useBuyTicket();
+  const [bookingVisible, setBookingVisible] = useState(false);
 
   const { data: subStatus } = useEventSubscriptionStatus(event?.id || "");
   const toggleSub = useToggleEventSubscription();
@@ -235,7 +235,7 @@ export default function EventScreen() {
       router.push("/sign-in");
       return;
     }
-    buyTicket.mutate({ eventId: event.id, quantity: 1 });
+    setBookingVisible(true);
   };
 
   const openTicketUrl = () => {
@@ -500,10 +500,9 @@ export default function EventScreen() {
                 />
               ) : isPaidTicketed ? (
                 <Button
-                  label={`Buy ticket · ${price}`}
+                  label="Get tickets"
                   variant="whatsapp"
                   fullWidth
-                  loading={buyTicket.isPending}
                   onPress={handleBuy}
                   leftIcon={<Icon name="ticket" size={17} color={colors.ink} />}
                 />
@@ -572,12 +571,6 @@ export default function EventScreen() {
               ) : null}
             </View>
 
-            {buyTicket.isError ? (
-              <Text variant="caption" className="text-terracotta-600 text-center mt-1">
-                {(buyTicket.error as Error)?.message ?? "Couldn’t start checkout."}
-              </Text>
-            ) : null}
-
             {/* Like and Save Actions */}
             <View className="flex-row items-center gap-2.5">
               <Button
@@ -616,6 +609,17 @@ export default function EventScreen() {
           </Card>
         </View>
       </View>
+
+      <TicketBookingModal
+        visible={bookingVisible}
+        onClose={() => setBookingVisible(false)}
+        eventId={event.id}
+        eventTitle={event.title ?? "Event"}
+        eventDates={event.event_dates}
+        hasAssignedSeating={event.has_assigned_seating}
+        seatingLayout={event.seating_layout}
+        venueMapUrl={event.venue_map_url}
+      />
     </Screen>
   );
 }

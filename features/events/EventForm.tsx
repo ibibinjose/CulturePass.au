@@ -48,6 +48,9 @@ export interface EventFormValues {
   images: { url: string; alt?: string }[];
   tags: string[];
   cultural_focus: string[];
+  is_online?: boolean;
+  venue_address?: string;
+  online_url?: string;
 }
 
 export function emptyEventForm(hubId: string): EventFormValues {
@@ -68,6 +71,9 @@ export function emptyEventForm(hubId: string): EventFormValues {
     images: [],
     tags: [],
     cultural_focus: [],
+    is_online: false,
+    venue_address: "",
+    online_url: "",
   };
 }
 
@@ -216,87 +222,124 @@ export function EventForm({ initial, submitting, error, actions, onSubmit, foote
       <Card className="p-5 gap-5 border border-linen bg-card">
         <Text className="font-display text-lg text-ink tracking-tight border-b border-linen/30 pb-2">3. Location</Text>
         
-        <Field label="State" optional>
-          <View className="flex-row flex-wrap gap-2">
-            {AUSTRALIAN_STATES.map((s) => (
-              <Button
-                key={s.code}
-                label={s.code}
-                variant={form.location_state === s.code ? "primary" : "outline"}
-                size="sm"
-                onPress={() => {
-                  set({
-                    location_state: form.location_state === s.code ? "" : s.code,
-                    location_council_id: undefined, // reset council if state changes
-                  });
-                  setCouncilSearch("");
-                }}
-              />
-            ))}
-          </View>
-        </Field>
+        <Toggle
+          label="This is an online / virtual event"
+          enabled={!!form.is_online}
+          onToggle={(is_online) => {
+            set({
+              is_online,
+              location_state: "",
+              location_council_id: undefined,
+              location_city: is_online ? "Online" : "",
+              venue_address: "",
+            });
+            setCouncilSearch("");
+          }}
+        />
 
-        {form.location_state ? (
-          <Field label="Local Council (LGA)" optional>
-            <View className="gap-2">
-              <Text className="text-[10px] text-ink-faint">
-                Assigning this lets your event appear on the local My Council board.
-              </Text>
-              {councils && councils.length > 0 ? (
-                <>
-                  <Input
-                    value={councilSearch}
-                    onChangeText={setCouncilSearch}
-                    placeholder="Search councils…"
-                    className="mb-1"
-                  />
-                  <View className="max-h-48 rounded-2xl border border-linen bg-card overflow-hidden">
-                    <ScrollView nestedScrollEnabled className="p-2 gap-1">
-                      {(() => {
-                        const filtered = councils.filter((c) =>
-                          c.name.toLowerCase().includes(councilSearch.trim().toLowerCase())
-                        );
-                        if (filtered.length === 0) {
-                          return (
-                            <View className="p-3 items-center">
-                              <Text variant="caption" tone="faint">No councils match</Text>
-                            </View>
-                          );
-                        }
-                        return filtered.map((c) => {
-                          const selected = form.location_council_id === c.id;
-                          return (
-                            <Pressable
-                              key={c.id}
-                              onPress={() => set({ location_council_id: selected ? undefined : c.id })}
-                              className={cn(
-                                "px-3 py-2 rounded-xl flex-row items-center justify-between active:bg-sand",
-                                selected ? "bg-sand" : "bg-transparent"
-                              )}
-                            >
-                              <Text className="text-xs font-heading text-ink">{c.name}</Text>
-                              {selected && <Icon name="check" size={14} color={colors.pink} />}
-                            </Pressable>
-                          );
-                        });
-                      })()}
-                    </ScrollView>
-                  </View>
-                </>
-              ) : (
-                <Text variant="caption" tone="faint">Loading councils list...</Text>
-              )}
-            </View>
+        {form.is_online ? (
+          <Field label="Online Streaming / Join URL">
+            <Input
+              value={form.online_url || ""}
+              onChangeText={(online_url) => set({ online_url })}
+              placeholder="e.g. https://zoom.us/j/... or YouTube Live stream URL"
+              autoCapitalize="none"
+              keyboardType="url"
+            />
           </Field>
-        ) : null}
+        ) : (
+          <>
+            <Field label="Venue / Street Address" optional>
+              <Input
+                value={form.venue_address || ""}
+                onChangeText={(venue_address) => set({ venue_address })}
+                placeholder="e.g. Sydney Town Hall, 483 George St"
+              />
+            </Field>
 
-        <Field label="City / Suburb" optional>
-          <Input
-            value={form.location_city}
-            onChangeText={(location_city) => set({ location_city })}
-            placeholder="e.g. Sydney"
-          />
-        </Field>
+            <Field label="City / Suburb">
+              <Input
+                value={form.location_city === "Online" ? "" : form.location_city}
+                onChangeText={(location_city) => set({ location_city })}
+                placeholder="e.g. Sydney"
+              />
+            </Field>
+
+            <Field label="State" optional>
+              <View className="flex-row flex-wrap gap-2">
+                {AUSTRALIAN_STATES.map((s) => (
+                  <Button
+                    key={s.code}
+                    label={s.code}
+                    variant={form.location_state === s.code ? "primary" : "outline"}
+                    size="sm"
+                    onPress={() => {
+                      set({
+                        location_state: form.location_state === s.code ? "" : s.code,
+                        location_council_id: undefined, // reset council if state changes
+                      });
+                      setCouncilSearch("");
+                    }}
+                  />
+                ))}
+              </View>
+            </Field>
+
+            {form.location_state ? (
+              <Field label="Local Council (LGA)" optional>
+                <View className="gap-2">
+                  <Text className="text-[10px] text-ink-faint">
+                    Assigning this lets your event appear on the local My Council board.
+                  </Text>
+                  {councils && councils.length > 0 ? (
+                    <>
+                      <Input
+                        value={councilSearch}
+                        onChangeText={setCouncilSearch}
+                        placeholder="Search councils…"
+                        className="mb-1"
+                      />
+                      <View className="max-h-48 rounded-2xl border border-linen bg-card overflow-hidden">
+                        <ScrollView nestedScrollEnabled className="p-2 gap-1">
+                          {(() => {
+                            const filtered = councils.filter((c) =>
+                              c.name.toLowerCase().includes(councilSearch.trim().toLowerCase())
+                            );
+                            if (filtered.length === 0) {
+                              return (
+                                <View className="p-3 items-center">
+                                  <Text variant="caption" tone="faint">No councils match</Text>
+                                </View>
+                              );
+                            }
+                            return filtered.map((c) => {
+                              const selected = form.location_council_id === c.id;
+                              return (
+                                <Pressable
+                                  key={c.id}
+                                  onPress={() => set({ location_council_id: selected ? undefined : c.id })}
+                                  className={cn(
+                                    "px-3 py-2 rounded-xl flex-row items-center justify-between active:bg-sand",
+                                    selected ? "bg-sand" : "bg-transparent"
+                                  )}
+                                >
+                                  <Text className="text-xs font-heading text-ink">{c.name}</Text>
+                                  {selected && <Icon name="check" size={14} color={colors.pink} />}
+                                </Pressable>
+                              );
+                            });
+                          })()}
+                        </ScrollView>
+                      </View>
+                    </>
+                  ) : (
+                    <Text variant="caption" tone="faint">Loading councils list...</Text>
+                  )}
+                </View>
+              </Field>
+            ) : null}
+          </>
+        )}
       </Card>
 
       {/* 4. Pricing & Options */}
