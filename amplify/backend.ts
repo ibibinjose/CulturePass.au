@@ -29,6 +29,21 @@ const backend = defineBackend({
   devSeed,
 });
 
+// Email verification uses LINK style (see amplify/auth/resource.ts), which
+// requires the user pool to have a Cognito hosted domain — without it Cognito
+// rejects sign-up with "there does not exist a valid user pool domain
+// associated with the user pool". The prefix must be globally unique per AWS
+// region, so derive it from the branch to keep per-branch fullstack deploys
+// (main, PR previews, sandboxes) from colliding.
+const domainPrefix = `culturepass-${(process.env.AWS_BRANCH ?? "sandbox")
+  .toLowerCase()
+  .replace(/[^a-z0-9-]/g, "-")
+  .replace(/^-+|-+$/g, "")
+  .slice(0, 40)}`;
+backend.auth.resources.userPool.addDomain("HostedUiDomain", {
+  cognitoDomain: { domainPrefix },
+});
+
 // Stripe POSTs webhook events directly, so expose the webhook Lambda via a public
 // Function URL (no Cognito). The handler verifies the Stripe signature instead.
 const webhookUrl = backend.stripeWebhook.resources.lambda.addFunctionUrl({
