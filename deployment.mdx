@@ -1,0 +1,197 @@
+---
+title: "Deployment"
+description: "Deploy CulturePass on AWS Amplify Hosting, attach the culturepass.au custom domain, configure the Cognito hosted UI, and enable iOS/Android universal links."
+---
+
+This page walks you through shipping CulturePass to production: building the Expo web app on **AWS Amplify Hosting**, attaching the `culturepass.au` custom domain via Route 53, wiring up the Cognito hosted UI for email verification, and configuring iOS and Android universal links so production share URLs open the native app.
+
+Use this guide when you set up a new Amplify branch (production, staging, or a long-lived preview), or when you're verifying that universal links resolve correctly after a release.
+
+## 1. Amplify Hosting
+
+The repo ships an `amplify.yml` build spec that deploys **both** a per-branch Amplify Gen 2 backend and the Expo web frontend on every push.
+
+- The `backend` phase runs `ampx pipeline-deploy` and stands up Cognito, AppSync, DynamoDB, S3, and Lambda for the branch. It writes `amplify_outputs.json`.
+- The `frontend` phase runs `scripts/aws-env-from-outputs.mjs` to turn that file into `EXPO_PUBLIC_*` env vars, then runs `expo export --platform web` and publishes `dist/`.
+
+Because the build wires its own client config from `amplify_outputs.json`, you do **not** need to set `EXPO_PUBLIC_*` variables by hand in the Amplify console.
+
+### Connect the repo
+
+1. In the Amplify Console, choose **Create new app → Deploy with GitHub** and pick the branch you want to deploy.
+2. Amplify auto-detects `amplify.yml` (build `expo export`, artifacts `dist`).
+3. Trigger a build. The first deploy can take 10–20 minutes while the backend stack is created.
+
+### Branch secrets
+
+Set these once per branch (Amplify Console → **Hosting → Secrets**, or `npx ampx secret set --branch <branch>`):
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+
+### Environment variables (optional)
+
+The build derives client config automatically, but the following `EXPO_PUBLIC_*` vars are what end up in the web bundle and are useful to know about for debugging:
+
+- `EXPO_PUBLIC_BACKEND=aws`
+- `EXPO_PUBLIC_AWS_REGION`
+- `EXPO_PUBLIC_COGNITO_USER_POOL_ID`
+- `EXPO_PUBLIC_COGNITO_APP_CLIENT_ID`
+- `EXPO_PUBLIC_COGNITO_IDENTITY_POOL_ID`
+- `EXPO_PUBLIC_APPSYNC_ENDPOINT`
+
+Once the branch is green, Amplify gives you a `https://<branch>.<appid>.amplifyapp.com` URL. Confirm the app loads before attaching the custom domain.
+
+## 2. Attach culturepass.au via Route 53
+
+`culturepass.au` is registered at an auDA-accredited `.au` registrar — Route 53 cannot *register* `.au` domains, but it can host the DNS. The recommended setup is to delegate DNS to Route 53 so Amplify can manage the certificate and DNS records for you.
+
+### Recommended: delegate DNS to Route 53
+
+1. **Route 53 → Hosted zones → Create hosted zone** for `culturepass.au` (public). AWS returns 4 nameservers (for example `ns-123.awsdns-12.com`).
+2. At your `.au` registrar, replace the domain's nameservers with those 4. Delegation can take 1–24 hours to propagate. This is the only step that must happen at the registrar.
+3. In the Amplify Console for your app: **Hosting → Custom domains → Add domain** → enter `culturepass.au` and add the `www` subdomain. Because the hosted zone lives in the same AWS account, Amplify auto-creates the ACM certificate validation records and the CNAME/ALIAS records in Route 53.
+4. Wait for the status to reach **Available** — cert issuance plus propagation usually takes 15–60 minutes. HTTPS is automatic.
+
+### Alternative: keep DNS at your registrar
+
+Skip the Route 53 hosted zone. In **Add domain**, Amplify shows the DNS records you need to create manually at your registrar:
+
+- the **ACM validation** CNAME(s), and
+- the apex / `www` **CNAME** records pointing at the Amplify endpoint.
+
+The result is identical — DNS is just managed at the registrar instead of Route 53. ACM certs for custom domains always live in `us-east-1`, and Amplify Hosting requests and renews them for you.
+
+### Stripe redirects
+
+The checkout function defaults `SITE_URL` to `https://culturepass.au`, so Stripe success and cancel URLs resolve to the custom domain. Redeploy the backend (`ampx pipeline-deploy` or restart `ampx sandbox`) after the domain is attached so the new value takes effect.
+
+## 3. Cognito hosted UI domain
+
+Email verification uses **LINK style** (configured in `amplify/auth/resource.ts`). Cognito requires a hosted UI domain for link-style verification — without it, sign-up fails with:
+
+```
+There does not exist a valid user pool domain associated with the user pool
+```
+
+The backend adds a Cognito hosted domain automatically. The prefix must be globally unique per AWS region, so it's derived from `AWS_BRANCH` to avoid collisions across `main`, PR previews, and local sandboxes:
+
+```
+culturepass-<branch-slug>
+```
+
+For example, the `main` branch gets `culturepass-main` and a sandbox falls back to `culturepass-sandbox`. The slug is lowercased, has non-alphanumerics replaced with hyphens, and is truncated to 40 characters.
+
+No action is required for standard deploys — the prefix is set on every `pipeline-deploy`. If you use a custom hosted UI or OAuth flow, add `https://culturepass.au` to the app client's allowed callback and sign-out URLs in the Cognito console.
+
+## 4. Universal links
+
+Universal links let `https://culturepass.au/...` URLs open the native app when it's installed, and fall back to the web build otherwise. They're required for production share links — the `shareUrl` helper in `lib/share.ts` returns an `https://culturepass.au/...` URL in production standalone builds (instead of an Expo Go deep link) so a shared event or hub opens cleanly from Messages, Mail, or any browser.
+
+The web app serves the standard well-known files from `public/.well-known/` so iOS and Android can verify the association.
+
+### Supported path prefixes
+
+Only these path prefixes open the native app — everything else stays in the browser:
+
+- `/l/*` — short links
+- `/event/*` — event detail
+- `/hub/*` — hub profile
+- `/profile/*` — user profiles
+
+### iOS — Apple App Site Association
+
+`app.json` declares the associated domains:
+
+```json
+{
+  "ios": {
+    "associatedDomains": [
+      "applinks:culturepass.au",
+      "applinks:www.culturepass.au"
+    ]
+  }
+}
+```
+
+`public/.well-known/apple-app-site-association` declares which app handles which paths:
+
+```json
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "7GT3DTNP6H.au.com.culturepass.app",
+        "paths": ["/l/*", "/event/*", "/hub/*", "/profile/*"]
+      }
+    ]
+  }
+}
+```
+
+The `appID` is `<Apple Team ID>.<bundle identifier>`. Update both halves if either changes.
+
+### Android — asset links
+
+`app.json` declares `intentFilters` with `autoVerify: true` for the `culturepass.au` and `www.culturepass.au` hosts:
+
+```json
+{
+  "android": {
+    "intentFilters": [
+      {
+        "action": "VIEW",
+        "autoVerify": true,
+        "data": [
+          { "scheme": "https", "host": "culturepass.au", "pathPrefix": "/" },
+          { "scheme": "https", "host": "www.culturepass.au", "pathPrefix": "/" }
+        ],
+        "category": ["BROWSABLE", "DEFAULT"]
+      }
+    ]
+  }
+}
+```
+
+`public/.well-known/assetlinks.json` declares the **SHA-256 signing-certificate fingerprint** of the Android app that's allowed to handle those links:
+
+```json
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "au.com.culturepass.app",
+      "sha256_cert_fingerprints": [
+        "99:8F:9D:B0:14:2F:F5:83:6D:24:02:A6:DD:90:3C:0F:42:95:2F:7D:6F:84:63:71:1C:AC:1B:C9:E2:38:69:EC"
+      ]
+    }
+  }
+]
+```
+
+If you rotate the Android signing key (for example by switching to Play App Signing or rebuilding with a new keystore), update the fingerprint here or universal links silently stop verifying. Get the new fingerprint with:
+
+```bash
+keytool -list -v -keystore <your-keystore>.jks -alias <alias>
+```
+
+### Verification checklist
+
+- [ ] `https://culturepass.au/.well-known/apple-app-site-association` returns the JSON above with `Content-Type: application/json`.
+- [ ] `https://culturepass.au/.well-known/assetlinks.json` returns the JSON above.
+- [ ] iOS: open a `/event/<id>` link from Messages or Notes on a device with the app installed — it should open the app, not Safari.
+- [ ] Android: `adb shell pm get-app-links au.com.culturepass.app` reports `verified` for `culturepass.au`.
+
+## Checklist
+
+- [ ] `npm run build:web` succeeds locally
+- [ ] Amplify Hosting app created against the target branch, build is green
+- [ ] Stripe branch secrets set (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`)
+- [ ] Route 53 hosted zone created and 4 nameservers set at the `.au` registrar
+- [ ] Custom domain `culturepass.au` + `www` added in Amplify, status **Available**
+- [ ] Cognito hosted domain prefix matches the branch (auto-configured by `pipeline-deploy`)
+- [ ] iOS `associatedDomains` and `apple-app-site-association` deployed
+- [ ] Android `intentFilters` and `assetlinks.json` deployed with the current signing fingerprint
+- [ ] Shared links from the app open the native app on iOS and Android, and the web app on desktop

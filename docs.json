@@ -26,6 +26,12 @@
             "pages": [
               "design-system"
             ]
+          },
+          {
+            "group": "Operations",
+            "pages": [
+              "deployment"
+            ]
           }
         ]
       }
