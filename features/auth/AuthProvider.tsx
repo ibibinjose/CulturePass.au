@@ -35,12 +35,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.invalidateQueries({ queryKey: qk.myHubs });
     };
 
-    getAwsAuthUser().then((u) => {
-      if (!active) return;
-      setUser(u);
-      setDataSignedIn(!!u);
-      setInitializing(false);
-    });
+    getAwsAuthUser()
+      .then((u) => {
+        if (!active) return;
+        setUser(u);              // 1. set user first
+        setDataSignedIn(!!u);   // 2. update data auth mode
+        setInitializing(false); // 3. clear loading gate last
+      })
+      .catch((e) => {
+        console.error("[AuthProvider] mount session check failed:", e);
+        if (!active) return;
+        setDataSignedIn(false);
+        setInitializing(false); // still clear loading gate so app renders
+      });
 
     // Cognito has no PASSWORD_RECOVERY event (reset is code-based), so
     // isRecovering stays false on AWS.

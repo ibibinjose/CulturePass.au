@@ -67,7 +67,7 @@ export default function SignUpScreen() {
       notice={notice}
       footer={
         <Link href="/sign-in" asChild>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}>
             <Text variant="label">
               Already have an account? <Text variant="label" tone="pink">Sign in</Text>
             </Text>
@@ -78,7 +78,7 @@ export default function SignUpScreen() {
       <Field label="Full name" error={errors.full_name}>
         <Input
           value={form.full_name}
-          onChangeText={(full_name) => set({ full_name })}
+          onChangeText={(full_name) => { setBanner(null); set({ full_name }); }}
           placeholder="Your name"
           autoComplete="name"
           invalid={!!errors.full_name}
@@ -87,7 +87,7 @@ export default function SignUpScreen() {
       <Field label="Email" error={errors.email}>
         <Input
           value={form.email}
-          onChangeText={(email) => set({ email })}
+          onChangeText={(email) => { setBanner(null); set({ email }); }}
           placeholder="you@example.com"
           autoCapitalize="none"
           autoComplete="email"
@@ -98,7 +98,7 @@ export default function SignUpScreen() {
       <Field label="Password" error={errors.password} helper="At least 8 characters">
         <PasswordInput
           value={form.password}
-          onChangeText={(password) => set({ password })}
+          onChangeText={(password) => { setBanner(null); set({ password }); }}
           placeholder="Create a password"
           autoComplete="new-password"
           invalid={!!errors.password}
@@ -107,7 +107,7 @@ export default function SignUpScreen() {
       <Field label="Confirm password" error={errors.confirm_password}>
         <PasswordInput
           value={form.confirm_password}
-          onChangeText={(confirm_password) => set({ confirm_password })}
+          onChangeText={(confirm_password) => { setBanner(null); set({ confirm_password }); }}
           placeholder="Re-enter your password"
           autoComplete="new-password"
           invalid={!!errors.confirm_password}

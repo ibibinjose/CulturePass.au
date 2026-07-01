@@ -52,23 +52,44 @@ export default function CreateEventScreen() {
   const [banner, setBanner] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { data: myHubs } = useMyHubs();
+  const { data: myHubs, isLoading: hubsLoading } = useMyHubs();
   const { isAuthenticated } = useAuth();
 
-  // Auto-select hosting page
+  // The set of pages the signed-in user actually owns. Events can only be
+  // hosted under one of these — never someone else's page.
+  const ownedHubIds = useMemo(
+    () => new Set((myHubs ?? []).map((h) => h.id)),
+    [myHubs],
+  );
+
+  // Auto-select the hosting page, but only ever to a hub the user owns.
   useEffect(() => {
-    if (hubId) {
+    if (!myHubs) return;
+    if (hubId && ownedHubIds.has(hubId)) {
       update({ hub_id: hubId });
-    } else if (!draft.hub_id && myHubs && myHubs.length === 1 && myHubs[0]) {
+    } else if (!draft.hub_id && myHubs.length === 1 && myHubs[0]) {
       update({ hub_id: myHubs[0].id });
+    } else if (draft.hub_id && !ownedHubIds.has(draft.hub_id)) {
+      // A persisted draft may reference a page the user no longer owns.
+      update({ hub_id: "" });
     }
-  }, [hubId, myHubs, draft.hub_id, update]);
+  }, [hubId, myHubs, ownedHubIds, draft.hub_id, update]);
 
   const canContinue = useMemo(() => stepIsValid(step, draft), [step, draft]);
   const isLast = step === EVENT_WIZARD_STEPS.length - 1;
 
+  // You can't host an event without a page. Signed-in users who own no pages
+  // are sent to create one first (login itself is enforced by the create layout).
+  const ownsNoHubs = !hubsLoading && !!myHubs && myHubs.length === 0;
+
   async function submit(publish: boolean) {
     setBanner(null);
+
+    // Permission guard: only publish under a page the user owns.
+    if (!draft.hub_id || !ownedHubIds.has(draft.hub_id)) {
+      setBanner("Choose one of your pages to host this event.");
+      return;
+    }
 
     // Validate draft before submission
     const schema = publish ? eventPublishSchema : eventDraftSchema;
@@ -121,6 +142,31 @@ export default function CreateEventScreen() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (ownsNoHubs) {
+    return (
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <View className="mb-6 flex-row items-center justify-between">
+          <BackButton onPress={() => router.back()} />
+          <Text variant="overline" tone="pink">
+            New Event
+          </Text>
+        </View>
+        <Card className="gap-3 border border-linen bg-card p-5">
+          <Text variant="subheading">Create a page first</Text>
+          <Text variant="caption" tone="muted">
+            Events are published from a page you own. Create a page for your community,
+            organisation, venue or practice, then host events from it.
+          </Text>
+          <Button
+            label="Create a page"
+            className="mt-2 self-start"
+            onPress={() => router.replace("/create/hub")}
+          />
+        </Card>
+      </Screen>
+    );
   }
 
   return (

@@ -16,6 +16,7 @@ import {
   Toggle,
 } from "@/components/ui";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
+import { RequireAuth } from "@/features/auth/RequireAuth";
 import { profileSchema } from "@/lib/validation/profile";
 import { pruneLinks } from "@/lib/social";
 import {
@@ -57,6 +58,16 @@ const EMPTY_FORM: ProfileForm = {
 };
 
 export default function EditProfileScreen() {
+  // Only signed-in users can edit their profile — this is always the caller's
+  // own profile, so sign-in is the only gate needed.
+  return (
+    <RequireAuth>
+      <EditProfileScreenInner />
+    </RequireAuth>
+  );
+}
+
+function EditProfileScreenInner() {
   const router = useRouter();
   const { data: profile, isLoading } = useMyProfile();
   const updateMyProfile = useUpdateMyProfile();

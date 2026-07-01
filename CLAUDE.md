@@ -16,12 +16,17 @@ npm run web              # Expo web (http://localhost:8081) — primary dev targ
 npm run ios | android    # native
 npm run typecheck        # tsc --noEmit  — must stay clean
 npm run lint             # eslint . (flat config: eslint.config.js)
+npm run test             # vitest run (jsdom) — unit + property tests
+npm run test:coverage    # vitest run --coverage
 npm run migrate:dynamo:dry  # preview Supabase → DynamoDB migration row counts
 npm run migrate:dynamo      # run the full data migration
 ```
 
-There is **no test runner** (no jest/vitest). The verification gates are `npm run typecheck` and
-`npm run lint`; both are green and must stay green before a change is considered done.
+The verification gates are `npm run typecheck`, `npm run lint`, and `npm run test` (Vitest);
+all three must stay green before a change is considered done. Tests run under jsdom with
+`react-native` aliased to `react-native-web` — see the "Testing" section of `Assistant.md` for
+the setup and its gotchas (`vitest.config.ts`, `vitest.setup.ts`). `passWithNoTests` is on, so an
+empty suite is green.
 
 ## Architecture
 
@@ -102,6 +107,13 @@ Session; the `stripeWebhook` Lambda Function URL is the **source of truth** that
     `lib/hubImages.ts` to read/write typed entries: `type: "logo"` for the square icon, `type:
     "cover"` for the wide top image.
 
+12. **Amplify Gen 2 / Cognito traps** — see the **"Amplify Gen 2 / Cognito gotchas"** section of
+    `Assistant.md` before touching auth or `lib/aws/config.ts`. It covers the `signedIn` Hub
+    event timing race (use `waitForAuth` after `signIn`), `authMessage` code mapping via
+    `error.name` (never `error.message`, never raw codes in UI), the dual-source config ambiguity
+    (`EXPO_PUBLIC_*` wins, else `amplify_outputs.json`), and the guest identity-pool fallback gap
+    (missing `identityPoolId` → guest reads fail with "No federated jwt").
+
 ## AWS deployment workflow
 
 ```bash
@@ -126,9 +138,39 @@ eas build --platform all --profile production
 `EXPO_PUBLIC_COGNITO_APP_CLIENT_ID`, `EXPO_PUBLIC_COGNITO_IDENTITY_POOL_ID`,
 `EXPO_PUBLIC_APPSYNC_ENDPOINT`, `EXPO_PUBLIC_S3_BUCKET`.
 
+**Config source of truth (`sandbox` → `amplify_outputs.json` → `.env`).** `npx ampx sandbox`
+(and the Amplify CI backend phase) regenerate **`amplify_outputs.json`**, the canonical runtime
+config. `node scripts/aws-env-from-outputs.mjs` copies those values into `.env` as
+`EXPO_PUBLIC_*` vars. At runtime `lib/aws/config.ts` prefers the `EXPO_PUBLIC_*` var and falls
+back to `amplify_outputs.json` per field:
+
+- **Rely on `amplify_outputs.json`** for local dev right after a sandbox deploy — no `.env`
+  needed (`model_introspection` is only sourced from here regardless).
+- **Set `EXPO_PUBLIC_*` vars** for EAS builds and any deploy that must pin a specific backend
+  independent of whatever outputs file is bundled (they take precedence).
+- **Verify which source `configureAmplify()` used:** an empty env var silently defers to the
+  outputs file, so check both. `configureAmplify()` `console.error`s and returns `false` when
+  `userPoolId`/`userPoolClientId` are empty after *both* sources; it `console.warn`s when
+  `identityPoolId` is missing (guest reads will fail). Log/inspect the resolved `userPoolId` to
+  confirm you're pointed at the intended pool.
+
 ## Definition of done
 
-- `npm run typecheck` clean, `npm run lint` clean.
-- New schema changes reflected in `amplify/data/resource.ts` + a sandbox redeploy.
-- UI uses existing primitives + tokens; cultural surfaces respected.
-- Outward/irreversible actions (pipeline-deploy, EAS build/submit) confirmed first.
+Always: `npm run typecheck` clean, `npm run lint` clean, `npx vitest run` green; UI uses existing
+primitives + tokens; cultural surfaces respected; outward/irreversible actions (pipeline-deploy,
+EAS build/submit, data migration) confirmed first. Then, per change type:
+
+- **Schema change** — updated in `amplify/data/resource.ts`; `npx ampx sandbox` redeployed and
+  `amplify_outputs.json` refreshed; mapper functions in the affected `features/*/api.ts` updated
+  for any camelCase↔snake_case field changes; `collectAll()` still used for lists.
+- **Auth change** — no Cognito code appears raw in UI (goes through `authMessage`, mapped by
+  `error.name`); `signedIn` timing handled (`waitForAuth` after sign-in); guest vs userPool data
+  auth mode still correct; see the Amplify Gen 2 / Cognito gotchas in `Assistant.md`.
+- **UI-only change** — keyboard-avoiding + safe-area verified on iOS simulator and Android
+  emulator; all interactive elements meet the 44 pt / 48 dp touch target (size tokens or
+  `hitSlop`); reduced-motion respected for animation.
+- **Data-fetch change** — a `Skeleton`/loading state added for the async fetch (no bare spinners
+  or "Loading…" text); errors mapped to user-safe copy via `lib/utils/errorMessage.ts`, never a
+  raw `Error.message`.
+- **Documentation-only change** — `Assistant.md` and `CLAUDE.md` kept in sync; no code or config
+  touched; `docs/SCHEMA.md` updated if the data model was described.

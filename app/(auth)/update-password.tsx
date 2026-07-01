@@ -67,7 +67,7 @@ export default function UpdatePasswordScreen() {
         footer={null}
       >
         <Link href="/sign-in" asChild>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}>
             <Button label="Sign in" />
           </Pressable>
         </Link>
@@ -82,7 +82,7 @@ export default function UpdatePasswordScreen() {
       error={banner}
       footer={
         <Link href="/reset-password" asChild>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}>
             <Text variant="label" tone="pink">
               Resend code
             </Text>
@@ -93,7 +93,7 @@ export default function UpdatePasswordScreen() {
       <Field label="Email" error={errors.email}>
         <Input
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(t) => { setBanner(null); setEmail(t); }}
           placeholder="you@example.com"
           autoCapitalize="none"
           autoComplete="email"
@@ -104,7 +104,7 @@ export default function UpdatePasswordScreen() {
       <Field label="Confirmation code" error={errors.code} helper="Check your email for the 6-digit code">
         <Input
           value={code}
-          onChangeText={setCode}
+          onChangeText={(t) => { setBanner(null); setCode(t); }}
           placeholder="123456"
           keyboardType="number-pad"
           autoComplete="one-time-code"
@@ -114,7 +114,7 @@ export default function UpdatePasswordScreen() {
       <Field label="New password" error={errors.password} helper="At least 8 characters">
         <PasswordInput
           value={form.password}
-          onChangeText={(password) => set({ password })}
+          onChangeText={(password) => { setBanner(null); set({ password }); }}
           placeholder="New password"
           autoComplete="new-password"
           invalid={!!errors.password}
@@ -123,7 +123,7 @@ export default function UpdatePasswordScreen() {
       <Field label="Confirm new password" error={errors.confirm_password}>
         <PasswordInput
           value={form.confirm_password}
-          onChangeText={(confirm_password) => set({ confirm_password })}
+          onChangeText={(confirm_password) => { setBanner(null); set({ confirm_password }); }}
           placeholder="Re-enter new password"
           autoComplete="new-password"
           invalid={!!errors.confirm_password}

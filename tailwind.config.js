@@ -188,6 +188,7 @@ module.exports = {
         content: "1180px", // web max content width
         prose: "660px", // readable text column
         form: "540px", // creation-flow column
+        wide: "1200px", // wide breakpoint for Screen maxWidth prop
       },
       boxShadow: {
         // Soft, low, warm-tinted shadows. Editorial cards lift a little more.

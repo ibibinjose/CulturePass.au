@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Pressable } from "react-native";
 import { Link, useRouter } from "expo-router";
+
+import { useAuth } from "@/features/auth/AuthProvider";
 
 import {
   Button,
@@ -13,9 +15,49 @@ import { AuthShell } from "@/features/auth/AuthShell";
 import { useSignIn } from "@/features/auth/api";
 import { signInSchema } from "@/lib/validation/auth";
 
+export const COGNITO_MESSAGES: Record<string, string> = {
+  NotAuthorizedException: "That email or password isn't right.",
+  UserNotConfirmedException: "Please confirm your email first — check your inbox.",
+  UsernameExistsException: "An account with that email already exists.",
+  CodeMismatchException: "That code isn't right — please check and try again.",
+  ExpiredCodeException: "That code has expired — please request a new one.",
+  LimitExceededException: "Too many attempts — please wait a few minutes and try again.",
+  InvalidPasswordException: "Password does not meet the requirements.",
+};
+
+export function authMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return COGNITO_MESSAGES[err.name] ?? err.message;
+  }
+  return "Something went wrong.";
+}
+
+/** Poll until isAuthenticated is true or the timeout elapses. */
+export async function waitForAuth(
+  isAuthenticated: () => boolean,
+  timeoutMs = 3000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  return new Promise((resolve) => {
+    const check = () => {
+      if (isAuthenticated() || Date.now() >= deadline) {
+        resolve();
+      } else {
+        setTimeout(check, 50);
+      }
+    };
+    check();
+  });
+}
+
 export default function SignInScreen() {
   const router = useRouter();
   const signIn = useSignIn();
+  const { isAuthenticated } = useAuth();
+  const isAuthRef = useRef(isAuthenticated);
+  useEffect(() => {
+    isAuthRef.current = isAuthenticated;
+  }, [isAuthenticated]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
@@ -34,6 +76,7 @@ export default function SignInScreen() {
     setErrors({});
     try {
       await signIn.mutateAsync(parsed.data);
+      await waitForAuth(() => isAuthRef.current);
       router.replace("/");
     } catch (err) {
       setBanner(authMessage(err));
@@ -48,14 +91,14 @@ export default function SignInScreen() {
       footer={
         <>
           <Link href="/reset-password" asChild>
-            <Pressable hitSlop={8}>
+            <Pressable hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}>
               <Text variant="label" tone="muted">
                 Forgot your password?
               </Text>
             </Pressable>
           </Link>
           <Link href="/sign-up" asChild>
-            <Pressable hitSlop={8}>
+            <Pressable hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}>
               <Text variant="label">
                 New here? <Text variant="label" tone="pink">Create an account</Text>
               </Text>
@@ -67,7 +110,7 @@ export default function SignInScreen() {
       <Field label="Email" error={errors.email}>
         <Input
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(t) => { setBanner(null); setEmail(t); }}
           placeholder="you@example.com"
           autoCapitalize="none"
           autoComplete="email"
@@ -80,7 +123,7 @@ export default function SignInScreen() {
       <Field label="Password" error={errors.password}>
         <PasswordInput
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(t) => { setBanner(null); setPassword(t); }}
           placeholder="Your password"
           invalid={!!errors.password}
           onSubmitEditing={submit}
@@ -90,11 +133,4 @@ export default function SignInScreen() {
       <Button label="Sign in" loading={signIn.isPending} onPress={submit} />
     </AuthShell>
   );
-}
-
-export function authMessage(err: unknown): string {
-  const msg = err instanceof Error ? err.message : "Something went wrong.";
-  if (/invalid login credentials/i.test(msg)) return "That email or password isn’t right.";
-  if (/email not confirmed/i.test(msg)) return "Please confirm your email first — check your inbox.";
-  return msg;
 }
