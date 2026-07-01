@@ -14,7 +14,7 @@ interface ScreenProps extends ScrollViewProps {
   /** Scrollable by default; set false for fixed layouts (e.g. maps). */
   scroll?: boolean;
   /** Centre + constrain content width on web for a calm reading measure. */
-  maxWidth?: "content" | "prose" | "form" | "none";
+  maxWidth?: "content" | "prose" | "form" | "wide" | "none";
   /** Page background: cream paper (default) or the rich night surface. */
   tone?: "paper" | "night";
   edges?: readonly Edge[];
@@ -23,13 +23,14 @@ interface ScreenProps extends ScrollViewProps {
   children: ReactNode;
 }
 
-const MOBILE_EDGES: Edge[] = [];
-const DESKTOP_EDGES: Edge[] = ["bottom"];
+const MOBILE_EDGES: Edge[] = ["left", "right"];
+const DESKTOP_EDGES: Edge[] = ["bottom", "left", "right"];
 
 const MAX: Record<NonNullable<ScreenProps["maxWidth"]>, string> = {
   content: "max-w-content",
   prose: "max-w-prose",
   form: "max-w-form",
+  wide: "max-w-wide",
   none: "",
 };
 
@@ -62,10 +63,10 @@ export function Screen({
 
   return (
     <SafeAreaView edges={resolvedEdges} className={cn("flex-1", bg, className)}>
-      {/* Keep inputs visible above the keyboard on iOS; Android uses adjustResize. */}
+      {/* Keep inputs visible above the keyboard: padding on iOS, height on Android, no-op on web. */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : Platform.OS === "android" ? "height" : undefined}
       >
         {scroll ? (
           <ScrollView

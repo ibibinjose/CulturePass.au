@@ -12,9 +12,20 @@ import {
 import { eventDraftSchema, eventPublishSchema } from "@/lib/validation/event";
 import { useEvent, useUpdateEvent, useDeleteEvent } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
+import { RequireAuth } from "@/features/auth/RequireAuth";
 import { EventForm, type EventFormValues, type EventFormAction } from "@/features/events/EventForm";
 
 export default function EditEventScreen() {
+  // Sign-in is required to edit; the inner screen additionally checks that the
+  // signed-in profile owns the event's hub before allowing edits or deletion.
+  return (
+    <RequireAuth>
+      <EditEventScreenInner />
+    </RequireAuth>
+  );
+}
+
+function EditEventScreenInner() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: event, isLoading } = useEvent(id ?? "");

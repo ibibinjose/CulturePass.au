@@ -53,7 +53,7 @@ export default function ResetPasswordScreen() {
       }
       footer={
         <Link href="/sign-in" asChild>
-          <Pressable hitSlop={8}>
+          <Pressable hitSlop={{ top: 12, bottom: 12, left: 16, right: 16 }}>
             <Text variant="label" tone="muted">
               Back to sign in
             </Text>
@@ -66,7 +66,7 @@ export default function ResetPasswordScreen() {
           <Field label="Email" error={error}>
             <Input
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => { setBanner(null); setEmail(t); }}
               placeholder="you@example.com"
               autoCapitalize="none"
               autoComplete="email"

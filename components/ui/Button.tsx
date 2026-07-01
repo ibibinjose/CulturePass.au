@@ -43,7 +43,7 @@ const SPINNER: Record<Variant, string> = {
 
 const SIZE: Record<Size, string> = {
   sm: "h-8 px-3 rounded-lg",
-  md: "h-10 px-4 rounded-xl",
+  md: "h-11 web:h-10 px-4 rounded-xl",
   lg: "h-12 px-5.5 rounded-xl",
 };
 

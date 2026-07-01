@@ -170,6 +170,123 @@ warm-black `ink`; accents `ochre`, `eucalyptus`, `terracotta`). Tokens live in
 
 ---
 
+## Amplify Gen 2 / Cognito gotchas
+
+These are the auth/config traps that are easy to trip on and expensive to debug.
+
+1. **`signedIn` Hub event timing race.** After `signIn.mutateAsync()` resolves, the
+   Amplify Auth **Hub `signedIn` event** has not necessarily fired yet, so
+   `AuthProvider`'s `isAuthenticated` can still be `false` for a tick. Navigating with
+   `router.replace("/")` immediately can bounce the user straight back to `/sign-in` via
+   `RequireAuth`. The fix in `app/(auth)/sign-in.tsx` is the `waitForAuth()` polling helper:
+   after the mutation resolves, `await waitForAuth(() => isAuthRef.current)` (3 s cap) before
+   navigating. `isAuthRef` mirrors `isAuthenticated` through a `useEffect` so the poll reads a
+   live value, not a stale closure. On mount, `AuthProvider` calls `setUser` →
+   `setDataSignedIn` → `setInitializing(false)` in that order, and its `getAwsAuthUser()`
+   is `.catch()`-guarded so a thrown session check is treated as signed-out, never a crash.
+
+2. **`authMessage` maps Cognito codes via `error.name`, never `error.message`.** Cognito
+   throws `Error` subclasses whose **`name`** is the stable, locale-independent code
+   (`NotAuthorizedException`, …). `error.message` is human/English prose that changes between
+   SDK versions — matching on it is fragile and leaks raw SDK text into the UI. `authMessage`
+   (exported from `app/(auth)/sign-in.tsx`) looks up `COGNITO_MESSAGES[err.name]`, falls back
+   to `err.message` for unmapped `Error`s, and returns `"Something went wrong."` for non-`Error`
+   throws. See the Cognito error code table below. **No Cognito code should ever appear raw in
+   the UI.**
+
+3. **Dual-source config ambiguity (`EXPO_PUBLIC_*` vs `amplify_outputs.json`).**
+   `lib/aws/config.ts` resolves each field via `resolve(envValue, section, field)`:
+   the `EXPO_PUBLIC_*` env var wins when non-empty, otherwise it falls back to the matching
+   field in `amplify_outputs.json`. This means a stale/empty `.env` silently changes which
+   backend the app talks to. When something points at the wrong pool, check **both** sources —
+   an empty env var does not error, it just defers to the outputs file. `configureAmplify()`
+   returns `false` and `console.error`s when `userPoolId`/`userPoolClientId` are empty after
+   *both* sources are consulted. In `__DEV__` it re-runs `Amplify.configure()` whenever the
+   resolved-field fingerprint changes (hot-reload safe); in production the `configured` guard
+   makes it a one-shot.
+
+4. **Guest identity pool fallback gap.** Public/signed-out screens read AppSync through the
+   Identity Pool **unauthenticated (IAM) role** so `allow.guest().to(["read"])` applies.
+   `getDataAuthMode()` returns `"identityPool"` when signed-out and `"userPool"` when signed-in;
+   `AuthProvider` keeps the `dataSignedIn` flag current via `setDataSignedIn`. If
+   `identityPoolId` is missing from *both* config sources, `configureAmplify()` logs a warning
+   and omits `allowGuestAccess` — guest reads then fail with **"No federated jwt"** and public
+   pages render zeros. If public content is empty but authenticated content works, suspect a
+   missing `identityPoolId`.
+
+### Cognito error codes handled by `authMessage`
+
+Matching is on **`error.name`** (the code), **not** `error.message`. All seven live in
+`COGNITO_MESSAGES` in `app/(auth)/sign-in.tsx`:
+
+| `error.name` (code)          | User-facing message                                            |
+| ---------------------------- | -------------------------------------------------------------- |
+| `NotAuthorizedException`     | That email or password isn't right.                            |
+| `UserNotConfirmedException`  | Please confirm your email first — check your inbox.            |
+| `UsernameExistsException`    | An account with that email already exists.                     |
+| `CodeMismatchException`      | That code isn't right — please check and try again.            |
+| `ExpiredCodeException`       | That code has expired — please request a new one.              |
+| `LimitExceededException`     | Too many attempts — please wait a few minutes and try again.   |
+| `InvalidPasswordException`   | Password does not meet the requirements.                       |
+
+Unmapped `Error` → `error.message`. Non-`Error` throw → `"Something went wrong."`
+
+---
+
+## Testing
+
+There was historically **no test runner** in this repo (typecheck + lint were the only
+gates). Unit/property tests now run on **Vitest** (jsdom). The wiring lives in three files:
+
+- `vitest.config.ts` — `jsdom` environment, `globals: true`, `@` path alias, and the key
+  piece: **`resolve.alias` maps `react-native` → `react-native-web`** so RN components import
+  under jsdom (React Native ships Flow-typed source that esbuild/jsdom can't parse). `esbuild.jsx`
+  is set to `"automatic"` to match the app's runtime (no `import React` in source).
+- `vitest.setup.ts` — patches Node's `Module._resolveFilename` to redirect `react-native` →
+  `react-native-web` for **externalized CJS deps** (e.g. `@testing-library/react-native`), since
+  the vite alias only reaches modules inside vite's transform graph. Also mocks
+  `react-native-reanimated`, sets `IS_REACT_ACT_ENVIRONMENT`, and silences known jsdom-only noise.
+- `types/react-test-renderer.d.ts` — minimal ambient types (the package ships none).
+
+**Component tests** render with `react-test-renderer` directly and query the tree by the
+`testID` prop (`root.findAll(n => n.props.testID === id)`). Note: `@testing-library/react-native`'s
+`getByTestId` does **not** work under the RNW alias — RNW maps `testID` onto DOM `data-testid`,
+so RNTL's host-node `testID` lookup finds nothing. See `features/auth/RequireAuth.test.tsx`.
+
+```bash
+npm run test            # vitest run
+npm run test:coverage   # vitest run --coverage
+npx vitest run --reporter=dot   # terse output for CI
+```
+
+CI: run `npx vitest run --reporter=dot` alongside `npm run typecheck` and `npm run lint`.
+`passWithNoTests: true` means an empty suite is green, not an error.
+
+### Property-based testing
+
+**PBT** asserts a *property* that must hold across a large space of generated inputs, instead
+of hand-picking examples. The runner (`fast-check`) generates hundreds of cases, and on failure
+*shrinks* to the smallest reproducing input. Apply PBT to **pure functions, validation schemas,
+data mappers, and auth-message mapping** — anywhere correctness is a rule over an input space
+rather than one example. Keep effectful/UI-heavy code in example-based tests.
+
+Recommended library: **`fast-check`** (already a dev dependency). Two patterns that fit this codebase:
+
+1. **Exhaustive/parametric dispatch — `authMessage`.** Feed
+   `fc.constantFrom(...Object.keys(COGNITO_MESSAGES))` as the `error.name` plus an arbitrary
+   `fc.string()` as `error.message`, and assert the output equals the mapped string regardless of
+   message — proving the message text never influences the mapping. A second property covers the
+   fallbacks: arbitrary unmapped `Error` → `error.message`; arbitrary non-`Error` → `"Something
+   went wrong."`
+
+2. **Total pure function over a small domain — `getDataAuthMode` / decision tables.** Use
+   `fc.boolean()` for `dataSignedIn` and assert `getDataAuthMode()` returns `"userPool"` when
+   `true`, `"identityPool"` when `false`. The same shape covers `RequireAuth`'s
+   `fc.record({ initializing, isAuthenticated })` decision table and `Screen`'s `maxWidth` →
+   Tailwind-class mapping.
+
+---
+
 ## AWS deployment workflow
 
 ```bash
@@ -212,7 +329,11 @@ Required vars: `EXPO_PUBLIC_BACKEND=aws`, `EXPO_PUBLIC_AWS_REGION`,
 
 ## Definition of done
 
-- `npm run typecheck` clean, `npm run lint` clean.
+- `npm run typecheck` clean, `npm run lint` clean, `npx vitest run` green.
 - Schema changes reflected in `amplify/data/resource.ts` + sandbox redeploy + `amplify_outputs.json` refreshed.
 - UI uses existing primitives + tokens; cultural surfaces respected.
 - Outward/irreversible actions (pipeline-deploy, EAS build/submit, data migration) confirmed first.
+- **No Cognito error code appears raw in the UI** — everything user-facing goes through `authMessage`.
+- **Keyboard-avoiding and safe-area handling verified on iOS simulator and Android emulator** for any new screen.
+- **All new interactive elements meet the 44 pt / 48 dp minimum touch target** (size tokens or `hitSlop`).
+- **Skeleton or loading state added for any new async data fetch** — no bare spinners or "Loading…" text.

@@ -1,5 +1,12 @@
-import { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View, type ViewProps } from "react-native";
+import { useEffect } from "react";
+import { StyleSheet, View, type ViewProps } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { cn } from "@/lib/utils/cn";
 import { colors } from "@/lib/theme";
 import { useReducedMotion } from "@/lib/a11y";
@@ -9,32 +16,38 @@ interface SkeletonProps extends ViewProps {
 }
 
 /**
- * Content-shaped loading placeholder. A warm `sand` block with a gentle pulse
- * between sand and linen (held static under Reduce Motion). Compose several to
+ * Content-shaped loading placeholder. A warm `linen` block with a gentle pulse
+ * overlay in `sand` (held static under Reduce Motion). Compose several to
  * mirror the layout that's loading instead of showing a bare spinner — this
  * preserves page structure and feels faster.
  *
+ * Shimmer: 1 200 ms cycle — 600 ms fade in + 600 ms fade out, infinite.
  * Sizing/shape come from `className` (e.g. `h-4 w-2/3 rounded`). Hidden from
  * assistive tech, since it conveys no real content.
  */
 export function Skeleton({ className, style, ...rest }: SkeletonProps) {
   const reduced = useReducedMotion();
-  const pulse = useRef(new Animated.Value(0.45)).current;
+  const opacity = useSharedValue(reduced ? 0.6 : 0);
 
   useEffect(() => {
     if (reduced) {
-      pulse.setValue(0.6);
+      opacity.value = 0.6;
       return;
     }
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.45, duration: 700, useNativeDriver: true }),
-      ]),
+    // 1 200 ms cycle: 600 ms fade-in then 600 ms fade-out, repeating indefinitely.
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 600 }),
+        withTiming(0, { duration: 600 }),
+      ),
+      -1,
+      false,
     );
-    loop.start();
-    return () => loop.stop();
-  }, [pulse, reduced]);
+  }, [opacity, reduced]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   return (
     <View
@@ -42,11 +55,11 @@ export function Skeleton({ className, style, ...rest }: SkeletonProps) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={style}
-      className={cn("overflow-hidden rounded-lg bg-sand", className)}
+      className={cn("overflow-hidden rounded-lg bg-linen", className)}
       {...rest}
     >
       <Animated.View
-        style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.linen, opacity: pulse }]}
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.sand }, animatedStyle]}
       />
     </View>
   );
