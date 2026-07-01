@@ -1,18 +1,18 @@
 ---
 title: "Quickstart: run CulturePass locally"
-description: "Install dependencies, configure your env, boot the local Supabase stack, and run the CulturePass Expo app on web, iOS, or Android."
+description: "Install dependencies, configure your env, deploy an Amplify sandbox, and run the CulturePass Expo app on web, iOS, or Android."
 ---
 
-This page walks you through getting a local CulturePass environment running end-to-end: install dependencies, configure environment variables, boot the Supabase stack, and launch the app.
+This page walks you through getting a local CulturePass environment running end-to-end: install dependencies, deploy a personal AWS Amplify sandbox, wire the generated outputs into your `.env`, and launch the app.
 
 ## Prerequisites
 
-Install these before you start:
+Install and configure these before you start:
 
 - **Node.js** 20 or newer.
 - **npm** (ships with Node).
-- **Supabase CLI** — used to run a local Postgres + Auth + Storage stack and to generate database types.
-- **Docker** — the Supabase CLI uses Docker to run the local stack.
+- **AWS CLI**, signed in with a profile that can deploy CloudFormation, Cognito, AppSync, DynamoDB, S3, and Lambda. The backend defaults to the `ap-southeast-2` region.
+- **AWS Amplify Gen 2 CLI** — invoked as `npx ampx` from the repo, no global install needed.
 - **Expo tooling** for the platform you want to target:
   - Web works with just a modern browser.
   - iOS requires macOS with Xcode installed.
@@ -26,35 +26,56 @@ From the repo root:
 npm install
 ```
 
-## 2. Configure environment
+## 2. Deploy a personal Amplify sandbox
 
-Copy the example file and fill in your Supabase credentials:
+Each contributor deploys their own isolated cloud sandbox — Cognito user pool, AppSync API, DynamoDB tables, S3 bucket, and Lambdas — using Amplify Gen 2:
+
+```bash
+AWS_PROFILE=your-aws-profile npx ampx sandbox
+```
+
+The first run provisions the stack and takes several minutes. Leave the command running; it watches the `amplify/` directory and redeploys on save. When the stack is up, it writes `amplify_outputs.json` to the repo root with the IDs, endpoints, and bucket name the client needs.
+
+If checkout flows are in scope for what you're working on, set the Stripe secrets on the sandbox (they're never exposed to the client bundle):
+
+```bash
+npx ampx sandbox secret set STRIPE_SECRET_KEY
+npx ampx sandbox secret set STRIPE_WEBHOOK_SECRET
+```
+
+## 3. Configure environment
+
+Copy the example file and populate the AWS values from `amplify_outputs.json`:
 
 ```bash
 cp .env.example .env
+node scripts/aws-env-from-outputs.mjs
 ```
 
-For local development, the Supabase URL and anon key are printed by `supabase start` (see below). For a deployed environment, use the credentials from your Supabase project dashboard.
+`scripts/aws-env-from-outputs.mjs` reads `amplify_outputs.json` and fills in the `EXPO_PUBLIC_*` variables in `.env` — region, Cognito user pool and app client IDs, Cognito identity pool ID, AppSync GraphQL endpoint, and the S3 bucket name. The backend selector is fixed:
 
-## 3. Start the local Supabase stack
+```env
+EXPO_PUBLIC_BACKEND=aws
+```
 
-The Supabase CLI runs Postgres, Auth, Storage, and Studio in Docker:
+Add an optional `EXPO_PUBLIC_MAPBOX_TOKEN` if you're working on map surfaces.
+
+## 4. Seed test data (optional)
+
+The `dev-seed` Lambda creates a buyer Profile plus a published paid Event so the Stripe purchase flow can be exercised end-to-end. Sign up an account in the app first to get a Cognito sub, then invoke the function:
 
 ```bash
-supabase start
+aws lambda invoke \
+  --function-name <dev-seed-function-name> \
+  --payload '{"buyerSub":"<your-cognito-sub>"}' \
+  out.json
 ```
 
-The first run pulls Docker images and takes a few minutes. When it finishes, the CLI prints local URLs and keys — copy the `API URL` and `anon key` into your `.env`.
+The deployed function name is printed by `npx ampx sandbox` and also appears in `amplify_outputs.json`.
 
-Apply migrations and seed reference data (Australian states and NSW councils):
+The `post-confirmation` Lambda automatically creates a Profile for every newly confirmed Cognito user, so most local sign-ups don't need any extra seeding.
 
-```bash
-supabase db reset
-```
-
-Re-run `supabase db reset` any time you pull new migrations or want a clean local database.
-
-## 4. Run the app
+## 5. Run the app
 
 Pick a target platform:
 
@@ -66,15 +87,17 @@ npm run android    # Android emulator or connected device
 
 `npm run web` is the fastest feedback loop for most UI work.
 
-## 5. Regenerate database types
+## Migrating an existing dataset
 
-After changing the database schema (adding a migration, altering a table), regenerate the TypeScript types so the app stays in sync:
+If you're moving an existing CulturePass dataset from the legacy Supabase Postgres database into DynamoDB, run the one-time cutover script after the sandbox is up:
 
 ```bash
-npm run db:types
+node scripts/migrate-supabase-to-dynamo.mjs
+# or, to preview without writing:
+DRY_RUN=1 node scripts/migrate-supabase-to-dynamo.mjs
 ```
 
-This runs `supabase gen types typescript --local` and writes the result into the app's Supabase types module. Commit the regenerated file alongside the migration that caused the change.
+The script walks the models in dependency order (reference data → profiles → hubs → events → tickets → messages) and writes through AppSync with IAM auth. This is a one-shot migration, not part of normal local dev.
 
 ## Useful scripts
 
@@ -83,11 +106,10 @@ This runs `supabase gen types typescript --local` and writes the result into the
 | `npm run web` / `ios` / `android` | Start the Expo app on the chosen platform. |
 | `npm run lint` | Run ESLint across the codebase. |
 | `npm run typecheck` | Run `tsc --noEmit`. |
-| `npm run db:start` | Start the local Supabase stack. |
-| `npm run db:reset` | Apply migrations and seed the local database. |
-| `npm run db:types` | Regenerate TypeScript types from the local schema. |
-| `npm run db:diff` | Diff local schema against migrations. |
-| `npm run functions:serve` | Run Supabase Edge Functions locally. |
+| `npx ampx sandbox` | Deploy and watch your personal Amplify backend. |
+| `node scripts/aws-env-from-outputs.mjs` | Populate `.env` from `amplify_outputs.json`. |
+| `npm run migrate:dynamo` | Run the one-shot Supabase → DynamoDB migration. |
+| `npm run migrate:dynamo:dry` | Dry-run the migration without writing. |
 
 ## Next steps
 
