@@ -28,9 +28,9 @@
             ]
           },
           {
-            "group": "Operations",
+            "group": "Payments",
             "pages": [
-              "deployment"
+              "payments/stripe-ticketing"
             ]
           }
         ]
