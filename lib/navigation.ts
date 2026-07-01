@@ -25,6 +25,7 @@ export const PRIMARY_NAV: AppNavItem[] = [
   { key: "my-council", label: "My Council", href: "/my-council", match: "/my-council", icon: "map-pin" },
   { key: "communities", label: "Communities", href: "/communities", match: "/communities", icon: "users" },
   { key: "messages", label: "Messages", href: "/messages", match: "/messages", icon: "chat", authOnly: true },
+  { key: "rewards", label: "Rewards", href: "/rewards", match: "/rewards", icon: "star", authOnly: true },
 ];
 
 export const MOBILE_TABS: AppNavItem[] = [

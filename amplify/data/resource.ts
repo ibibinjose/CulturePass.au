@@ -5,6 +5,7 @@ import { stripeWebhook } from "../functions/stripe-webhook/resource";
 import { getTakenSeats } from "../functions/get-taken-seats/resource";
 import { postConfirmation } from "../functions/post-confirmation/resource";
 import { devSeed } from "../functions/dev-seed/resource";
+import { rewardsTierRecompute } from "../functions/rewards-tier-recompute/resource";
 
 /**
  * `allow.resource(fn)` (Lambda → data access) resolves under the backend
@@ -333,6 +334,26 @@ const schema = a.schema({
     .model({ profileId: a.id().required(), subscriberId: a.id().required() })
     .authorization((allow) => [allow.owner(), allow.authenticated().to(["read"])]),
 
+  // ---- CulturePass Plus (tenure-based rewards program) -----------------------
+  // Tier is a pure function of `joinedAt`, recomputed nightly by the
+  // rewardsTierRecompute Lambda (see amplify/backend.ts for the EventBridge
+  // schedule). The owner can read + create (joining) but never update — tier
+  // changes only ever come from the Lambda (IAM) or an admin, same shape as
+  // `TicketOrder` below where the Lambda/webhook is the sole writer of status.
+  Membership: a
+    .model({
+      userId: a.string().required(),
+      joinedAt: a.datetime().required(),
+      tier: a.enum(["vip", "bronze", "silver", "gold", "platinum"]),
+      status: a.enum(["active", "cancelled"]),
+      lastTierCheckAt: a.datetime(),
+    })
+    .identifier(["userId"])
+    .authorization((allow) => [
+      allow.owner().to(["read", "create"]),
+      allow.group("admin"),
+    ]),
+
   // ---- Custom operations (Stripe ticketing; Lambda-backed) ------------------
   // The checkout/webhook logic that lived in Supabase edge functions. Prices are
   // resolved server-side; the webhook (Function URL, see backend.ts) is the
@@ -366,6 +387,7 @@ const schema = a.schema({
     awsFnAccess(allow).resource(getTakenSeats),
     awsFnAccess(allow).resource(postConfirmation),
     awsFnAccess(allow).resource(devSeed),
+    awsFnAccess(allow).resource(rewardsTierRecompute),
   ]);
 
 export type Schema = ClientSchema<typeof schema>;

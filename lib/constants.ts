@@ -159,6 +159,29 @@ export const INTEREST_OPTIONS = [
 ] as const;
 export type Interest = (typeof INTEREST_OPTIONS)[number];
 
+// CulturePass Plus — tenure-based rewards tiers. Pure function of years since
+// `joinedAt` (no points/activity ledger); recomputed nightly by the
+// rewards-tier-recompute Lambda, which duplicates this threshold map locally
+// since amplify/functions/** can't import across the app tsconfig boundary.
+export const REWARDS_TIERS = ["vip", "bronze", "silver", "gold", "platinum"] as const;
+export type RewardsTier = (typeof REWARDS_TIERS)[number];
+
+export const REWARDS_TIER_LABELS: Record<RewardsTier, string> = {
+  vip: "VIP",
+  bronze: "Bronze",
+  silver: "Silver",
+  gold: "Gold",
+  platinum: "Platinum",
+};
+
+export const REWARDS_TIER_MIN_YEARS: Record<RewardsTier, number> = {
+  vip: 0,
+  bronze: 1,
+  silver: 2,
+  gold: 3,
+  platinum: 5,
+};
+
 // Australian states & territories (mirrors the seed; used for offline UI).
 export const AUSTRALIAN_STATES = [
   { code: "NSW", name: "New South Wales" },

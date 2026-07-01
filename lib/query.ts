@@ -44,4 +44,5 @@ export const qk = {
   accountSearch: (q: string) => ["account-search", q] as const,
   profileFollows: (profileId: string) => ["profile-follows", profileId] as const,
   profileSubscriptions: (profileId: string) => ["profile-subscriptions", profileId] as const,
+  myMembership: ["my-membership"] as const,
 };

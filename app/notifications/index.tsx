@@ -24,6 +24,7 @@ function iconFor(type: string): IconName {
   if (type === "message") return "chat";
   if (type === "event") return "calendar";
   if (type === "rsvp") return "users";
+  if (type === "tier_upgrade") return "star";
   return "bell";
 }
 
