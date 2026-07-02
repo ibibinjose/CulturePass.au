@@ -13,6 +13,7 @@ import {
   Screen,
   Text,
 } from "@/components/ui";
+import { Image } from "expo-image";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useCouncils } from "@/features/reference/api";
@@ -49,6 +50,11 @@ export default function CouncilsDirectoryScreen() {
     return list;
   })();
 
+  // Sort alphabetically for better UX
+  const sortedCouncils = [...filteredCouncils].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
   // Stats (from full data for accurate overview)
   const totalCouncils = councils?.length ?? 0;
   const metroCount = councils?.filter((c) => c.is_metro).length ?? 0;
@@ -65,6 +71,29 @@ export default function CouncilsDirectoryScreen() {
 
   // Determine grid column counts based on screen width
   const cols = width >= 1024 ? 4 : width >= 768 ? 3 : width >= 480 ? 2 : 1;
+
+  // Render a council visual: logo if available, else nice monogram
+  const renderCouncilVisual = (council: any) => {
+    if (council.logo_url) {
+      return (
+        <View className="aspect-square w-full rounded-2xl border border-linen bg-white overflow-hidden relative">
+          <Image
+            source={{ uri: council.logo_url }}
+            style={{ width: '100%', height: '100%' }}
+            contentFit="contain"
+            transition={200}
+          />
+          {/* Small state badge on logo for consistency */}
+          <View className="absolute bottom-2 left-2 bg-black/40 backdrop-blur-md border border-white/30 px-1.5 py-0.5 rounded-xl">
+            <Text className="text-[9px] font-heading uppercase tracking-widest text-paper">
+              {council.state_code}
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    return renderMonogram(council.name, council.state_code);
+  };
 
   // Render a typographic monogram badge with 1:1 aspect ratio - glassmorphic premium style
   const renderMonogram = (name: string, state: string) => {
@@ -149,20 +178,25 @@ export default function CouncilsDirectoryScreen() {
           />
         </View>
 
-        {/* Stats inline: 20 Councils 0 Metro 20 Regional */}
+        {/* Stats inline - glassmorphic pills */}
         <View className="flex-row items-center gap-2 ml-auto shrink-0">
-          <View className="flex-row items-baseline gap-1">
-            <Text className="font-display text-base font-bold text-ink">{totalCouncils}</Text>
-            <Text className="text-[9px] font-heading uppercase text-ink-muted">Councils</Text>
-          </View>
-          <View className="flex-row items-baseline gap-1">
-            <Text className="font-display text-base font-bold text-ink">{metroCount}</Text>
-            <Text className="text-[9px] font-heading uppercase text-ink-muted">Metro</Text>
-          </View>
-          <View className="flex-row items-baseline gap-1">
-            <Text className="font-display text-base font-bold text-ink">{regionalCount}</Text>
-            <Text className="text-[9px] font-heading uppercase text-ink-muted">Regional</Text>
-          </View>
+          {[
+            { value: totalCouncils, label: "Councils" },
+            { value: metroCount, label: "Metro" },
+            { value: regionalCount, label: "Regional" },
+          ].map((stat) => (
+            <View
+              key={stat.label}
+              className="bg-black/30 backdrop-blur border border-white/20 rounded-xl px-2 py-0.5 flex-row items-baseline gap-1"
+            >
+              <Text className="font-display text-sm font-bold text-ink">
+                {stat.value}
+              </Text>
+              <Text className="text-[8px] font-heading uppercase text-ink-muted">
+                {stat.label}
+              </Text>
+            </View>
+          ))}
         </View>
       </View>
 
@@ -183,7 +217,7 @@ export default function CouncilsDirectoryScreen() {
       ) : filteredCouncils.length > 0 ? (
         <View className="mt-4 gap-4">
           <View className="flex-row flex-wrap gap-4">
-            {filteredCouncils.map((council) => {
+            {sortedCouncils.map((council) => {
               const widthClass = cols === 4 ? "w-[calc(25%-12px)]" : cols === 3 ? "w-[calc(33.33%-11px)]" : cols === 2 ? "w-[calc(50%-8px)]" : "w-full";
               return (
                 <Card
@@ -191,11 +225,11 @@ export default function CouncilsDirectoryScreen() {
                   padded={false}
                   onPress={() => selectCouncil(council)}
                   className={cn(
-                    "overflow-hidden border border-linen/60 bg-card p-4 gap-3 shadow-sm active:scale-[0.985] transition-transform",
+                    "overflow-hidden border border-linen/60 bg-white/95 p-4 gap-3 shadow-sm active:scale-[0.985] active:bg-white transition-all",
                     widthClass
                   )}
                 >
-                  {renderMonogram(council.name, council.state_code)}
+                  {renderCouncilVisual(council)}
                   
                   <View className="gap-1.5 mt-1">
                     <Text className="font-display text-base text-ink tracking-tight font-semibold" numberOfLines={2}>
