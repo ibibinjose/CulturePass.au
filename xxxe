@@ -1,9 +1,0 @@
-# CulturePass Australia — local environment (gitignored)
-# URL is pre-filled from your project ref. Paste your publishable/anon key below
-# (Supabase Dashboard → Project Settings → API → Project API keys → anon public).
-
-EXPO_PUBLIC_SUPABASE_URL=https://agwnpybpxlqizjmsxuae.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_SXv4MpAi0yTd12wDO4AwEQ_Aupfmoeu
-
-# Optional: Mapbox public token for maps.
-EXPO_PUBLIC_MAPBOX_TOKEN=
