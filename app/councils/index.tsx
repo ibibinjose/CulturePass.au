@@ -1,10 +1,15 @@
+import { useState } from "react";
 import { useWindowDimensions, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 
 import {
   Badge,
+  Button,
   Card,
   Footer,
+  Icon,
+  Input as SearchInput,
+  Pinwheel,
   Screen,
   Text,
 } from "@/components/ui";
@@ -12,6 +17,7 @@ import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useCouncils } from "@/features/reference/api";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
+import { useWeather } from "@/features/weather/api";
 import type { StateCode } from "@/lib/constants";
 
 
@@ -20,9 +26,33 @@ export default function CouncilsDirectoryScreen() {
   const { width } = useWindowDimensions();
   const { setLocation } = useSavedLocation();
 
+  const { data: weather } = useWeather();
+
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data: councils, isLoading, isError } = useCouncils();
 
-  const filteredCouncils = councils ?? [];
+  const filteredCouncils = (() => {
+    let list = councils ?? [];
+
+    // Filter by search query only
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.state_code.toLowerCase().includes(q) ||
+          (c.traditional_custodians ?? []).some((t: string) => t.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  })();
+
+  // Stats (from full data for accurate overview)
+  const totalCouncils = councils?.length ?? 0;
+  const metroCount = councils?.filter((c) => c.is_metro).length ?? 0;
+  const regionalCount = totalCouncils - metroCount;
 
   const selectCouncil = (council: any) => {
     setLocation({
@@ -77,11 +107,63 @@ export default function CouncilsDirectoryScreen() {
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
       
-      {/* Header - only the title text */}
-      <View className="border-b border-linen pb-5">
-        <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight">
-          Australian Councils
+      {/* Header */}
+      <View className="gap-2 border-b border-linen pb-5">
+        <View className="flex-row items-center justify-between">
+          <View>
+            <Text variant="overline" tone="pink">
+              LGA Directory
+            </Text>
+            <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight">
+              Australian Councils
+            </Text>
+          </View>
+          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-subtle flex-shrink-0">
+            <Pinwheel size={32} windDirection={weather?.windDirection} windSpeed={weather?.windSpeed} />
+          </View>
+        </View>
+        <Text className="font-sans text-xs text-ink-faint">
+          Explore local events, community calendars, and hub listings across {filteredCouncils.length} local government areas.
         </Text>
+        {weather && (
+          <View className="mt-1.5 flex-row items-center gap-1.5">
+            <Icon name="globe" size={12} color={colors.inkMuted} />
+            <Text className="text-[10px] text-ink-muted">
+              Conditions: {weather.emoji} {weather.tempC}° • Wind {weather.windSpeed ?? '—'} km/h {weather.windDirection != null ? `(${Math.round(weather.windDirection)}°)` : ''}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Search + Stats in one line */}
+      <View className="mt-4 flex-row items-center gap-3 flex-wrap lg:flex-nowrap overflow-x-auto pb-1">
+        {/* Search */}
+        <View className="flex-1 min-w-[200px]">
+          <SearchInput
+            placeholder="Search by council name, state, or traditional country..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            leftIcon={<Icon name="search" size={14} color={colors.inkMuted} />}
+            clearButtonMode="while-editing"
+            className="h-8 text-sm"
+          />
+        </View>
+
+        {/* Stats inline: 20 Councils 0 Metro 20 Regional */}
+        <View className="flex-row items-center gap-2 ml-auto shrink-0">
+          <View className="flex-row items-baseline gap-1">
+            <Text className="font-display text-base font-bold text-ink">{totalCouncils}</Text>
+            <Text className="text-[9px] font-heading uppercase text-ink-muted">Councils</Text>
+          </View>
+          <View className="flex-row items-baseline gap-1">
+            <Text className="font-display text-base font-bold text-ink">{metroCount}</Text>
+            <Text className="text-[9px] font-heading uppercase text-ink-muted">Metro</Text>
+          </View>
+          <View className="flex-row items-baseline gap-1">
+            <Text className="font-display text-base font-bold text-ink">{regionalCount}</Text>
+            <Text className="text-[9px] font-heading uppercase text-ink-muted">Regional</Text>
+          </View>
+        </View>
       </View>
 
       {/* Grid List */}
@@ -146,7 +228,19 @@ export default function CouncilsDirectoryScreen() {
         </View>
       ) : (
         <Card className="p-10 items-center mt-8 gap-2">
-          <Text variant="subheading">No councils found</Text>
+          <Text variant="subheading">No councils match</Text>
+          <Text variant="caption" tone="muted" className="text-center">
+            Try refining your search term.
+          </Text>
+          <Button
+            label="Clear search"
+            variant="secondary"
+            size="sm"
+            className="mt-2"
+            onPress={() => {
+              setSearchQuery("");
+            }}
+          />
         </Card>
       )}
 
