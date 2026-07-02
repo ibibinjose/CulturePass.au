@@ -1,14 +1,10 @@
-import { useState } from "react";
-import { Pressable, ScrollView, useWindowDimensions, View, ActivityIndicator } from "react-native";
+import { useWindowDimensions, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 
 import {
   Badge,
-  Button,
   Card,
   Footer,
-  Icon,
-  Input as SearchInput,
   Screen,
   Text,
 } from "@/components/ui";
@@ -16,42 +12,17 @@ import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useCouncils } from "@/features/reference/api";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
-import { AUSTRALIAN_STATES, type StateCode } from "@/lib/constants";
+import type { StateCode } from "@/lib/constants";
+
 
 export default function CouncilsDirectoryScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const { setLocation } = useSavedLocation();
 
-  const [stateFilter, setStateFilter] = useState<StateCode | "ALL">("ALL");
-  const [metroFilter, setMetroFilter] = useState<"ALL" | "METRO" | "REGIONAL">("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
+  const { data: councils, isLoading, isError } = useCouncils();
 
-  const { data: councils, isLoading, isError } = useCouncils(stateFilter === "ALL" ? undefined : stateFilter);
-
-  const filteredCouncils = (() => {
-    let list = councils ?? [];
-
-    // Filter by Metro / Regional
-    if (metroFilter === "METRO") {
-      list = list.filter((c) => c.is_metro);
-    } else if (metroFilter === "REGIONAL") {
-      list = list.filter((c) => !c.is_metro);
-    }
-
-    // Filter by search query
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      list = list.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.state_code.toLowerCase().includes(q) ||
-          (c.traditional_custodians ?? []).some((t: string) => t.toLowerCase().includes(q))
-      );
-    }
-
-    return list;
-  })();
+  const filteredCouncils = councils ?? [];
 
   const selectCouncil = (council: any) => {
     setLocation({
@@ -65,7 +36,7 @@ export default function CouncilsDirectoryScreen() {
   // Determine grid column counts based on screen width
   const cols = width >= 1024 ? 4 : width >= 768 ? 3 : width >= 480 ? 2 : 1;
 
-  // Render a typographic monogram badge with 1:1 aspect ratio
+  // Render a typographic monogram badge with 1:1 aspect ratio - glassmorphic premium style
   const renderMonogram = (name: string, state: string) => {
     const letters = name
       .replace("Council", "")
@@ -87,15 +58,18 @@ export default function CouncilsDirectoryScreen() {
     const colorStyle = colorsList[hash % colorsList.length];
 
     return (
-      <View className={cn("aspect-square w-full rounded-2xl border items-center justify-center relative", colorStyle)}>
+      <View className={cn("aspect-square w-full rounded-3xl border items-center justify-center relative overflow-hidden", colorStyle)}>
         <Text className="font-display text-4xl tracking-tight font-semibold">
           {letters}
         </Text>
-        <View className="absolute bottom-3 left-3 bg-white/80 border border-linen/30 px-1.5 py-0.5 rounded-md">
-          <Text className="text-[9px] font-heading uppercase tracking-widest text-ink-muted">
+        {/* Glassmorphic state badge */}
+        <View className="absolute bottom-2 left-2 bg-black/40 backdrop-blur-md border border-white/30 px-1.5 py-0.5 rounded-xl">
+          <Text className="text-[9px] font-heading uppercase tracking-widest text-paper">
             {state}
           </Text>
         </View>
+        {/* Subtle glass overlay for premium feel */}
+        <View className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
       </View>
     );
   };
@@ -103,100 +77,11 @@ export default function CouncilsDirectoryScreen() {
   return (
     <Screen contentClassName="pt-4 md:pt-6" maxWidth="content">
       
-      {/* Header */}
-      <View className="gap-2 border-b border-linen pb-5">
-        <Text variant="overline" tone="pink">
-          LGA Directory
-        </Text>
+      {/* Header - only the title text */}
+      <View className="border-b border-linen pb-5">
         <Text className="font-display text-3xl md:text-4xl text-ink tracking-tight">
           Australian Councils
         </Text>
-        <Text className="font-sans text-xs text-ink-faint">
-          Explore local events, community calendars, and hub listings across {filteredCouncils.length} local government areas.
-        </Text>
-      </View>
-
-      {/* Filter Section */}
-      <View className="mt-4 gap-3">
-        {/* Search */}
-        <SearchInput
-          placeholder="Search by council name, state, or traditional country..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          leftIcon={<Icon name="search" size={16} color={colors.inkMuted} />}
-          clearButtonMode="while-editing"
-        />
-
-        {/* State Selection Scroll */}
-        <View className="gap-1.5">
-          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
-            Filter by State
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerClassName="gap-2 pr-4"
-            className="-mx-gutter px-gutter"
-          >
-            <Pressable
-              onPress={() => setStateFilter("ALL")}
-              className={cn(
-                "h-8 items-center justify-center rounded-full border px-3 active:opacity-85",
-                stateFilter === "ALL" ? "border-ink bg-ink" : "border-linen/70 bg-card"
-              )}
-            >
-              <Text className={cn("text-xs font-heading", stateFilter === "ALL" ? "text-paper font-semibold" : "text-ink-muted")}>
-                All
-              </Text>
-            </Pressable>
-            {AUSTRALIAN_STATES.map((s) => (
-              <Pressable
-                key={s.code}
-                onPress={() => setStateFilter(s.code)}
-                className={cn(
-                  "h-8 items-center justify-center rounded-full border px-3 active:opacity-85",
-                  stateFilter === s.code ? "border-ink bg-ink" : "border-linen/70 bg-card"
-                )}
-              >
-                <Text className={cn("text-xs font-heading", stateFilter === s.code ? "text-paper font-semibold" : "text-ink-muted")}>
-                  {s.code}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Metro / Regional Segmented Switcher */}
-        <View className="gap-1.5">
-          <Text className="text-[10px] font-heading uppercase tracking-widest text-ink-muted">
-            Location Type
-          </Text>
-          <View className="w-full md:max-w-[420px] flex-row border border-linen bg-card p-1 rounded-xl gap-1">
-            {([
-              { key: "ALL", label: "All" },
-              { key: "METRO", label: "Metro" },
-              { key: "REGIONAL", label: "Regional" },
-            ] as const).map(({ key, label }) => {
-              const on = metroFilter === key;
-              return (
-                <Pressable
-                  key={key}
-                  onPress={() => setMetroFilter(key)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  className={cn(
-                    "flex-1 items-center justify-center py-1.5 rounded-lg active:opacity-80",
-                    on ? "bg-ink" : "bg-transparent",
-                  )}
-                >
-                  <Text className={cn("text-xs font-heading", on ? "text-paper font-semibold" : "text-ink-muted")}>
-                    {label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
       </View>
 
       {/* Grid List */}
@@ -214,7 +99,7 @@ export default function CouncilsDirectoryScreen() {
           </Text>
         </Card>
       ) : filteredCouncils.length > 0 ? (
-        <View className="mt-8 gap-4">
+        <View className="mt-4 gap-4">
           <View className="flex-row flex-wrap gap-4">
             {filteredCouncils.map((council) => {
               const widthClass = cols === 4 ? "w-[calc(25%-12px)]" : cols === 3 ? "w-[calc(33.33%-11px)]" : cols === 2 ? "w-[calc(50%-8px)]" : "w-full";
@@ -223,7 +108,10 @@ export default function CouncilsDirectoryScreen() {
                   key={council.id}
                   padded={false}
                   onPress={() => selectCouncil(council)}
-                  className={cn("overflow-hidden border border-linen bg-card p-4 gap-3", widthClass)}
+                  className={cn(
+                    "overflow-hidden border border-linen/60 bg-card p-4 gap-3 shadow-sm active:scale-[0.985] transition-transform",
+                    widthClass
+                  )}
                 >
                   {renderMonogram(council.name, council.state_code)}
                   
@@ -258,21 +146,7 @@ export default function CouncilsDirectoryScreen() {
         </View>
       ) : (
         <Card className="p-10 items-center mt-8 gap-2">
-          <Text variant="subheading">No councils match</Text>
-          <Text variant="caption" tone="muted" className="text-center">
-            Try clearing some filters or refining your search term.
-          </Text>
-          <Button
-            label="Clear all filters"
-            variant="secondary"
-            size="sm"
-            className="mt-2"
-            onPress={() => {
-              setStateFilter("ALL");
-              setMetroFilter("ALL");
-              setSearchQuery("");
-            }}
-          />
+          <Text variant="subheading">No councils found</Text>
         </Card>
       )}
 
