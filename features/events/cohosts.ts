@@ -9,7 +9,7 @@ import {
   type HubType,
   type ProfessionalCategory,
 } from "@/lib/constants";
-import type { Database, HubImage } from "@/lib/supabase/database.types";
+import type { Database, HubImage } from "@/lib/types/database.types";
 
 export type CohostRole = Database["public"]["Enums"]["cohost_role"];
 export type CohostStatus = Database["public"]["Enums"]["cohost_status"];

@@ -1,10 +1,15 @@
 // =============================================================================
-// CulturePass Australia — Database types
-// Hand-authored to mirror supabase/migrations. Once a project is linked, run
-// `npm run db:types` to regenerate this file from the live schema.
+// CulturePass Australia — Legacy Supabase row shapes (TypeScript only)
 //
-// PostGIS geography columns are returned by PostgREST as EWKB hex strings;
-// they are typed as `string | null` here.
+// This file is **retained solely** for the snake_case row type shapes
+// (HubRow, EventRow, etc.) that are used as the public return types of the
+// AppSync mapper functions in features/*/api.ts.
+//
+// All Supabase runtime code, the root supabase/ directory, and any Supabase
+// client usage have been removed. The project is fully on AWS Amplify Gen 2.
+//
+// Do not delete this file until the mappers are refactored to use camelCase
+// AppSync shapes directly. Do not add new Supabase-specific code here.
 // =============================================================================
 
 export type Json =
@@ -97,6 +102,7 @@ export interface Database {
         Row: {
           id: string;
           user_id: string;
+          username: string | null;
           full_name: string;
           avatar_url: string | null;
           bio: string | null;
@@ -119,6 +125,7 @@ export interface Database {
         Insert: {
           id?: string;
           user_id: string;
+          username?: string | null;
           full_name?: string;
           avatar_url?: string | null;
           bio?: string | null;
@@ -247,6 +254,7 @@ export interface Database {
         Row: {
           id: string;
           hub_id: string;
+          slug: string | null;
           type: Database["public"]["Enums"]["event_type"];
           title: string;
           description: string | null;
@@ -275,6 +283,7 @@ export interface Database {
         Insert: {
           id?: string;
           hub_id: string;
+          slug?: string | null;
           type?: Database["public"]["Enums"]["event_type"];
           title?: string;
           description?: string | null;

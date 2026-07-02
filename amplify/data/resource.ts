@@ -20,15 +20,15 @@ const awsFnAccess = (allow: any): any => allow;
 /**
  * Data layer — DynamoDB-native (Amplify Data / AppSync).
  *
- * Faithful port of the Supabase Postgres schema (see docs/SCHEMA.md and
- * lib/supabase/database.types.ts) remodelled for DynamoDB. Amplify supplies
+ * The data models (originally from the Supabase Postgres era, see historical docs)
+ * remodelled for DynamoDB + AppSync. Amplify supplies
  * `id`, `createdAt` and `updatedAt` on every model, so those are omitted here.
  *
  * Authorization replaces Postgres RLS:
  *   • reference data  → public read (guest + authenticated), admin writes
  *   • profiles/hubs/events → public read of published rows, owner writes
  *   • per-user rows (rsvps, likes, notifications, orders) → owner-scoped
- * Hub-editor/member fine-grained rules (Supabase `is_hub_editor`) are
+ * Hub-editor/member fine-grained rules (ported from original design) are
  * approximated by owner + admin here; tighten with custom resolvers or a
  * per-hub Cognito group during the per-feature port.
  *
@@ -77,6 +77,7 @@ const schema = a.schema({
   Profile: a
     .model({
       userId: a.string().required(),
+      username: a.string(), // @handle style, unique, choosable (real name policy applies)
       fullName: a.string(),
       avatarUrl: a.url(),
       bio: a.string(),
@@ -183,6 +184,7 @@ const schema = a.schema({
     .model({
       hubId: a.id().required(),
       hub: a.belongsTo("Hub", "hubId"),
+      slug: a.string(), // human-friendly url slug, generated from title
       type: a.enum([
         "event",
         "activity",
@@ -381,7 +383,7 @@ const schema = a.schema({
     ]),
 
   // ---- Custom operations (Stripe ticketing; Lambda-backed) ------------------
-  // The checkout/webhook logic that lived in Supabase edge functions. Prices are
+  // The checkout/webhook logic (ported from previous Edge Functions). Prices are
   // resolved server-side; the webhook (Function URL, see backend.ts) is the
   // fulfilment source of truth.
   ticketsCheckout: a

@@ -28,6 +28,7 @@ export { TagInput } from "./TagInput";
 export { ImagePickerComponent } from "./ImagePicker";
 export { Carousel } from "./Carousel";
 export { SectionHeader } from "./SectionHeader";
+export { Thumbnail } from "./Thumbnail";
 export { EmptyCard } from "./EmptyCard";
 export { Stepper } from "./Stepper";
 export { DatePicker } from "./DatePicker";

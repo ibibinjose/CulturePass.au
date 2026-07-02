@@ -1,18 +1,10 @@
-# Database schema & security
+# Data model & authorization
 
-PostgreSQL (Supabase) with PostGIS. Migrations live in `supabase/migrations/`
-and run in order:
+Production data lives in **DynamoDB behind AWS AppSync** (defined in `amplify/data/resource.ts`).
 
-| Order | File | Contents |
-|------|------|----------|
-| 01 | `…_extensions_and_helpers.sql` | postgis, citext, pg_trgm; `private` schema; `set_updated_at`, `slugify`, `unaccent_fallback` |
-| 02 | `…_reference_tables.sql` | `australian_states`, `australian_councils` + public-read RLS |
-| 03 | `…_profiles.sql` | `profiles`, `current_profile_id()`, `handle_new_user` trigger, RLS |
-| 04 | `…_hubs.sql` | `hubs`, `hub_members`, membership helpers, slug/owner triggers, RLS |
-| 05 | `…_events.sql` | `events`, `event_rsvps`, rsvp-count trigger, RLS |
+The original implementation used PostgreSQL (Supabase) with PostGIS + RLS. The models were ported. This document describes the current AppSync/DynamoDB shape and the legacy notes for context.
 
-`supabase/seed.sql` (generated from `seed_sources/nsw_councils.csv`) loads the 8
-states/territories and 128 NSW councils.
+Reference data (`AustralianState`, `AustralianCouncil`) is seeded at deploy time (via `dev-seed` Lambda or scripts).
 
 ## Core tables
 
@@ -74,23 +66,13 @@ sourced data — they are never auto-generated, inferred from postcode, or guess
 `welcome_to_country` is only ever content a hub has supplied and is authorised to
 share.
 
-## Applying & verifying
+## Legacy notes (Supabase era)
 
-```bash
-supabase start && supabase db reset      # apply migrations + seed
-supabase db advisors                     # security/perf lints — fix before committing
-npm run db:types                         # regenerate lib/supabase/database.types.ts
-```
+The RLS + trigger details below describe the original Supabase schema that the current AppSync models were ported from. `lib/types/database.types.ts` is retained only for the snake_case TypeScript shapes used inside the mappers in `features/*/api.ts`.
 
-> Note: the hand-authored `lib/supabase/database.types.ts` mirrors these
-> migrations so the app typechecks before a database exists. Replace it with the
-> generated output once a project is linked.
+## Current AWS (AppSync + DynamoDB) authorization model
 
-## AWS (AppSync/DynamoDB) authorization model
-
-Production data now lives in DynamoDB behind AppSync (`amplify/data/resource.ts`);
-the RLS notes above describe the legacy Supabase schema the models were ported
-from. The AppSync rules that replace RLS, in brief:
+Defined in `amplify/data/resource.ts`. The rules that replaced RLS:
 
 - **Reference data** (`AustralianState`, `AustralianCouncil`) — guest +
   authenticated read; `admin` Cognito-group writes.

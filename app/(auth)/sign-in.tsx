@@ -81,7 +81,7 @@ export default function SignInScreen() {
       }
       if (err instanceof Error && err.name === "UserNotConfirmedException") {
         setPendingVerification({ email: parsed.data.email, password: parsed.data.password });
-        setNotice("Check your inbox for the verification code or link.");
+        setNotice("Check your inbox for the verification code or link. After verifying, we’ll help you complete onboarding and your profile.");
         return;
       }
       setBanner(authMessage(err));
@@ -120,7 +120,8 @@ export default function SignInScreen() {
         try {
           await signIn.mutateAsync({ email: em, password: pw });
           await waitForAuth(() => isAuthRef.current);
-          router.replace("/");
+          // User just verified (often new accounts): recommend/complete onboarding + profile
+          router.replace("/onboarding");
           return;
         } catch {
           setBanner("Email verified. Please enter your password to sign in.");

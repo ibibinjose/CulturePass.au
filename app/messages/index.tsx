@@ -3,16 +3,72 @@ import { useRouter } from "expo-router";
 
 import { Screen, Text, BackButton, Card, Avatar, Divider, Icon, EmptyCard, Badge } from "@/components/ui";
 import { colors } from "@/lib/theme";
-import { RequireAuth } from "@/features/auth/RequireAuth";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { useMyProfile } from "@/features/profiles/api";
-import { useConversations, type ConversationListItem } from "@/features/chat/api";
+import { useConversations, useConversationsRealtime, type ConversationListItem } from "@/features/chat/api";
 import { timeAgo } from "@/lib/utils/time";
+import { parsePreferences } from "@/lib/validation/profile";
 
 export default function MessagesScreen() {
+  const { initializing, isAuthenticated } = useAuth();
+
+  if (initializing) {
+    return (
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton fallbackHref="/" className="mb-5" />
+        <View className="gap-1 mb-6">
+          <Text variant="overline" tone="pink">Inbox</Text>
+          <Text variant="title">Messages</Text>
+        </View>
+        <Card className="h-20" />
+        <Card className="mt-3 h-20" />
+        <Card className="mt-3 h-20" />
+      </Screen>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <UnauthenticatedMessages />;
+  }
+
+  return <Inbox />;
+}
+
+function UnauthenticatedMessages() {
+  const router = useRouter();
   return (
-    <RequireAuth>
-      <Inbox />
-    </RequireAuth>
+    <Screen maxWidth="form" contentClassName="pt-6">
+      <BackButton fallbackHref="/" className="mb-5" />
+      <View className="gap-1 mb-6">
+        <Text variant="overline" tone="pink">Inbox</Text>
+        <Text variant="title">Messages</Text>
+      </View>
+
+      <Card>
+        <Text variant="subheading">Your messages</Text>
+        <Text variant="caption" tone="faint" className="mt-1">
+          Sign in to view and send messages with hubs and organisers.
+        </Text>
+      </Card>
+
+      <Text variant="overline" tone="pink" className="mb-2 mt-8">Get started</Text>
+      <Card padded={false} className="px-5">
+        <Pressable onPress={() => router.push("/sign-in")} className="py-3">
+          <Text variant="label">Sign in</Text>
+        </Pressable>
+        <Divider />
+        <Pressable onPress={() => router.push("/sign-up")} className="py-3">
+          <Text variant="label">Create account</Text>
+        </Pressable>
+      </Card>
+
+      <Text variant="overline" tone="pink" className="mb-2 mt-8">How it works</Text>
+      <Card className="px-5 py-4">
+        <Text variant="caption" tone="muted">
+          Visit any hub page and tap “Message” to chat with the organiser. Conversations appear here.
+        </Text>
+      </Card>
+    </Screen>
   );
 }
 
@@ -20,22 +76,67 @@ function Inbox() {
   const router = useRouter();
   const { data: me } = useMyProfile();
   const { data: conversations, isLoading, isError } = useConversations();
+  useConversationsRealtime();
+
+  const prefs = me ? parsePreferences(me.preferences) : null;
+  const onboardingComplete = !!prefs?.onboarding?.completed;
+  const profileIncomplete = !me?.full_name || !me?.interests?.length;
 
   return (
     <Screen maxWidth="form" contentClassName="pt-6">
       <BackButton fallbackHref="/" className="mb-5" />
 
       <View className="gap-1 mb-6">
-        <Text variant="overline" tone="pink">
-          Inbox
-        </Text>
+        <Text variant="overline" tone="pink">Inbox</Text>
         <Text variant="title">Messages</Text>
       </View>
 
+      {/* Profile header (consistent with settings) */}
+      {me && (
+        <Card className="mb-4" onPress={() => router.push(`/profile/${me.id}`)}>
+          <View className="flex-row items-center gap-3">
+            <Avatar name={me.full_name} uri={me.avatar_url} size={40} />
+            <View className="flex-1">
+              <Text variant="subheading">Your messages</Text>
+              <Text variant="caption" tone="faint" numberOfLines={1}>
+                {me.full_name || "Complete your profile"}
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={18} color={colors.inkFaint} />
+          </View>
+        </Card>
+      )}
+
+      {/* Recommend completing profile/onboarding */}
+      {me && (profileIncomplete || !onboardingComplete) && (
+        <Card className="mb-4 border-gold-200 bg-gold-50">
+          <Text variant="label">Complete your profile</Text>
+          <Text variant="caption" tone="muted" className="mt-1">
+            Finish your details so organisers can recognise you in messages.
+          </Text>
+          <View className="mt-3 flex-row gap-2">
+            <Pressable onPress={() => router.push("/profile/edit")} className="flex-1">
+              <Card className="p-3">
+                <Text variant="label" className="text-sm">Edit profile</Text>
+              </Card>
+            </Pressable>
+            {!onboardingComplete && (
+              <Pressable onPress={() => router.push("/onboarding")} className="flex-1">
+                <Card className="p-3">
+                  <Text variant="label" className="text-sm">Onboarding</Text>
+                </Card>
+              </Pressable>
+            )}
+          </View>
+        </Card>
+      )}
+
       {isLoading ? (
-        <Text variant="caption" tone="faint" className="mt-8">
-          Loading…
-        </Text>
+        <View className="gap-3">
+          <Card className="h-16" />
+          <Card className="h-16" />
+          <Card className="h-16" />
+        </View>
       ) : isError ? (
         <Card className="mt-8">
           <Text variant="caption" tone="muted">

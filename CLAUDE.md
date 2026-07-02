@@ -36,7 +36,7 @@ TanStack Query 5 (server state), Zustand 5 (local/persisted UI state), Zod 3 (va
 NativeWind 4 + Tailwind 3 (styling via `className`).
 TypeScript strict, `noUncheckedIndexedAccess: true`, path alias `@/*` → repo root.
 
-**Backend is exclusively AWS — no Supabase in production:**
+**Backend is 100% AWS Amplify Gen 2 (Cognito + AppSync/DynamoDB + S3 + Lambda). All Supabase runtime code and the supabase/ directory have been removed.**
 - Auth → Cognito (`aws-amplify/auth`)
 - Data → AppSync + DynamoDB (`lib/aws/data.ts` → `generateClient<Schema>()`)
 - Storage → S3 (`aws-amplify/storage` `uploadData` / `getUrl`)
@@ -62,8 +62,7 @@ TypeScript strict, `noUncheckedIndexedAccess: true`, path alias `@/*` → repo r
 **Backend (`amplify/`):** `auth/resource.ts`, `data/resource.ts` (20 domain models), `storage/resource.ts`,
 `functions/` (tickets-checkout, stripe-webhook, get-taken-seats, post-confirmation, rewards-join,
 rewards-tier-recompute, dev-seed). `amplify_outputs.json` is generated
-by `npx ampx sandbox` and provides all runtime config values. `lib/supabase/database.types.ts` is
-kept for TypeScript row-shape types but Supabase itself is not used.
+by `npx ampx sandbox` and provides all runtime config values. `lib/types/database.types.ts` contains only legacy snake_case shapes for the internal AppSync mappers. No Supabase runtime remains.
 
 **Payments:** Stripe Checkout is fully server-side (secret key never reaches the app). The
 `ticketsCheckout` AppSync mutation calls a Lambda that creates a `pending` TicketOrder + Checkout
@@ -72,7 +71,7 @@ Session; the `stripeWebhook` Lambda Function URL is the **source of truth** that
 
 ## High-value gotchas
 
-1. **`lib/supabase/database.types.ts` is kept for TypeScript types only** — Supabase itself is gone.
+1. **`lib/types/database.types.ts` is kept only for the legacy snake_case TypeScript shapes** used by AppSync mapper functions. The root `supabase/` directory and all Supabase client/runtime code have been fully removed.
    The snake_case row types (`HubRow`, `EventRow`, etc.) are used as the public return types of
    the AppSync mapper functions. Do not delete this file.
 
@@ -127,7 +126,7 @@ node scripts/aws-env-from-outputs.mjs
 # Deploy backend to a permanent production branch
 AWS_PROFILE=culturepass-admin npx ampx pipeline-deploy --branch main --app-id YOUR_APP_ID
 
-# Migrate data from Supabase to DynamoDB (one-time)
+# Historical: Migrate data from Supabase to DynamoDB (one-time, migration complete)
 npm run migrate:dynamo
 
 # Build mobile apps

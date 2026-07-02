@@ -17,6 +17,19 @@ export interface Weather {
   code: number;
   name: string;
   emoji: string;
+  windDirection?: number; // degrees, 0 = north, direction wind is blowing FROM
+  windSpeed?: number; // km/h
+  pollution?: {
+    pm25: number;
+    aqi: number; // approximate 0-500 or EU scale
+    level: string;
+    emoji: string;
+  };
+  surf?: {
+    waveHeight?: number; // meters
+    swellHeight?: number; // meters
+    period?: number; // seconds
+  };
 }
 
 async function ipGeo(): Promise<Geo> {
@@ -47,29 +60,90 @@ function emojiFor(code: number): string {
   return "🌡️";
 }
 
-export function useWeather() {
+export function useWeather(customLocation?: { lat: number; lon: number; name?: string }) {
   return useQuery({
-    queryKey: ["weather"],
-    staleTime: 15 * 60_000, // 15 min — weather doesn't need to be realtime
+    queryKey: ["weather", customLocation?.lat, customLocation?.lon],
+    staleTime: 15 * 60_000,
     gcTime: 60 * 60_000,
     retry: 0,
     refetchOnWindowFocus: false,
     queryFn: async (): Promise<Weather | null> => {
-      const geo = await ipGeo();
-      const url =
-        `https://api.open-meteo.com/v1/forecast?latitude=${geo.lat}` +
-        `&longitude=${geo.lon}&current=temperature_2m,weather_code`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("weather");
-      const j = await res.json();
-      const temp = j?.current?.temperature_2m;
+      let geo: Geo;
+      let useCustom = false;
+      if (customLocation && typeof customLocation.lat === 'number' && typeof customLocation.lon === 'number') {
+        geo = { lat: customLocation.lat, lon: customLocation.lon, name: customLocation.name || '' };
+        useCustom = true;
+      } else {
+        geo = await ipGeo();
+      }
+      const base = `latitude=${geo.lat}&longitude=${geo.lon}`;
+      const weatherUrl =
+        `https://api.open-meteo.com/v1/forecast?${base}` +
+        `&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m`;
+      const aqUrl =
+        `https://air-quality-api.open-meteo.com/v1/air-quality?${base}` +
+        `&current=pm2_5,pm10,european_aqi`;
+      const marineUrl =
+        `https://marine-api.open-meteo.com/v1/marine?${base}` +
+        `&current=wave_height,wave_direction,swell_wave_height,swell_wave_period`;
+
+      const [weatherRes, aqRes, marineRes] = await Promise.all([
+        fetch(weatherUrl),
+        fetch(aqUrl),
+        fetch(marineUrl),
+      ]);
+
+      if (!weatherRes.ok) throw new Error("weather");
+      const w = await weatherRes.json();
+      const temp = w?.current?.temperature_2m;
       if (typeof temp !== "number") return null;
-      const code = typeof j?.current?.weather_code === "number" ? j.current.weather_code : 0;
+      const code = typeof w?.current?.weather_code === "number" ? w.current.weather_code : 0;
+      const windDir = typeof w?.current?.wind_direction_10m === "number" ? w.current.wind_direction_10m : undefined;
+      const windSp = typeof w?.current?.wind_speed_10m === "number" ? w.current.wind_speed_10m : undefined;
+
+      let pollution: Weather["pollution"] | undefined;
+      if (aqRes.ok) {
+        const a = await aqRes.json();
+        const pm25 = a?.current?.pm2_5;
+        const aqi = a?.current?.european_aqi;
+        if (typeof pm25 === "number") {
+          const level = aqi != null
+            ? aqi <= 20 ? "Good" : aqi <= 40 ? "Fair" : aqi <= 60 ? "Moderate" : aqi <= 100 ? "Poor" : "Very Poor"
+            : "Moderate";
+          const emoji = level === "Good" ? "🌿" : level === "Fair" ? "🌤️" : level === "Moderate" ? "🌫️" : level === "Poor" ? "😷" : "☠️";
+          pollution = {
+            pm25: Math.round(pm25),
+            aqi: typeof aqi === "number" ? Math.round(aqi) : 50,
+            level,
+            emoji,
+          };
+        }
+      }
+
+      let surf: { waveHeight?: number; swellHeight?: number; period?: number } | undefined;
+      if (marineRes.ok) {
+        const m = await marineRes.json();
+        const wh = m?.current?.wave_height;
+        const sh = m?.current?.swell_wave_height;
+        const sp = m?.current?.swell_wave_period;
+        if (typeof wh === 'number' || typeof sh === 'number') {
+          surf = {
+            waveHeight: typeof wh === 'number' ? Math.round(wh * 10) / 10 : undefined,
+            swellHeight: typeof sh === 'number' ? Math.round(sh * 10) / 10 : undefined,
+            period: typeof sp === 'number' ? Math.round(sp) : undefined,
+          };
+        }
+      }
+
       return {
         tempC: Math.round(temp),
         code,
-        name: geo.name || SYDNEY.name,
+        name: useCustom ? (geo.name || 'Location') : (geo.name || SYDNEY.name),
         emoji: emojiFor(code),
+        windDirection: windDir,
+        windSpeed: windSp,
+        pollution,
+        surf,
       };
     },
   });

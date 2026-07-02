@@ -21,8 +21,7 @@ Read this before making changes. Keep it updated when conventions shift.
 - **NativeWind** 4 + **Tailwind** 3 — styling via `className`
 - **TypeScript** strict, `noUncheckedIndexedAccess: true`
 
-**Supabase has been fully removed.** `lib/supabase/database.types.ts` is kept only for
-TypeScript row-shape types (`HubRow`, `EventRow`, etc.) used by the AppSync mappers.
+**The project is 100% AWS Amplify Gen 2.** The folder `supabase/` and all runtime Supabase code have been removed. `lib/types/database.types.ts` is retained **only** for the snake_case TypeScript row shapes used internally by the AppSync mapper functions in `features/*/api.ts`. Do not use it for new runtime code.
 
 ## Commands
 
@@ -32,7 +31,7 @@ npm run ios | android  # native
 npm run typecheck      # tsc --noEmit   (must stay clean)
 npm run lint           # eslint .       (flat config: eslint.config.js)
 npm run migrate:dynamo:dry   # preview data migration row counts (safe)
-npm run migrate:dynamo        # run Supabase → DynamoDB data migration
+npm run migrate:dynamo        # historical one-shot Supabase → DynamoDB migration (kept for reference)
 ```
 
 Always run `npm run typecheck` **and** `npm run lint` before considering a change
@@ -73,7 +72,7 @@ features/
 lib/
   aws/                     config.ts (configureAmplify), data.ts (getAwsDataClient),
                            auth.ts (getAwsCurrentUserId, getAwsAuthUser), list.ts (collectAll)
-  supabase/                database.types.ts (TypeScript types only — no runtime use)
+  (legacy supabase/ directory removed; only lib/types/database.types.ts kept for mapper shapes)
   navigation.ts            shared nav map for TopBar, BottomTabBar, Footer
   validation/              Zod schemas (auth, hub, event, profile)
   constants.ts             enums/labels (mirrors AppSync schema enums)
@@ -135,9 +134,11 @@ warm-black `ink`; accents `ochre`, `eucalyptus`, `terracotta`). Tokens live in
 
 ## Conventions & gotchas
 
-1. **`lib/supabase/database.types.ts` is for TypeScript types only.** Supabase is gone at
-   runtime. The snake_case row types are still used as return types of the AppSync mapper
-   functions. Do not delete this file; do not add any Supabase runtime imports.
+1. **`lib/types/database.types.ts` is retained only for TypeScript shapes.** It contains the
+   original snake_case row interfaces used as return types by the mappers in `features/*/api.ts`.
+   The legacy `supabase/` directory and all runtime Supabase code have been removed. Do not add
+   new Supabase imports. The file should not be deleted until the mappers are updated to use
+   camelCase AppSync shapes directly.
 
 2. **AppSync lists are paginated.** Always use `collectAll()` from `lib/aws/list.ts`.
    DynamoDB returns at most ~100 items per page. A single `.list()` call will silently

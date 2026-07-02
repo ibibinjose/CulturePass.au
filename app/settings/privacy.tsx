@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { View } from "react-native";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, BackButton, Card, ListRow, Toggle, Divider } from "@/components/ui";
+import { Screen, Text, BackButton, Card, ListRow, Toggle, Divider, Avatar, Icon } from "@/components/ui";
+import { colors } from "@/lib/theme";
 import { RequireAuth } from "@/features/auth/RequireAuth";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { useMyProfile, useUpdateMyProfile, type Profile } from "@/features/profiles/api";
 import { parsePreferences, type ProfilePreferences } from "@/lib/validation/profile";
 
@@ -16,24 +19,57 @@ export default function PrivacyScreen() {
 
 function PrivacyLoader() {
   const { data: profile, isLoading } = useMyProfile();
-  if (isLoading || !profile) {
+  const { user } = useAuth();
+  const router = useRouter();
+
+  if (isLoading) {
     return (
-      <Screen maxWidth="form" contentClassName="pt-section">
-        <Text variant="caption" tone="faint">
-          Loading…
-        </Text>
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton fallbackHref="/settings" className="mb-5" />
+        <Text variant="overline" tone="pink">Privacy</Text>
+        <Text variant="title" className="mt-2">Privacy</Text>
+        <Card className="mt-8 h-16" />
+        <Card className="mt-6 h-32" />
+        <Card className="mt-6 h-40" />
       </Screen>
     );
   }
-  return <Privacy key={profile.id} profile={profile} />;
+
+  if (!profile) {
+    return (
+      <Screen maxWidth="form" contentClassName="pt-6">
+        <BackButton fallbackHref="/settings" className="mb-5" />
+        <Text variant="overline" tone="pink">Privacy</Text>
+        <Text variant="title" className="mt-2">Privacy</Text>
+
+        <Card className="mt-8">
+          <Text variant="subheading">Complete your profile first</Text>
+          <Text variant="caption" tone="faint" className="mt-1">
+            Finish setting up your profile to manage privacy and visibility.
+          </Text>
+          <View className="mt-4">
+            <ListRow
+              title="Edit profile"
+              subtitle="Name, bio, interests and more"
+              onPress={() => router.push("/profile/edit")}
+            />
+          </View>
+        </Card>
+      </Screen>
+    );
+  }
+
+  return <Privacy key={profile.id} profile={profile} userEmail={user?.email} />;
 }
 
-function Privacy({ profile }: { profile: Profile }) {
+function Privacy({ profile, userEmail }: { profile: Profile; userEmail?: string }) {
   const router = useRouter();
   const update = useUpdateMyProfile();
   const [prefs, setPrefs] = useState<ProfilePreferences>(() => parsePreferences(profile.preferences));
   const [isPublic, setIsPublic] = useState(profile.is_public_professional);
   const [banner, setBanner] = useState<string | null>(null);
+
+  const onboardingComplete = !!parsePreferences(profile.preferences).onboarding?.completed;
 
   function fail() {
     setBanner("Couldn’t save that change. Please try again.");
@@ -62,15 +98,55 @@ function Privacy({ profile }: { profile: Profile }) {
     <Screen maxWidth="form" contentClassName="pt-6">
       <BackButton fallbackHref="/settings" className="mb-5" />
 
-      <Text variant="overline" tone="pink">
-        Privacy
-      </Text>
-      <Text variant="title" className="mt-2">
-        Privacy
-      </Text>
+      <Text variant="overline" tone="pink">Privacy</Text>
+      <Text variant="title" className="mt-2">Privacy</Text>
       <Text variant="lead" className="mt-3">
         Control what you share and how people can find you.
       </Text>
+
+      {/* Mini profile header (consistent with main settings) */}
+      <Card className="mt-6" onPress={() => router.push(`/profile/${profile.id}`)}>
+        <View className="flex-row items-center gap-3">
+          <Avatar
+            name={profile.full_name}
+            uri={profile.avatar_url}
+            size={40}
+          />
+          <View className="flex-1">
+            <Text variant="subheading">Your profile</Text>
+            <Text variant="caption" tone="faint" numberOfLines={1}>
+              {userEmail || profile.full_name}
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={18} color={colors.inkFaint} />
+        </View>
+      </Card>
+
+      {/* Recommend completing profile / onboarding */}
+      {(!profile.full_name || !onboardingComplete) && (
+        <Card className="mt-4 border-gold-200 bg-gold-50">
+          <Text variant="label">Complete your profile</Text>
+          <Text variant="caption" tone="muted" className="mt-1">
+            Add your name, bio, interests and more for full privacy controls and discovery.
+          </Text>
+          <View className="mt-3 flex-row gap-2">
+            <ListRow
+              title="Edit profile"
+              subtitle="Name, bio, interests and more"
+              onPress={() => router.push("/profile/edit")}
+            />
+          </View>
+          {!onboardingComplete && (
+            <View className="mt-2">
+              <ListRow
+                title="Complete onboarding"
+                subtitle="Pick interests for tailored experience"
+                onPress={() => router.push("/onboarding")}
+              />
+            </View>
+          )}
+        </Card>
+      )}
 
       <Text variant="overline" tone="faint" className="mb-1 mt-8">
         Public profile

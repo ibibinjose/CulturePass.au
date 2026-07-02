@@ -1,6 +1,6 @@
 /**
  * Helpers for consuming Amplify Data (AppSync) results during the per-feature
- * port. Two recurring needs the Supabase client handled for us:
+ * port. Pagination and error handling patterns carried over from the original client.
  *
  *  - `collectAll` paginates a `.list()` to completion. DynamoDB lists are capped
  *    per page (and `australian_councils` alone is >100 rows), so anything that

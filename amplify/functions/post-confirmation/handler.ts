@@ -1,7 +1,7 @@
 // =============================================================================
 // post-confirmation handler — create a Profile for a newly confirmed user.
 // =============================================================================
-// AWS equivalent of the Supabase `handle_new_user` trigger. Idempotent: skips
+// Creates a Profile for newly confirmed Cognito users. Idempotent: skips
 // if a Profile already exists for this Cognito sub. Writes with the function's
 // IAM role (granted via allow.resource in amplify/data/resource.ts).
 //
@@ -31,9 +31,17 @@ export const handler: PostConfirmationTriggerHandler = async (event) => {
   if (existing && existing.length > 0) return event;
 
   const fullName = attrs.name || (attrs.email ? attrs.email.split("@")[0] : "");
+  // Generate initial username handle (users can change later). Real name policy
+  // applies: usernames should reflect real identity where possible. Celebrities
+  // and businesses can request claims via support/admin.
+  const baseHandle = (attrs.email ? attrs.email.split("@")[0] : fullName || userId)
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "")
+    .slice(0, 20) || `user${userId.slice(0, 6)}`;
   await client.models.Profile.create({
     userId,
     fullName,
+    username: baseHandle,
     // IAM creates don't auto-populate the owner claim, and without it the user
     // can never pass the `allow.owner()` rule to edit their own profile. Plain
     // sub is accepted by the owner check (`sub` / `username` / `sub::username`).

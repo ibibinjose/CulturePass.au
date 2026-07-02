@@ -1,8 +1,10 @@
-# Supabase → AWS migration (additive cutover)
+# Supabase → AWS migration (historical record)
 
-The app moves from Supabase to **AWS Amplify Gen 2** (Cognito + AppSync/DynamoDB +
-S3) **without ever breaking**. It runs on Supabase until you deploy the AWS
-backend and flip one flag. Nothing here deletes Supabase.
+**Status: Complete.** Production has been exclusively AWS Amplify Gen 2 since mid-2026.
+
+This document is retained as a historical record of the additive cutover approach.
+
+The app moved from Supabase to **AWS Amplify Gen 2** (Cognito + AppSync/DynamoDB + S3 + Lambda) without breaking users. `lib/backend.ts` now hard-pins the backend to AWS (`BACKEND = "aws"`). The dual seam and `EXPO_PUBLIC_BACKEND` flag are vestigial.
 
 ## Architecture mapping
 
@@ -17,7 +19,7 @@ backend and flip one flag. Nothing here deletes Supabase.
 
 - **Deployable backend.** `@aws-amplify/backend` is installed; the Gen 2 backend
   ([`amplify/backend.ts`](../amplify/backend.ts)) defines Auth, Data (all 18
-  domain models, ported from `lib/supabase/database.types.ts`) and Storage.
+  domain models, ported from `lib/types/database.types.ts`) and Storage.
   `npx tsc -p amplify/tsconfig.json --noEmit` is green.
 - **Client seam (additive):**
   - [`lib/backend.ts`](../lib/backend.ts) — `BACKEND` / `isAwsBackend` flag from
@@ -30,30 +32,14 @@ backend and flip one flag. Nothing here deletes Supabase.
   - [`app/_layout.tsx`](../app/_layout.tsx) calls `configureAmplify()` only when
     `isAwsBackend` — a no-op on the Supabase build.
 
-## Deploy & cut over
+## What the cutover looked like (historical)
 
-1. **AWS credentials** (I can't do this from the repo): `aws configure` (or SSO).
-2. **Deploy a sandbox:** `npx ampx sandbox` → writes `amplify_outputs.json`.
-3. **Fill `.env`** from `amplify_outputs.json`:
-   - `auth.user_pool_id` → `EXPO_PUBLIC_COGNITO_USER_POOL_ID`
-   - `auth.user_pool_client_id` → `EXPO_PUBLIC_COGNITO_APP_CLIENT_ID`
-   - `auth.identity_pool_id` → `EXPO_PUBLIC_COGNITO_IDENTITY_POOL_ID`
-   - `data.url` → `EXPO_PUBLIC_APPSYNC_ENDPOINT`
-4. **Flip the flag:** `EXPO_PUBLIC_BACKEND=aws`, restart Expo. Amplify now
-   configures at startup.
+1. Deploy sandbox: `npx ampx sandbox`
+2. Populate `.env` via `node scripts/aws-env-from-outputs.mjs`
+3. `EXPO_PUBLIC_BACKEND=aws` (now hard-coded in `lib/backend.ts`)
+4. Ported feature `api.ts` files to use `getAwsDataClient()` + mappers.
+5. Stripe functions moved to `amplify/functions/`.
+6. One-shot data migration via `scripts/migrate-supabase-to-dynamo.mjs`.
+7. Reference data seeded via `dev-seed` Lambda + `post-confirmation` trigger.
 
-## Remaining work (the data-layer port)
-
-The seam is ready but the ~1,768 lines of `features/*/api.ts` still call Supabase.
-Port them per domain, branching on `isAwsBackend` and using `getAwsDataClient()`
-(type it `generateClient<Schema>()` — see the note in `lib/aws/data.ts`). Order:
-`reference` → `auth` → `profiles` → `hubs` → `events` → `tickets`/social.
-
-Still to design:
-- **Stripe** — `tickets-checkout` + `stripe-webhook` (Deno edge functions) must be
-  rebuilt as Amplify **functions** (Lambda); keep the webhook the source of truth.
-- **Reference data** — seed `AustralianState` / `AustralianCouncil` (from
-  `supabase/seed.sql`) into DynamoDB.
-- **Data migration** — export existing Supabase rows → DynamoDB.
-- **Realtime / RLS parity** — verify per-hub editor rules (approximated by
-  `owner` + `admin` today) and AppSync subscriptions vs Supabase Realtime.
+All data-layer ports, auth, realtime (subscriptions), and Stripe fulfilment are now on the AWS side. The old Supabase client paths have been removed from normal execution.

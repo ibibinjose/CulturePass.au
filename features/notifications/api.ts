@@ -7,7 +7,7 @@ import { fromAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useMyProfile } from "@/features/profiles/api";
-import type { NotificationRow } from "@/lib/supabase/database.types";
+import type { NotificationRow } from "@/lib/types/database.types";
 
 export type AppNotification = NotificationRow;
 

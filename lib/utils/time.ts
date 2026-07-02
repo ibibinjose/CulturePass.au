@@ -16,3 +16,36 @@ export function timeAgo(iso: string | null | undefined): string {
   if (days < 7) return `${days}d`;
   return shortDate.format(new Date(iso));
 }
+
+export function groupEventsByDate(eventsList: any[]) {
+  const groups: { dateLabel: string; items: any[] }[] = [];
+  eventsList.forEach((e) => {
+    if (!e.start_time) return;
+    const dateObj = new Date(e.start_time);
+
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    let dateLabel = "";
+    if (dateObj.toDateString() === today.toDateString()) {
+      dateLabel = "Today";
+    } else if (dateObj.toDateString() === tomorrow.toDateString()) {
+      dateLabel = "Tomorrow";
+    } else {
+      dateLabel = new Intl.DateTimeFormat("en-AU", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      }).format(dateObj); // e.g. "Sat, 27 Jun"
+    }
+
+    const existing = groups.find((g) => g.dateLabel === dateLabel);
+    if (existing) {
+      existing.items.push(e);
+    } else {
+      groups.push({ dateLabel, items: [e] });
+    }
+  });
+  return groups;
+}

@@ -41,7 +41,7 @@ function useClock() {
 }
 
 /** BrandMark sub-component for the top bar. */
-function BrandMark({ onPress }: { onPress: () => void }) {
+function BrandMark({ onPress, weather }: { onPress: () => void; weather?: Weather | null }) {
   return (
     <Pressable
       onPress={onPress}
@@ -51,10 +51,13 @@ function BrandMark({ onPress }: { onPress: () => void }) {
       accessibilityLabel="CulturePass Australia home"
     >
       <View className="h-8 w-8 items-center justify-center rounded-xl bg-white shadow-subtle">
-        <Pinwheel size={24} />
+        <Pinwheel
+          size={24}
+          windDirection={weather?.windDirection}
+          windSpeed={weather?.windSpeed}
+        />
       </View>
-      <Text className="font-display text-lg text-ink">CulturePass</Text>
-      <Text className="font-display text-lg text-pink-500">AU</Text>
+      <Text className="font-display text-lg text-ink">CulturePass.au</Text>
     </Pressable>
   );
 }
@@ -257,7 +260,7 @@ export function TopBar() {
         className="mx-auto w-full max-w-content flex-row items-center gap-5 px-gutter"
       >
         {/* Brand */}
-        <BrandMark onPress={() => router.push("/")} />
+        <BrandMark onPress={() => router.push("/")} weather={weather} />
 
         {/* Inline nav (wide only) */}
         {isWide ? (
@@ -438,6 +441,7 @@ function Clock({ now, weather, compact }: { now: Date; weather?: Weather | null;
         {weather ? (
           <Text variant="label" className="font-ui text-ink">
             {weather.emoji} {weather.tempC}°
+            {weather.pollution ? ` ${weather.pollution.emoji}` : ""}
           </Text>
         ) : null}
       </View>
@@ -449,10 +453,16 @@ function Clock({ now, weather, compact }: { now: Date; weather?: Weather | null;
         <View className="items-end">
           <Text variant="caption" className="font-ui text-ink">
             {weather.emoji} {weather.tempC}°
+            {weather.windDirection != null ? ` ${Math.round(weather.windDirection)}°` : ""}
           </Text>
           {weather.name ? (
             <Text variant="overline" className="text-ink/60" numberOfLines={1}>
               {weather.name}
+            </Text>
+          ) : null}
+          {weather.pollution ? (
+            <Text variant="overline" className="text-ink/50" style={{ fontSize: 9 }}>
+              {weather.pollution.emoji} {weather.pollution.level} {weather.pollution.pm25}µg
             </Text>
           ) : null}
         </View>

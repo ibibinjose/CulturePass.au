@@ -1,5 +1,5 @@
 /**
- * Cognito auth adapter — the AWS counterpart to the `supabase.auth.*` calls.
+ * Cognito auth adapter (replaces previous supabase.auth usage).
  *
  * Kept backend-neutral: callers (features/auth, AuthProvider) get a minimal
  * `{ id, email }` user that matches what the app actually reads, instead of a

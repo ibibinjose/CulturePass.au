@@ -1,4 +1,6 @@
-# AWS Migration Guide for CulturePassAustralia
+# AWS Migration Guide for CulturePassAustralia (historical / alternative)
+
+> **Note:** The project uses **AWS Amplify Gen 2** (see `amplify/` at repo root, `npx ampx`, `amplify.yml`). This document describes an older/custom CloudFormation + manual Amplify client approach and is retained only for reference.
 
 ## Overview
 This guide walks you through moving **CulturePassAustralia** from Supabase to an AWS‑based stack.

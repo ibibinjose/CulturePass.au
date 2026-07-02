@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // =============================================================================
 // migrate-supabase-to-dynamo.mjs
-// One-shot data migration: Supabase (Postgres) → AWS DynamoDB (via AppSync).
+// HISTORICAL: One-shot data migration from legacy Supabase (Postgres) → AWS DynamoDB (via AppSync).
+// The migration is complete. This script is retained only for reference if you have old Supabase data.
 //
 // What it migrates (in dependency order):
 //   1. AustralianState        (reference — no auth constraint)

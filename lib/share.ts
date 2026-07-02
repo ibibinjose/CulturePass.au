@@ -26,14 +26,23 @@ export async function shareContent(opts: {
   url: string;
   title?: string;
   message?: string;
+  imageUri?: string; // thumbnail for social sharing (use expo-image-manipulator to create)
 }): Promise<ShareResult> {
-  const { url, title, message } = opts;
+  const { url, title, message, imageUri } = opts;
 
   if (Platform.OS === "web") {
     const nav = typeof navigator !== "undefined" ? navigator : undefined;
     if (nav && typeof nav.share === "function") {
       try {
-        await nav.share({ title, text: message, url });
+        // Web Share supports files in modern browsers
+        if (imageUri && nav.canShare?.({ files: [] })) {
+          const response = await fetch(imageUri);
+          const blob = await response.blob();
+          const file = new File([blob], "thumbnail.jpg", { type: "image/jpeg" });
+          await nav.share({ title, text: message, url, files: [file] });
+        } else {
+          await nav.share({ title, text: message, url });
+        }
         return "shared";
       } catch {
         return "cancelled";
@@ -43,11 +52,15 @@ export async function shareContent(opts: {
   }
 
   try {
+    const shareOptions: any = { url, message: title ?? message };
+    if (imageUri) {
+      shareOptions.url = imageUri; // or use files if available
+    }
     if (Platform.OS === "ios") {
-      await Share.share({ url, message: title ?? message });
+      await Share.share(shareOptions);
     } else {
       const body = [message ?? title, url].filter(Boolean).join("\n");
-      await Share.share({ message: body, title });
+      await Share.share({ message: body, title, url: imageUri || url });
     }
     return "shared";
   } catch {

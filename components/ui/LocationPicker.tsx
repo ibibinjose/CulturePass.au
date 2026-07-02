@@ -172,17 +172,19 @@ export function LocationPicker({
         accessibilityLabel="Choose location"
         className={cn(
           "h-11 flex-row items-center gap-2 self-start rounded-pill border px-4",
-          active ? "border-ink bg-ink" : "border-linen bg-card active:bg-sand",
+          active && !className?.includes("bg-transparent") ? "border-ink bg-ink" : "border-linen bg-card active:bg-sand",
           className,
         )}
       >
-        <Icon name="map-pin" size={16} color={active ? colors.paper : colors.inkMuted} />
-        <Text variant="label" className={cn("font-heading text-sm", active ? "text-paper" : "text-ink")}>
+        {!className?.includes("bg-transparent") && (
+          <Icon name="map-pin" size={16} color={active ? colors.paper : colors.inkMuted} />
+        )}
+        <Text variant="label" className={cn("font-heading text-sm", active && !className?.includes("bg-transparent") ? "text-paper" : "text-ink")}>
           {value.label}
         </Text>
         {active ? (
           <Pressable onPress={() => choose(ANYWHERE)} hitSlop={8}>
-            <Icon name="close" size={14} color={colors.paper} strokeWidth={2.2} />
+            <Icon name="close" size={14} color={active && !className?.includes("bg-transparent") ? colors.paper : colors.inkMuted} strokeWidth={2.2} />
           </Pressable>
         ) : (
           <Icon name="chevron-down" size={15} color={colors.inkMuted} />

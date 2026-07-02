@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Pressable, View, useWindowDimensions } from "react-native";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
 
-import { Screen, Text, Button, Card, Badge, Divider, Icon } from "@/components/ui";
+import { Screen, Text, Button, Card, Badge, Divider, Icon, Thumbnail } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { useDeleteHub, useMyHubs } from "@/features/hubs/api";
 import { useDeleteEvent, useMyHubEvents } from "@/features/events/api";
@@ -150,7 +149,7 @@ function HubManageCard({
 
   const verifyBadge =
     hub.verification_status === "verified" ? (
-      <Badge label="Verified" variant="success" />
+      <Badge label="Approved" variant="success" />
     ) : hub.verification_status === "rejected" ? (
       <Badge label="Rejected" variant="danger" />
     ) : (
@@ -167,20 +166,12 @@ function HubManageCard({
     <Card padded={false} className={cn("overflow-hidden border border-linen bg-card p-5 gap-4", widthClass)}>
       {/* Top row: Brand & Info */}
       <View className="flex-row items-start gap-4">
-        {logoUrl ? (
-          <Image
-            source={{ uri: logoUrl }}
-            style={{ width: 56, height: 56, borderRadius: 14 }}
-            contentFit="cover"
-            transition={150}
-          />
-        ) : (
-          <View className="h-14 w-14 items-center justify-center rounded-xl bg-sand">
-            <Text className="font-display text-lg text-ink-muted">
-              {hub.name.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-        )}
+        <Thumbnail
+          uri={logoUrl}
+          size={56}
+          borderRadius={14}
+          className="border border-linen"
+        />
 
         <View className="min-w-0 flex-1 gap-1">
           <View className="flex-row flex-wrap items-center gap-1.5">

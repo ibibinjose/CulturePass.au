@@ -49,7 +49,7 @@ When adding a new domain, mirror this pattern instead of putting queries in the 
 
 ## `lib/` — shared utilities
 
-- **`backend.ts`** — backend seam. Exports `BACKEND`, `isAwsBackend`, and `isSupabaseBackend` so code that needs to branch on backend reads from one place. The current build is AWS-only.
+- **`backend.ts`** — backend seam (pinned). `BACKEND = "aws"`, `isAwsBackend = true`, `isSupabaseBackend = false`. The dual-backend branching code has been retired; the flags exist for cleanliness and any future tooling.
 - **`aws/`** — Amplify client setup and helpers: `config.ts` (Amplify configuration from env), `auth.ts` (Cognito helpers), `data.ts` (typed AppSync client factory), `list.ts` (pagination), `map.ts` (record ↔ domain-model mappers).
 - **`constants.ts`** — controlled vocabularies and labels (single source of truth for things like categories and statuses).
 - **`navigation.ts`** — shared app map used by the top nav, mobile tabs, and footer, so all three stay aligned as routes evolve.
@@ -74,9 +74,9 @@ The Amplify Gen 2 backend is defined entirely in TypeScript. `amplify/backend.ts
 
 Server-side secrets (Stripe keys) are set with `npx ampx sandbox secret set` and are never bundled into the client.
 
-## Migrating from Supabase
+## Historical: Migrating from Supabase
 
-For anyone moving an existing CulturePass dataset off the legacy Supabase Postgres database, `scripts/migrate-supabase-to-dynamo.mjs` is a one-shot cutover that reads from Supabase and writes through AppSync (with IAM auth) in dependency order — reference data, profiles, hubs, events, tickets, messages, and the rest. See the [Quickstart](/quickstart#migrating-an-existing-dataset) for usage. The script is not part of normal local development.
+The one-time data cutover from legacy Supabase Postgres to DynamoDB (via `scripts/migrate-supabase-to-dynamo.mjs`) is complete. The script remains in the tree for reference only. Normal development uses the AWS backend exclusively.
 
 ## Where to put new code
 

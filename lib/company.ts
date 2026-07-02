@@ -23,4 +23,10 @@ export const COMPANY = {
   jurisdiction: "New South Wales, Australia",
   /** Date the current legal documents took effect. */
   legalUpdated: "27 June 2026",
+
+  /** Founder / team note shown in Footer (and About). "Just make it exist first..." */
+  founderQuote: {
+    text: "Just make it exist first, you can make it good later.",
+    author: "Bibin Jose",
+  },
 } as const;

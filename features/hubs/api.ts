@@ -4,7 +4,7 @@ import { collectAll } from "@/lib/aws/list";
 import { compact, fromAwsJson, slugify, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
-import type { Database, HubImage } from "@/lib/supabase/database.types";
+import type { Database, HubImage } from "@/lib/types/database.types";
 
 export interface HubFilters {
   state?: string;
@@ -40,7 +40,7 @@ type HubCard = Pick<
 type HubCouncil = { name: string; traditional_custodians: string[] | null };
 type HubDetail = HubRow & { council: HubCouncil | null };
 
-// ---- AppSync → Supabase-row mappers ----------------------------------------
+// ---- AppSync → legacy row mappers (snake_case shapes) ----------------------------------------
 
 function mapHub(h: AwsItem<"Hub">): HubRow {
   return {

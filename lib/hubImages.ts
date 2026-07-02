@@ -1,4 +1,4 @@
-import type { HubImage } from "@/lib/supabase/database.types";
+import type { HubImage } from "@/lib/types/database.types";
 
 export function getHubImage(images: HubImage[] | null | undefined, type: NonNullable<HubImage["type"]>) {
   return (images ?? []).find((image) => image?.type === type && image.url)?.url ?? null;

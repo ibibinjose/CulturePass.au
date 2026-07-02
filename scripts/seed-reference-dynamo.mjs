@@ -1,27 +1,13 @@
 #!/usr/bin/env node
 // =============================================================================
 // seed-reference-dynamo.mjs
-// Seed the AppSync-managed DynamoDB tables with reference data (states +
-// councils) parsed from supabase/seed.sql — the canonical seed source.
+// HISTORICAL: Seed reference data (Australian states + councils) into DynamoDB.
 //
-// Use this to stand up a fresh backend (the old Supabase → Dynamo migration
-// script needs a live Supabase instance; this doesn't). Writes directly to the
-// DynamoDB tables with the caller's AWS credentials, shaping items the way
-// AppSync stores them (__typename / createdAt / updatedAt included), so the
-// app reads them exactly like client-created rows.
+// Previously parsed from legacy supabase/seed.sql. The Supabase directory has
+// been removed as the project is now 100% AWS Amplify Gen 2.
 //
-// Usage:
-//   AWS_PROFILE=culturepass-admin node scripts/seed-reference-dynamo.mjs
-//
-// Options (env vars):
-//   DRY_RUN=1        Parse + report counts, write nothing
-//   AWS_REGION       Defaults to the region in amplify_outputs.json
-//
-// The target tables are derived from amplify_outputs.json: the data URL is
-// matched against `aws appsync list-graphql-apis` to find the API id used in
-// the table names (<Model>-<apiId>-NONE). Existing rows with the same key are
-// overwritten (states key on `code`; councils get fresh UUIDs, so re-running
-// on a non-empty council table would duplicate — the script refuses instead).
+// This script may need updating or the seed data can be maintained elsewhere.
+// It writes directly to the AppSync DynamoDB tables.
 // =============================================================================
 
 import { execFileSync } from "node:child_process";
@@ -53,9 +39,14 @@ const suffix = `${api.apiId}-NONE`;
 console.log(`Target API ${api.apiId} (${region})`);
 
 // ---------------------------------------------------------------------------
-// Parse supabase/seed.sql
+// Legacy Supabase seed parsing removed (supabase/ directory deleted).
+// The project is now fully on AWS. Seed data logic needs to be maintained
+// separately or this script updated with embedded reference data.
 // ---------------------------------------------------------------------------
-const sql = readFileSync(join(root, "supabase", "seed.sql"), "utf8");
+console.error("This script is historical. The supabase/ directory has been removed (full AWS migration).");
+console.error("Reference data seeding should now be handled differently (e.g. via dev-seed Lambda or manual).");
+process.exit(1);
+
 
 /** Extract the `values ...;` tuple list that follows an INSERT for `table`. */
 function tuplesFor(table) {

@@ -16,6 +16,7 @@ import {
   Toggle,
 } from "@/components/ui";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
+import { getAwsDataClient } from "@/lib/aws/data";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { profileSchema } from "@/lib/validation/profile";
 import { pruneLinks } from "@/lib/social";
@@ -26,6 +27,7 @@ import {
 } from "@/lib/constants";
 
 type ProfileForm = {
+  username: string;
   full_name: string;
   avatar_url: string | null;
   bio: string;
@@ -42,6 +44,7 @@ type ProfileForm = {
 };
 
 const EMPTY_FORM: ProfileForm = {
+  username: "",
   full_name: "",
   avatar_url: null,
   bio: "",
@@ -81,6 +84,7 @@ function EditProfileScreenInner() {
     if (!profile) return;
     const links = (profile.public_links ?? {}) as Record<string, string>;
     setForm({
+      username: profile.username || "",
       full_name: profile.full_name || "",
       avatar_url: profile.avatar_url ?? null,
       bio: profile.bio || "",
@@ -102,6 +106,7 @@ function EditProfileScreenInner() {
   async function submit() {
     setBanner(null);
     const parsed = profileSchema.safeParse({
+      username: form.username || undefined,
       full_name: form.full_name,
       avatar_url: form.avatar_url ?? undefined,
       bio: form.bio || undefined,
@@ -125,9 +130,34 @@ function EditProfileScreenInner() {
 
     const publicLinks = pruneLinks(form.links);
 
+    const prof = profile;
+    if (!prof) {
+      setBanner("Profile not loaded.");
+      setSubmitting(false);
+      return;
+    }
+
+    // Uniqueness check for username (real name policy: prefer real identities;
+    // celebrities/businesses may claim names via support or admin override).
+    if (form.username && form.username !== prof.username) {
+      const client = getAwsDataClient();
+      const { data: existing } = await client.models.Profile.list({
+        filter: { username: { eq: form.username } },
+        limit: 1,
+      });
+      const profileId = prof.id!;
+      const match = existing?.[0];
+      if (match && match.id !== profileId) {
+        setBanner("That username is already taken. Choose another or contact support to claim if you're a verified celebrity/business.");
+        setSubmitting(false);
+        return;
+      }
+    }
+
     setSubmitting(true);
     try {
       await updateMyProfile.mutateAsync({
+        username: form.username.trim() || null,
         full_name: form.full_name.trim(),
         avatar_url: form.avatar_url,
         bio: form.bio.trim() || null,
@@ -202,6 +232,16 @@ function EditProfileScreenInner() {
             folderPath="avatars"
             label="Upload Avatar"
             helperText="Add a profile picture"
+          />
+        </Field>
+
+        <Field label="Username handle" optional helper="@username – choose a unique @handle (letters, numbers, _ only). We follow a real name policy. Celebrities & businesses may claim a taken handle by contacting support (admin override available).">
+          <Input
+            value={form.username}
+            onChangeText={(username) => set({ username: username.replace(/^@/, "") })}
+            placeholder="yourhandle"
+            autoCapitalize="none"
+            autoComplete="username"
           />
         </Field>
 

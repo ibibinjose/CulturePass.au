@@ -11,7 +11,7 @@ import {
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { colors } from "@/lib/theme";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
-import type { HubImage } from "@/lib/supabase/database.types";
+import type { HubImage } from "@/lib/types/database.types";
 import { useSavedEvents } from "@/features/events/useSavedEvents";
 import { useEventLikes, useToggleEventLike } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";

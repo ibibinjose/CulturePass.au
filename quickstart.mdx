@@ -87,17 +87,19 @@ npm run android    # Android emulator or connected device
 
 `npm run web` is the fastest feedback loop for most UI work.
 
-## Migrating an existing dataset
+## Historical: Migrating an existing dataset (one-time cutover)
 
-If you're moving an existing CulturePass dataset from the legacy Supabase Postgres database into DynamoDB, run the one-time cutover script after the sandbox is up:
+**The migration from Supabase to AWS is complete.** The production build is AWS-only (`lib/backend.ts` pins `BACKEND = "aws"`).
+
+The one-time cutover script `scripts/migrate-supabase-to-dynamo.mjs` was used to port data (reference → profiles → hubs → events → tickets → messages) through AppSync. It is no longer part of normal development or onboarding.
+
+You can still run it for reference if you have an old Supabase dump:
 
 ```bash
 node scripts/migrate-supabase-to-dynamo.mjs
-# or, to preview without writing:
+# preview:
 DRY_RUN=1 node scripts/migrate-supabase-to-dynamo.mjs
 ```
-
-The script walks the models in dependency order (reference data → profiles → hubs → events → tickets → messages) and writes through AppSync with IAM auth. This is a one-shot migration, not part of normal local dev.
 
 ## Useful scripts
 

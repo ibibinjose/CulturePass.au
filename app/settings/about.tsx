@@ -31,6 +31,10 @@ export default function AboutScreen() {
         grounded in respect for First Nations peoples. Unity in diversity.
       </Text>
 
+      <Text className="mt-4 text-[10px] font-sans italic text-ink-muted">
+        “{COMPANY.founderQuote.text}” — {COMPANY.founderQuote.author}
+      </Text>
+
       <AcknowledgementBar className="mt-8" />
 
       <Text variant="overline" tone="pink" className="mb-2 mt-8">

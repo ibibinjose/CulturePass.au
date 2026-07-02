@@ -9,7 +9,8 @@ module.exports = [
       "node_modules/**",
       ".expo/**",
       "dist/**",
-      "supabase/functions/**",
+      "dist-web/**",
+
       "amplify/**",
       ".amplify/**",
       "scripts/**",

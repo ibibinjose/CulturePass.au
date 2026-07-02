@@ -6,7 +6,7 @@ import { collectAll } from "@/lib/aws/list";
 import { compact, fromAwsJson, nullableList } from "@/lib/aws/map";
 import { getAwsCurrentUserId } from "@/lib/aws/auth";
 import { qk } from "@/lib/query";
-import type { Database, HubImage } from "@/lib/supabase/database.types";
+import type { Database, HubImage } from "@/lib/types/database.types";
 
 type TicketOrderRow = Database["public"]["Tables"]["ticket_orders"]["Row"];
 

@@ -18,8 +18,8 @@ async function jsonBody(operation: RestOperation): Promise<DocumentType> {
 }
 
 /**
- * Thin wrapper that mimics the Supabase client surface on top of Amplify v6, so
- * call sites can move off Supabase with minimal churn. Auth runs on Cognito;
+ * Legacy wrapper (from migration era) that mimicked a previous client surface.
+ * Auth is now on Cognito;
  * data runs on a REST API (configure the `myApi` endpoint in `amplify-config.ts`
  * once API Gateway/Lambda exists).
  */

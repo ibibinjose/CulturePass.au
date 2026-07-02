@@ -14,6 +14,7 @@ import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
 import { useCouncilDetails, useDetectCouncil, useUpdateCouncil } from "@/features/reference/api";
 import { parsePreferences } from "@/lib/validation/profile";
+import { groupEventsByDate } from "@/lib/utils/time";
 import { HUB_TYPE_LABELS, type HubType, type StateCode } from "@/lib/constants";
 
 function getCountdownString(startTime: Date | null | string): string {
@@ -34,38 +35,6 @@ function getCountdownString(startTime: Date | null | string): string {
     return `Starts in ${diffHours}h ${diffMins}m`;
   }
   return `Starts in ${diffMins}m`;
-}
-
-function groupEventsByDate(eventsList: any[]) {
-  const groups: { dateLabel: string; items: any[] }[] = [];
-  eventsList.forEach((e) => {
-    if (!e.start_time) return;
-    const dateObj = new Date(e.start_time);
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
-
-    let dateLabel = "";
-    if (dateObj.toDateString() === today.toDateString()) {
-      dateLabel = "Today";
-    } else if (dateObj.toDateString() === tomorrow.toDateString()) {
-      dateLabel = "Tomorrow";
-    } else {
-      dateLabel = new Intl.DateTimeFormat("en-AU", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      }).format(dateObj);
-    }
-
-    const existing = groups.find((g) => g.dateLabel === dateLabel);
-    if (existing) {
-      existing.items.push(e);
-    } else {
-      groups.push({ dateLabel, items: [e] });
-    }
-  });
-  return groups;
 }
 
 export default function MyCouncilScreen() {

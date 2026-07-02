@@ -53,14 +53,16 @@ export function Footer({ className }: { className?: string }) {
                   <Pinwheel size={20} />
                 </View>
                 <View className="gap-0.5">
-                  <Text className="font-display text-sm leading-none text-paper font-semibold">CulturePass</Text>
-                  <Text className="font-heading text-[9px] uppercase leading-none tracking-[1.5px] text-paper/60">
-                    Australia
-                  </Text>
+                  <Text className="font-display text-sm leading-none text-paper font-semibold">CulturePass.au</Text>
                 </View>
               </View>
               <Text className="text-[10px] font-sans text-paper/50 leading-4">
                 Discover, create and connect through cultural experiences across Australia — with First Nations voices at the centre.
+              </Text>
+
+              {/* Founder note (single source of truth in lib/company) */}
+              <Text className="mt-1 text-[9px] font-sans italic text-paper/40 leading-tight">
+                “{COMPANY.founderQuote.text}” — {COMPANY.founderQuote.author}
               </Text>
             </View>
 

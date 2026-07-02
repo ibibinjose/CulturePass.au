@@ -5,7 +5,7 @@ import { postConfirmation } from "../functions/post-confirmation/resource";
 /**
  * Cognito auth for CulturePass.
  *
- * Mirrors the current Supabase email/password auth so the migration is a
+ * Email/password + verification flow (ported from previous implementation) so the
  * like-for-like swap at the call sites. Add social providers, MFA, or custom
  * attributes here as the migration progresses.
  */
@@ -23,10 +23,10 @@ export const auth = defineAuth({
         `Welcome to CulturePass Australia. Your verification code is ${createCode()}. Enter it in the app (or use any link in this email) to confirm your account.`,
     },
   },
-  // "admin" replaces the Supabase `profiles.is_admin` / SQL admin role; the data
+  // "admin" group for elevated access (replaces previous is_admin flag); the data
   // schema grants this group elevated access via `allow.group("admin")`.
   groups: ["admin"],
-  // Create the user's Profile on sign-up (AWS replacement for the Supabase
+  // Create the user's Profile on sign-up (replacement for previous trigger)
   // `handle_new_user` Postgres trigger).
   triggers: {
     postConfirmation,

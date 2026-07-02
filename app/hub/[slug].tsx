@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Linking, Pressable, View, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Image } from "expo-image";
 import { useMobileLayout } from "@/lib/useMobileLayout";
+import { getEventTimezone } from "@/lib/utils/timezone";
 
 import {
   Screen,
@@ -31,11 +32,26 @@ import {
 } from "@/features/hubs/api";
 import { useHubEvents } from "@/features/events/api";
 import { useMyProfile } from "@/features/profiles/api";
+import { useWeather } from "@/features/weather/api";
 import { useStartConversation } from "@/features/chat/api";
 import { HUB_TYPE_LABELS, type HubType } from "@/lib/constants";
 import { cn } from "@/lib/utils/cn";
 
+
+
 type TabKey = "events" | "about" | "details";
+
+type StateCode = "NSW" | "VIC" | "QLD" | "SA" | "WA" | "TAS" | "ACT" | "NT";
+export const STATE_COORDS: Record<StateCode, { lat: number; lon: number }> = {
+  NSW: { lat: -33.8688, lon: 151.2093 }, // Sydney
+  VIC: { lat: -37.8136, lon: 144.9631 }, // Melbourne
+  QLD: { lat: -27.4698, lon: 153.0251 }, // Brisbane
+  SA: { lat: -34.9285, lon: 138.6007 },  // Adelaide
+  WA: { lat: -31.9505, lon: 115.8605 },  // Perth
+  TAS: { lat: -42.8821, lon: 147.3272 }, // Hobart
+  ACT: { lat: -35.2809, lon: 149.1300 }, // Canberra
+  NT: { lat: -12.4634, lon: 130.8456 },  // Darwin
+};
 
 export default function HubScreen() {
   const router = useRouter();
@@ -46,6 +62,13 @@ export default function HubScreen() {
   const startConversation = useStartConversation();
   const [tab, setTab] = useState<TabKey>("events");
   const isMobile = useMobileLayout();
+
+  // Live clock for local time display (updates every 15s)
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setClock(new Date()), 15000);
+    return () => clearInterval(id);
+  }, []);
 
   const { data: likeStatus } = useHubLikeStatus(hub?.id || "");
   const { data: followStatus } = useHubFollowStatus(hub?.id || "");
@@ -71,6 +94,25 @@ export default function HubScreen() {
       toggleFollow.mutate({ hubId: hub.id, followed: !!followStatus?.followed });
     }
   };
+
+  // Weather + local time for hub location (free Open-Meteo).
+  // Hook is *always* called (no conditional hooks). Falls back intelligently using hub state.
+  const coords = hub?.coordinates
+    ? hub.coordinates.split(",").map((s: string) => parseFloat(s.trim())).filter((n: number) => !isNaN(n))
+    : [];
+  let fallback = STATE_COORDS.NSW;
+  const sk = (hub?.location_state || "").toUpperCase();
+  if (sk && sk in STATE_COORDS) {
+    fallback = STATE_COORDS[sk as StateCode];
+  }
+  const hubLat = coords[0] ?? fallback.lat;
+  const hubLon = coords[1] ?? fallback.lon;
+  const shouldUseHubLocation = true;
+  const { data: hubWeather, isError: weatherError } = useWeather({
+    lat: hubLat,
+    lon: hubLon,
+    name: hub?.location_city || (hub ? [hub.location_city, hub.location_state].filter(Boolean).join(", ") : undefined),
+  });
 
   if (isLoading) return <HubSkeleton />;
 
@@ -104,6 +146,7 @@ export default function HubScreen() {
     images.find((i) => i.url !== logoUrl)?.url ??
     null;
 
+  const hasCover = !!coverUrl;
   const isOwnerOrEditor = !!profile && hub.owner_id === profile.id;
   const isVerified = hub.verification_status === "verified";
   const eventCount = events?.length ?? 0;
@@ -114,6 +157,16 @@ export default function HubScreen() {
   const websiteLabel = hub.website
     ? hub.website.replace(/^https?:\/\//i, "").replace(/\/+$/, "")
     : null;
+
+  const tz = getEventTimezone(hub.location_state);
+  const localTimeStr = new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(clock);
+
+  const hasWarning = !!hubWeather && (hubWeather.code >= 95 || (hubWeather.windSpeed && hubWeather.windSpeed > 40));
 
   const openUrl = (raw: string) => {
     const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
@@ -206,8 +259,64 @@ export default function HubScreen() {
           <View pointerEvents="none" className="absolute inset-x-0 top-0 h-20 bg-ink/15" />
         ) : null}
 
-        {/* Back Button */}
-        <View className="absolute left-4 top-4">
+        {/* Bottom scrim for name + Approved text visibility over cover */}
+        {coverUrl ? (
+          <View pointerEvents="none" className="absolute inset-x-0 bottom-0 h-28 bg-ink/60" />
+        ) : null}
+
+        {/* Compact time + weather + pollution + surf at top of cover - content sized, one line with map pin (right side, not covering back button). On mobile we hide secondary fields (wind/pollution/surf) so it never overflows the constrained pill. */}
+        {shouldUseHubLocation && (
+          <View className="absolute top-3 right-4 z-20">
+            <View
+              className={cn(
+                "backdrop-blur-xl border border-white/20 rounded-xl px-1.5 py-0.5 flex-row items-center gap-1 w-auto max-w-[200px] md:max-w-[280px] overflow-hidden",
+                hasCover ? "bg-black/50" : "bg-ink/55"
+              )}
+            >
+              <View className="flex-row items-center gap-1 shrink-0">
+                <Icon name="map-pin" size={12} color={colors.paper} />
+                <Text className="text-paper text-xs md:text-sm font-bold leading-none">
+                  {localTimeStr}
+                </Text>
+              </View>
+              {hubWeather ? (
+                <>
+                  <Text className="text-paper text-sm md:text-base font-bold leading-none shrink-0">
+                    {hubWeather.emoji}{hubWeather.tempC}°
+                  </Text>
+                  {/* Secondary details only on larger screens to guarantee the pill stays inside its max-w */}
+                  {!isMobile && (
+                    <>
+                      {hubWeather.windDirection != null && (
+                        <Text className="text-paper/80 text-[9px] md:text-xs shrink-0">
+                          {Math.round(hubWeather.windDirection)}°{hubWeather.windSpeed ? ` ${Math.round(hubWeather.windSpeed)}km/h` : ''}
+                        </Text>
+                      )}
+                      {hubWeather.pollution && (
+                        <Text className="text-paper/80 text-[9px] md:text-xs shrink-0">
+                          {hubWeather.pollution.emoji}{hubWeather.pollution.level}
+                        </Text>
+                      )}
+                      {hubWeather.surf?.waveHeight && (
+                        <Text className="text-paper/80 text-[9px] md:text-xs shrink-0">🌊{hubWeather.surf.waveHeight}m</Text>
+                      )}
+                    </>
+                  )}
+                  {hasWarning && (
+                    <Text className="text-amber-400 text-[9px] md:text-xs font-bold shrink-0">⚠️</Text>
+                  )}
+                </>
+              ) : weatherError ? (
+                <Text className="text-paper/50 text-[9px] md:text-xs shrink-0">—</Text>
+              ) : (
+                <Text className="text-paper/70 text-[9px] md:text-xs shrink-0">Loading…</Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Back Button (high z so it is never covered by the right-side weather pill) */}
+        <View className="absolute left-4 top-4 z-30">
           <Pressable
             onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))}
             accessibilityLabel="Go back"
@@ -233,13 +342,22 @@ export default function HubScreen() {
           </Pressable>
 
           <View className="min-w-0 flex-1 pb-1 gap-2">
-            <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
-              <Text className="font-display text-2xl md:text-3xl font-bold tracking-tight text-ink">
+            {/* Glassmorphic name - content sized (fits info, does not stretch), glass adapts to cover vs page background */}
+            <View
+              className={cn(
+                "self-start flex-row flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl px-3 py-1 shadow-lg",
+                hasCover
+                  ? "bg-black/35 backdrop-blur-lg border border-white/20"
+                  : "bg-black/45 backdrop-blur-md border border-white/15"
+              )}
+            >
+              <Text className="font-display text-2xl md:text-3xl font-bold tracking-tight text-paper">
                 {hub.name}
               </Text>
-              {isVerified ? <VerifiedCheck /> : null}
+              {isVerified ? <Badge label="Approved" variant="success" /> : null}
               {hub.indigenous_led ? <IndigenousLedBadge /> : null}
             </View>
+
             <View className="flex-row flex-wrap items-center gap-x-2.5 gap-y-0.5">
               <Text variant="overline" tone="ochre">
                 {HUB_TYPE_LABELS[hub.type as HubType]}
@@ -727,13 +845,7 @@ function DetailsTab({
 /* Sub-components & Skeletons                                                 */
 /* -------------------------------------------------------------------------- */
 
-function VerifiedCheck() {
-  return (
-    <View className="h-5 w-5 items-center justify-center rounded-full bg-eucalyptus-500">
-      <Icon name="check" size={11} color={colors.paper} strokeWidth={2.6} />
-    </View>
-  );
-}
+
 
 function HubSkeleton() {
   return (
@@ -758,3 +870,4 @@ function HubSkeleton() {
     </Screen>
   );
 }
+

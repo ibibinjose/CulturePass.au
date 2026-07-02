@@ -10,7 +10,7 @@ import {
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { colors } from "@/lib/theme";
 import { HUB_TYPE_LABELS, type HubType } from "@/lib/constants";
-import type { HubImage } from "@/lib/supabase/database.types";
+import type { HubImage } from "@/lib/types/database.types";
 
 export interface HubCardData {
   slug: string;

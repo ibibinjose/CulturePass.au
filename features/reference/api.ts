@@ -6,8 +6,8 @@ import { qk } from "@/lib/query";
 import type { StateCode } from "@/lib/constants";
 import type { LocationValue } from "@/components/ui/LocationPicker";
 
-// ---- AppSync → Supabase-row mappers ----------------------------------------
-// Keep the AWS branches returning the exact snake_case shapes the Supabase
+// ---- AppSync → legacy row mappers ----------------------------------------
+// Return the exact snake_case shapes expected by consumers (from database.types.ts)
 // `select(...)` columns produced, so every consumer is backend-agnostic.
 
 /** Subset of `australian_states` columns `useStates` selects. */
@@ -57,7 +57,7 @@ export function useStates() {
       const rows = await collectAll((nextToken) =>
         client.models.AustralianState.list({ nextToken }),
       );
-      // DynamoDB lists are unordered; mirror Supabase `.order("sort_order")`.
+      // DynamoDB lists are unordered; we sort in memory for stable order.
       return rows.map(mapState).sort((a, b) => a.sort_order - b.sort_order);
     },
     staleTime: Infinity, // reference data rarely changes
@@ -75,7 +75,7 @@ export function useCouncils(stateCode?: string) {
           ...(stateCode ? { filter: { stateCode: { eq: stateCode } } } : {}),
         }),
       );
-      // Mirror Supabase `.order("name")`.
+      // Sort client-side for consistent ordering.
       return rows.map(mapCouncil).sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: stateCode === undefined || stateCode.length > 0,

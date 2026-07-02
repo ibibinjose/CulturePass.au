@@ -4,7 +4,7 @@ import type { Schema } from "@/amplify/data/resource";
 import { configureAmplify, getDataAuthMode } from "./config";
 
 /**
- * Amplify Data (AppSync) client — the AWS counterpart to `lib/supabase/client`.
+ * Amplify Data (AppSync) client. (Previously mirrored a lib/supabase/client.)
  *
  * Typed end-to-end with the Gen 2 `Schema`, so callers get full typings on
  * `client.models.Hub`, `client.models.Event`, etc. The `Schema` type is imported

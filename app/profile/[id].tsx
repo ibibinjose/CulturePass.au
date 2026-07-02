@@ -108,6 +108,11 @@ export default function PublicProfileScreen() {
           <Text variant="title" className="text-center">
             {profile.full_name || "Member"}
           </Text>
+          {profile.username ? (
+            <Text variant="caption" tone="faint" className="text-center">
+              @{profile.username}
+            </Text>
+          ) : null}
           {profile.is_public_professional && profile.professional_title ? (
             <Text variant="body" tone="muted" className="text-center">
               {profile.professional_title}

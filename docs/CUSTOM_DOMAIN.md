@@ -15,12 +15,7 @@ web app from `https://culturepass.au` on **AWS Amplify Hosting** with HTTPS.
 ## 1. Host the web app (Amplify Hosting)
 1. Amplify Console → **Create new app → Deploy with GitHub** → pick the repo + branch.
 2. It auto-detects [`amplify.yml`](../amplify.yml) (build `expo export`, artifacts `dist`).
-3. **Environment variables** (Hosting → Environment variables) — the web build is
-   in CI, so the client config must be injected here. Add every `EXPO_PUBLIC_*`
-   from your `.env` (copy from `amplify_outputs.json`):
-   `EXPO_PUBLIC_BACKEND=aws`, `EXPO_PUBLIC_AWS_REGION`,
-   `EXPO_PUBLIC_COGNITO_USER_POOL_ID`, `EXPO_PUBLIC_COGNITO_APP_CLIENT_ID`,
-   `EXPO_PUBLIC_COGNITO_IDENTITY_POOL_ID`, `EXPO_PUBLIC_APPSYNC_ENDPOINT`.
+3. The `amplify.yml` build spec automatically runs `node scripts/aws-env-from-outputs.mjs` during the frontend phase, so client config is derived from the backend deploy outputs. You normally do **not** need to set the `EXPO_PUBLIC_*` vars manually.
 4. Deploy → you get a `https://<branch>.<appid>.amplifyapp.com` URL. Confirm it works.
 
 ## 2. Attach the domain (the actual "connect to AWS" part)

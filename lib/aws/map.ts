@@ -1,5 +1,5 @@
 /**
- * Tiny helpers shared by the per-domain AppSync → Supabase-row mappers.
+ * Helpers for AppSync → legacy snake_case row shapes (used by mappers).
  *
  * Amplify types `a.string().array()` as `(string | null)[] | null`, whereas the
  * Supabase rows the app consumes use `string[]` (or `string[] | null`). `compact`

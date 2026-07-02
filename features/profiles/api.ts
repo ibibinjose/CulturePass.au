@@ -6,7 +6,7 @@ import { compact, fromAwsJson, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
 import { getAwsCurrentUserId } from "@/lib/aws/auth";
-import type { Database } from "@/lib/supabase/database.types";
+import type { Database } from "@/lib/types/database.types";
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
@@ -20,12 +20,13 @@ export interface ProfileWithHubs extends Profile {
   }[];
 }
 
-// ---- AppSync → Supabase-row mappers ----------------------------------------
+// ---- AppSync → legacy row mappers (snake_case shapes) ----------------------------------------
 
 function mapProfile(p: AwsItem<"Profile">): Profile {
   return {
     id: p.id,
     user_id: p.userId,
+    username: p.username ?? null,
     full_name: p.fullName ?? "",
     avatar_url: p.avatarUrl ?? null,
     bio: p.bio ?? null,
@@ -66,6 +67,7 @@ async function fetchAwsProfileHubs(profileId: string) {
 /** Translate a snake_case profile patch into the AppSync model's camelCase input. */
 function toAwsProfilePatch(p: ProfileUpdate) {
   return {
+    ...(p.username !== undefined ? { username: p.username } : {}),
     ...(p.full_name !== undefined ? { fullName: p.full_name } : {}),
     ...(p.avatar_url !== undefined ? { avatarUrl: p.avatar_url } : {}),
     ...(p.bio !== undefined ? { bio: p.bio } : {}),
@@ -140,13 +142,18 @@ export function useSearchProfiles(searchQuery: string) {
         client.models.Profile.list({
           filter: {
             isPublicProfessional: { eq: true },
-            or: [{ fullName: { contains: query } }, { bio: { contains: query } }],
+            or: [
+              { fullName: { contains: query } },
+              { username: { contains: query } },
+              { bio: { contains: query } },
+            ],
           },
           nextToken,
         }),
       );
       return rows.map((p) => ({
         id: p.id,
+        username: p.username ?? null,
         full_name: p.fullName ?? "",
         avatar_url: p.avatarUrl ?? null,
         bio: p.bio ?? null,

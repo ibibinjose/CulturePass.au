@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
-import { compact, fromAwsJson, nullableList, toAwsJson } from "@/lib/aws/map";
+import { compact, fromAwsJson, nullableList, slugify, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
-import type { Database, HubImage } from "@/lib/supabase/database.types";
+import type { Database, HubImage } from "@/lib/types/database.types";
 
 export interface EventFilters {
   hubId?: string;
@@ -24,12 +24,13 @@ type EventRow = Database["public"]["Tables"]["events"]["Row"];
 type EventInsert = Database["public"]["Tables"]["events"]["Insert"];
 type EventUpdate = Database["public"]["Tables"]["events"]["Update"];
 
-// ---- AppSync → Supabase-row mappers ----------------------------------------
+// ---- AppSync → legacy row mappers (snake_case shapes) ----------------------------------------
 
 function mapEventRow(e: AwsItem<"Event">): EventRow {
   return {
     id: e.id,
     hub_id: e.hubId,
+    slug: e.slug ?? null,
     type: (e.type ?? "event") as EventRow["type"],
     title: e.title ?? "",
     description: e.description ?? null,
@@ -61,6 +62,9 @@ function mapEventRow(e: AwsItem<"Event">): EventRow {
 function toAwsEventInput(input: EventInsert) {
   return {
     hubId: input.hub_id,
+    ...(input.slug !== undefined ? { slug: input.slug } : {}),
+    // generate slug if not supplied (like hubs)
+    ...(!input.slug && input.title ? { slug: slugify(input.title) } : {}),
     ...(input.type !== undefined ? { type: input.type } : {}),
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.description !== undefined ? { description: input.description } : {}),

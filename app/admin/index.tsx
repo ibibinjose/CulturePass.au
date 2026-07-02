@@ -246,8 +246,10 @@ export default function AdminDashboardScreen() {
           {filteredHubs.length > 0 ? (
             filteredHubs.map((hub) => (
               <Card key={hub.id} className="p-4 border border-linen/60 bg-card flex-row flex-wrap items-center justify-between gap-4">
-                <View className="gap-1 flex-1 min-w-[200px]">
-                  <Text className="font-display text-sm font-semibold text-ink leading-tight">{hub.name}</Text>
+                <View className="flex-1 min-w-[200px]">
+                  <Pressable onPress={() => router.push(`/hub/${hub.slug}`)}>
+                    <Text className="font-display text-sm font-semibold text-ink leading-tight">{hub.name}</Text>
+                  </Pressable>
                   <Text className="text-[10px] text-ink-faint uppercase font-heading tracking-wider">
                     {hub.type} · {hub.location_city || "Anywhere"}, {hub.location_state || "AU"}
                   </Text>
@@ -257,7 +259,7 @@ export default function AdminDashboardScreen() {
                       variant={hub.status === "published" ? "success" : "neutral"}
                     />
                     <Badge
-                      label={hub.verification_status === "verified" ? "Verified" : hub.verification_status === "rejected" ? "Rejected" : "Verification Pending"}
+                      label={hub.verification_status === "verified" ? "Approved" : hub.verification_status === "rejected" ? "Rejected" : "Verification Pending"}
                       variant={hub.verification_status === "verified" ? "success" : hub.verification_status === "rejected" ? "danger" : "warning"}
                     />
                   </View>
@@ -267,7 +269,7 @@ export default function AdminDashboardScreen() {
                 <View className="flex-row gap-2">
                   {hub.verification_status !== "verified" && (
                     <Button
-                      label="Verify"
+                      label="Approve"
                       variant="whatsapp"
                       size="sm"
                       onPress={() => updateHubVerification(hub.id, "verified")}

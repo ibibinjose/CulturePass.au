@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { View, Image as RNImage, Pressable } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";  // npx expo install expo-image-manipulator
 
 import { Button } from "./Button";
 import { Text } from "./Text";
@@ -47,14 +48,20 @@ export function ImagePickerComponent({
       mediaTypes: ["images"],
       allowsEditing: true,
       aspect,
-      quality: 0.7,
+      quality: 0.8,
     });
 
     if (!result.canceled) {
       const selectedImage = result.assets[0];
       if (selectedImage && selectedImage.uri) {
-        setPreviewUri(selectedImage.uri);
-        await uploadImage(selectedImage.uri);
+        // Generate thumbnail using expo-image-manipulator (free, Expo)
+        const manipulated = await ImageManipulator.manipulateAsync(
+          selectedImage.uri,
+          [{ resize: { width: imageType === "avatar" ? 256 : 1024 } }],
+          { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        setPreviewUri(manipulated.uri);
+        await uploadImage(manipulated.uri);
       }
     }
   };

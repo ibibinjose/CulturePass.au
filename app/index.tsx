@@ -25,7 +25,9 @@ import {
   EmptyCard,
   Skeleton,
   useToast,
+  Pinwheel,
 } from "@/components/ui";
+import { useWeather } from "@/features/weather/api";
 import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
@@ -35,10 +37,12 @@ import { FeaturedEventCard } from "@/features/events/FeaturedEventCard";
 import { CohostInvitationsBanner } from "@/features/events/CohostInvitationsBanner";
 import { useEvents } from "@/features/events/api";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { parsePreferences } from "@/lib/validation/profile";
 import { useSavedLocation } from "@/features/reference/useSavedLocation";
 import { useCouncilDetails, useDetectCouncil } from "@/features/reference/api";
 import { ExploreCities } from "@/features/reference/ExploreCities";
+import { groupEventsByDate } from "@/lib/utils/time";
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABELS,
@@ -65,39 +69,6 @@ function lowerSet(values: (string | null | undefined)[]): Set<string> {
   return new Set(values.filter(Boolean).map((v) => (v as string).toLowerCase()));
 }
 
-function groupEventsByDate(eventsList: any[]) {
-  const groups: { dateLabel: string; items: any[] }[] = [];
-  eventsList.forEach((e) => {
-    if (!e.start_time) return;
-    const dateObj = new Date(e.start_time);
-    
-    const today = new Date();
-    const tomorrow = new Date();
-    tomorrow.setDate(today.getDate() + 1);
-    
-    let dateLabel = "";
-    if (dateObj.toDateString() === today.toDateString()) {
-      dateLabel = "Today";
-    } else if (dateObj.toDateString() === tomorrow.toDateString()) {
-      dateLabel = "Tomorrow";
-    } else {
-      dateLabel = new Intl.DateTimeFormat("en-AU", {
-        weekday: "short",
-        day: "numeric",
-        month: "short",
-      }).format(dateObj); // e.g. "Sat, 27 Jun"
-    }
-
-    const existing = groups.find((g) => g.dateLabel === dateLabel);
-    if (existing) {
-      existing.items.push(e);
-    } else {
-      groups.push({ dateLabel, items: [e] });
-    }
-  });
-  return groups;
-}
-
 function getGreeting(name?: string | null) {
   const hour = new Date().getHours();
   const dayPart = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
@@ -111,6 +82,7 @@ function getWhatsOnLabel(locationLabel: string) {
 
 const FRIENDLY_PLACE_NAMES: Record<string, string> = {
   "city of sydney": "Sydney",
+  "council of the city of sydney": "Sydney",
   "sydney": "Sydney",
   "inner west council": "Newtown",
   "inner west": "Newtown",
@@ -134,15 +106,20 @@ function getFriendlyPlaceName(label: string) {
   const mapped = FRIENDLY_PLACE_NAMES[normalized];
   if (mapped) return mapped;
 
+  // Strip common Australian local government prefixes to get just the city/town name
   return label
-    .replace(/^city of\s+/i, "")
-    .replace(/^municipality of\s+/i, "")
-    .replace(/\s+city council$/i, "")
-    .replace(/\s+regional council$/i, "")
-    .replace(/\s+shire council$/i, "")
-    .replace(/\s+shire$/i, "")
-    .replace(/\s+council$/i, "")
-    .trim();
+    .replace(/^The /i, "")
+    .replace(/^Council of the City of /i, "")
+    .replace(/^City of /i, "")
+    .replace(/^Council of /i, "")
+    .replace(/^Municipality of /i, "")
+    .replace(/\s+City Council$/i, "")
+    .replace(/\s+Council$/i, "")
+    .replace(/\s+Shire$/i, "")
+    .replace(/\s+Shire Council$/i, "")
+    .replace(/\s+Regional Council$/i, "")
+    .replace(/\s+District Council$/i, "")
+    .trim() || label;
 }
 
 const eventIsFN = (e: any) =>
@@ -255,6 +232,13 @@ export default function DiscoverScreen() {
   const { width } = useWindowDimensions();
   const { data: profile } = useMyProfile();
   const updateProfile = useUpdateMyProfile();
+  const { isAuthenticated } = useAuth();
+
+  const prefs = profile ? parsePreferences(profile.preferences) : null;
+  const isOnboarded = !!prefs?.onboarding?.completed;
+  const hasInterests = (profile?.interests?.length ?? 0) > 0;
+  const profileComplete = !!profile?.full_name && hasInterests;
+  const showSetupNudge = isAuthenticated && (!isOnboarded || !profileComplete);
 
   const [search, setSearch] = useState("");
   const { location, setLocation } = useSavedLocation();
@@ -269,6 +253,7 @@ export default function DiscoverScreen() {
   const [searchFocused, setSearchFocused] = useState(false);
 
   const toast = useToast();
+  const { data: weather } = useWeather();
   const { detect, detecting } = useDetectCouncil();
   const { data: councilDetails, isLoading: councilLoading } = useCouncilDetails(
     location.councilId ?? undefined,
@@ -284,10 +269,12 @@ export default function DiscoverScreen() {
 
   const { data: councilEvents, isLoading: councilEventsLoading } = useEvents({
     councilId: location.councilId ?? undefined,
+    ...(query ? { search: query } : {}),
   });
 
   const { data: councilHubs, isLoading: councilHubsLoading } = useHubs({
     councilId: location.councilId ?? undefined,
+    ...(query ? { search: query } : {}),
   });
 
   const groupedCouncilEvents = groupEventsByDate(councilEvents ?? []);
@@ -470,17 +457,17 @@ export default function DiscoverScreen() {
       {/* Hero Header */}
       <View className="overflow-hidden rounded-3xl border border-night-line bg-night p-5 md:p-7 shadow-raised">
         <View className="absolute -right-8 -top-8 h-40 w-40 opacity-25">
-          <Image source={require("../assets/logo.png")} style={{ width: "100%", height: "100%" }} contentFit="contain" />
+          <Pinwheel size={160} spinning windDirection={weather?.windDirection} windSpeed={weather?.windSpeed} />
         </View>
 
         <View className="relative gap-5">
           <View className="flex-row flex-wrap items-center justify-between gap-3">
             <View className="flex-row items-center gap-3">
               <View className="h-11 w-11 items-center justify-center rounded-2xl bg-white">
-                <Image source={require("../assets/logo.png")} style={{ width: 36, height: 36 }} contentFit="contain" />
+                <Pinwheel size={36} windDirection={weather?.windDirection} windSpeed={weather?.windSpeed} />
               </View>
               <View>
-                <Text className="font-display text-lg text-paper">CulturePass</Text>
+                <Text className="font-display text-lg text-paper">CulturePass.au</Text>
                 <Text variant="overline" className="text-night-muted">
                   Belong anywhere
                 </Text>
@@ -508,15 +495,59 @@ export default function DiscoverScreen() {
           <View className="flex-row flex-wrap gap-2">
             {discoverStats.map((stat) => (
               <View key={stat.label} className="min-w-[104px] rounded-2xl border border-white/10 bg-white/10 px-3 py-2">
-                <Text className="font-display text-xl text-paper">{stat.value}</Text>
-                <Text variant="overline" className="text-night-muted">
-                  {stat.label}
-                </Text>
+                <View className="flex-row items-baseline gap-1.5">
+                  <Text className="font-display text-xl text-paper">{stat.value}</Text>
+                  <Text variant="overline" className="text-night-muted">
+                    {stat.label}
+                  </Text>
+                </View>
               </View>
             ))}
           </View>
+
+          {!isAuthenticated && (
+            <View className="flex-row flex-wrap gap-3 mt-2">
+              <Button
+                label="Join for free"
+                variant="primary"
+                size="sm"
+                onPress={() => router.push("/sign-up")}
+              />
+              <Pressable
+                onPress={() => router.push("/sign-in")}
+                className="h-9 items-center justify-center rounded-full border border-white/40 px-4 active:opacity-80"
+              >
+                <Text className="font-heading text-xs text-paper">Sign in</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
+
+      {/* Setup nudge for new or incomplete profiles (post sign-up/onboarding flow) */}
+      {showSetupNudge && (
+        <Card className="mt-4 border-gold-200 bg-gold-50">
+          <View className="flex-row items-start justify-between gap-4">
+            <View className="flex-1">
+              <Text variant="label" className="text-gold-900">Complete your profile</Text>
+              <Text variant="caption" tone="muted" className="mt-1">
+                {!isOnboarded
+                  ? "Pick your interests and local area to unlock personalized recommendations."
+                  : "Add your name, bio and interests so the community can connect with you."}
+              </Text>
+            </View>
+            <View className="flex-row gap-2">
+              <Button
+                label={!isOnboarded ? "Start onboarding" : "Edit profile"}
+                size="sm"
+                variant="outline"
+                className="border-gold-300"
+                onPress={() => router.push(!isOnboarded ? "/onboarding" : "/profile/edit")}
+              />
+            </View>
+          </View>
+        </Card>
+      )}
 
       {/* Primary controls — Discover/Council · Filters · First Nations · search, one line */}
       <View className="mt-4 w-full flex-row flex-wrap items-center gap-2.5">
@@ -751,6 +782,13 @@ export default function DiscoverScreen() {
               label="First Nations Spotlight"
               tone="country"
               onRemove={() => setFirstNations(false)}
+            />
+          )}
+          {query && (
+            <RemovableChip
+              key="active-search"
+              label={`“${query}”`}
+              onRemove={() => setSearch("")}
             />
           )}
           <Pressable
@@ -1039,7 +1077,7 @@ export default function DiscoverScreen() {
                   </Text>
                 </View>
                 <Text className="font-display text-3xl text-ink font-extrabold">
-                  {councilDetails.name}
+                  {getFriendlyPlaceName(councilDetails.name)}
                 </Text>
                 
                 {/* Traditional Custodians Acknowledgement */}
@@ -1076,7 +1114,7 @@ export default function DiscoverScreen() {
                 {/* Left Column: Events in the council */}
                 <View className="flex-1 gap-6">
                   <View className="border-b border-linen pb-2">
-                    <Text className="font-display text-lg text-ink tracking-tight">Events in {councilDetails.name}</Text>
+                    <Text className="font-display text-lg text-ink tracking-tight">Events in {getFriendlyPlaceName(councilDetails.name)}</Text>
                   </View>
 
                   {councilEventsLoading ? (

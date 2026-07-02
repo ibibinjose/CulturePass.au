@@ -9,7 +9,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { getCurrentProfileId } from "@/features/auth/api";
 import { getAwsCurrentUserId } from "@/lib/aws/auth";
 import { encryptBody, decryptBody } from "@/lib/utils/crypto";
-import type { HubImage, MessageRow } from "@/lib/supabase/database.types";
+import type { HubImage, MessageRow } from "@/lib/types/database.types";
 
 export interface ChatProfile {
   id: string;

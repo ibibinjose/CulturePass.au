@@ -63,11 +63,19 @@ export default function SignUpScreen() {
       if (needsConfirmation) {
         setPendingVerification({ email: parsed.data.email, password: parsed.data.password });
         setNotice(
-          "Almost there — we’ve sent a verification code (or link) to your email.",
+          "Almost there — we’ve sent a verification code (or link) to your email. After confirming, complete your profile (we use a real name policy; choose your @username handle).",
         );
         return;
       }
-      router.replace("/");
+      // Rare: signUp completed without confirmation (auto or admin). Sign in then onboard.
+      try {
+        await signIn.mutateAsync({ email: parsed.data.email, password: parsed.data.password });
+        await waitForAuth(() => isAuthRef.current);
+        router.replace("/onboarding");
+      } catch {
+        setBanner("Account created. Please sign in to complete your profile.");
+        router.replace("/sign-in");
+      }
     } catch (err) {
       setBanner(authMessage(err));
     }
@@ -105,7 +113,8 @@ export default function SignUpScreen() {
         try {
           await signIn.mutateAsync({ email: em, password: pw });
           await waitForAuth(() => isAuthRef.current);
-          router.replace("/");
+          // New sign-ups: recommend and go directly to complete onboarding + profile
+          router.replace("/onboarding");
           return;
         } catch {
           setBanner("Email verified. Please sign in with your password.");
