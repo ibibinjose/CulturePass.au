@@ -1,0 +1,30 @@
+# Dependabot guard rails.
+#
+# The Expo SDK packages (expo, expo-*, react-native*, react, react-dom) are a
+# version-matched set — bumping one across a major/SDK boundary without the
+# others breaks the build (PR #12 and PR #13 both took production down this
+# way). SDK upgrades are done deliberately with `npx expo install --fix`,
+# never dependency-by-dependency.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@expo/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native"
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "vitest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitest/*"
+        update-types: ["version-update:semver-major"]
