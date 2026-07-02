@@ -12,7 +12,7 @@ import {
 import { AuthShell } from "@/features/auth/AuthShell";
 import { useUpdatePassword } from "@/features/auth/api";
 import { updatePasswordSchema } from "@/lib/validation/auth";
-import { authMessage } from "./sign-in";
+import { authMessage } from "@/lib/aws/auth";
 
 export default function UpdatePasswordScreen() {
   // Cognito reset: email + code + new password (code arrives by email, not a link)

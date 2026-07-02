@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   confirmResetPassword as awsConfirmResetPassword,
+  confirmSignUp as awsConfirmSignUp,
+  resendSignUpCode as awsResendSignUpCode,
   resetPassword as awsResetPassword,
   signIn as awsSignIn,
   signUp as awsSignUp,
@@ -54,8 +56,8 @@ export function useSignUp() {
         password,
         options: { userAttributes: { email, name: full_name } },
       });
-      // LINK-style verification (see amplify/auth/resource.ts): the user must
-      // click the emailed link before signing in — same contract Supabase had.
+      // Verification (CODE style) requires confirm via code (or link in email) before
+      // sign-in succeeds. useConfirmSignUp + the sign-up/sign-in screens handle the flow.
       return { needsConfirmation: !res.isSignUpComplete, data: res };
     },
   });
@@ -115,5 +117,24 @@ export function useSignOut() {
       await awsSignOut();
     },
     onSuccess: () => queryClient.clear(),
+  });
+}
+
+/** Resend the sign-up verification email (code or link depending on pool config). */
+export function useResendVerification() {
+  return useMutation({
+    mutationFn: async ({ email }: { email: string }) => {
+      await awsResendSignUpCode({ username: email });
+    },
+  });
+}
+
+/** Confirm sign-up using the code from the verification email. */
+export function useConfirmSignUp() {
+  return useMutation({
+    mutationFn: async ({ email, code }: { email: string; code: string }) => {
+      await awsConfirmSignUp({ username: email, confirmationCode: code });
+      return { email };
+    },
   });
 }

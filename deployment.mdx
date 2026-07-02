@@ -68,13 +68,9 @@ The checkout function defaults `SITE_URL` to `https://culturepass.au`, so Stripe
 
 ## 3. Cognito hosted UI domain
 
-Email verification uses **LINK style** (configured in `amplify/auth/resource.ts`). Cognito requires a hosted UI domain for link-style verification — without it, sign-up fails with:
+Email verification uses **CODE style** (configured in `amplify/auth/resource.ts`) so the app can show code-entry fields during sign-up and immediately prompt resend + code (or link) verification on next sign-in for unverified users. A hosted domain is still provisioned by the backend (harmless; previously required for LINK style).
 
-```
-There does not exist a valid user pool domain associated with the user pool
-```
-
-The backend adds a Cognito hosted domain automatically. The prefix must be globally unique per AWS region, so it's derived from `AWS_BRANCH` to avoid collisions across `main`, PR previews, and local sandboxes:
+The prefix must be globally unique per AWS region, so it's derived from `AWS_BRANCH` to avoid collisions across `main`, PR previews, and local sandboxes:
 
 ```
 culturepass-<branch-slug>

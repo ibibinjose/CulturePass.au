@@ -11,16 +11,16 @@ import { postConfirmation } from "../functions/post-confirmation/resource";
  */
 export const auth = defineAuth({
   loginWith: {
-    // LINK (not CODE) verification keeps sign-up like-for-like with Supabase:
-    // the user clicks a confirmation link and Cognito auto-confirms, so the
-    // existing "we've sent a confirmation link" sign-up screen works unchanged.
-    // (Password *reset* is code-only in Cognito — that flow still needs a code
-    // field; see features/auth/api.ts useUpdatePassword.)
+    // CODE style supports entering a verification code directly in-app (shown
+    // during sign-up and immediately prompted on sign-in for unverified users).
+    // Users may also verify via any links included in the email. Reset password
+    // already uses codes. See features/auth/api.ts (useConfirmSignUp, useResendVerification)
+    // and the sign-in / sign-up screens.
     email: {
-      verificationEmailStyle: "LINK",
+      verificationEmailStyle: "CODE",
       verificationEmailSubject: "Confirm your CulturePass account",
-      verificationEmailBody: (createLink) =>
-        `Welcome to CulturePass Australia. Confirm your account: ${createLink("Confirm my account")}`,
+      verificationEmailBody: (createCode) =>
+        `Welcome to CulturePass Australia. Your verification code is ${createCode()}. Enter it in the app (or use any link in this email) to confirm your account.`,
     },
   },
   // "admin" replaces the Supabase `profiles.is_admin` / SQL admin role; the data

@@ -35,12 +35,10 @@ const backend = defineBackend({
   rewardsJoin,
 });
 
-// Email verification uses LINK style (see amplify/auth/resource.ts), which
-// requires the user pool to have a Cognito hosted domain — without it Cognito
-// rejects sign-up with "there does not exist a valid user pool domain
-// associated with the user pool". The prefix must be globally unique per AWS
-// region, so derive it from the branch to keep per-branch fullstack deploys
-// (main, PR previews, sandboxes) from colliding.
+// Email verification uses CODE style (see amplify/auth/resource.ts) to support
+// in-app code entry + resend prompts for unverified users on sign-in and during
+// sign-up. The hosted domain is still created (harmless for CODE flows; was
+// required for prior LINK style). Prefix derived per-branch for uniqueness.
 const domainPrefix = `culturepass-${(process.env.AWS_BRANCH ?? "sandbox")
   .toLowerCase()
   .replace(/[^a-z0-9-]/g, "-")

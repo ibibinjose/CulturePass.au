@@ -11,7 +11,7 @@ import {
 import { AuthShell } from "@/features/auth/AuthShell";
 import { useResetPassword } from "@/features/auth/api";
 import { resetRequestSchema } from "@/lib/validation/auth";
-import { authMessage } from "./sign-in";
+import { authMessage } from "@/lib/aws/auth";
 
 export default function ResetPasswordScreen() {
   const router = useRouter();

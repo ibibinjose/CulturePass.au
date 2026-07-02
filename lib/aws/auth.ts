@@ -51,3 +51,33 @@ export async function awsSignOut(): Promise<void> {
   configureAmplify();
   await amplifySignOut();
 }
+
+/**
+ * Human-friendly messages for Cognito auth errors.
+ * Always keyed by `error.name` — never surface raw `error.message`.
+ */
+export const COGNITO_MESSAGES: Record<string, string> = {
+  NotAuthorizedException: "That email or password isn't right.",
+  UserNotConfirmedException: "Please confirm your email first — check your inbox.",
+  UsernameExistsException: "An account with that email already exists.",
+  CodeMismatchException: "That code isn't right — please check and try again.",
+  ExpiredCodeException: "That code has expired — please request a new one.",
+  LimitExceededException: "Too many attempts — please wait a few minutes and try again.",
+  InvalidPasswordException: "Password does not meet the requirements.",
+  UserAlreadyAuthenticatedException: "You're already signed in.",
+  UserNotFoundException: "No account found with that email.",
+  AliasExistsException: "An account with that email already exists.",
+  InvalidParameterException: "Invalid input. Please check the details and try again.",
+};
+
+export function authMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const mapped = COGNITO_MESSAGES[err.name];
+    if (mapped) return mapped;
+    // Never leak raw Cognito messages; log name in dev only.
+    if (typeof __DEV__ !== "undefined" && __DEV__) {
+      console.warn("[authMessage] Unmapped Cognito error name:", err.name);
+    }
+  }
+  return "Something went wrong. Please try again.";
+}

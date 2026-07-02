@@ -62,7 +62,7 @@ When adding a new domain, mirror this pattern instead of putting queries in the 
 
 The Amplify Gen 2 backend is defined entirely in TypeScript. `amplify/backend.ts` composes the resources below; `npx ampx sandbox` deploys them into your personal AWS account and writes `amplify_outputs.json` for the client.
 
-- **`auth/`** — Cognito user pool, app client, and identity pool. Email sign-up with link-style verification; an `admin` group grants elevated access in the data layer.
+- **`auth/`** — Cognito user pool, app client, and identity pool. Email sign-up with verification code (supports in-app entry + links); an `admin` group grants elevated access in the data layer. Resend + confirm UX is shown on sign-in for unverified users and during sign-up.
 - **`data/`** — Amplify Data schema (AppSync + DynamoDB). Models include `Profile`, `Hub`, `Event`, `EventTicketType`, `EventRsvp`, `TicketOrder`, `Conversation`, `Message`, `Notification`, and the reference tables `AustralianState` / `AustralianCouncil`. Authorization rules wire owner, public, and `admin`-group access, plus IAM access for the Lambdas.
 - **`storage/`** — S3 bucket for user-uploaded media (hub and event imagery, profile avatars).
 - **`functions/`** — Lambdas:

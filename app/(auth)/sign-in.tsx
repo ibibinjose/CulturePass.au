@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Pressable } from "react-native";
+import { Pressable, View } from "react-native";
 import { Link, useRouter } from "expo-router";
 
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -12,25 +12,9 @@ import {
   Text,
 } from "@/components/ui";
 import { AuthShell } from "@/features/auth/AuthShell";
-import { useSignIn } from "@/features/auth/api";
+import { useSignIn, useResendVerification, useConfirmSignUp } from "@/features/auth/api";
 import { signInSchema } from "@/lib/validation/auth";
-
-export const COGNITO_MESSAGES: Record<string, string> = {
-  NotAuthorizedException: "That email or password isn't right.",
-  UserNotConfirmedException: "Please confirm your email first — check your inbox.",
-  UsernameExistsException: "An account with that email already exists.",
-  CodeMismatchException: "That code isn't right — please check and try again.",
-  ExpiredCodeException: "That code has expired — please request a new one.",
-  LimitExceededException: "Too many attempts — please wait a few minutes and try again.",
-  InvalidPasswordException: "Password does not meet the requirements.",
-  UserAlreadyAuthenticatedException: "You're already signed in.",
-};
-
-export function authMessage(err: unknown): string {
-  const mapped = err instanceof Error ? COGNITO_MESSAGES[err.name] : undefined;
-  // Mapped by error.name only — raw Cognito messages never reach the UI.
-  return mapped ?? "Something went wrong. Please try again.";
-}
+import { authMessage } from "@/lib/aws/auth";
 
 /** Poll until isAuthenticated is true or the timeout elapses. */
 export async function waitForAuth(
@@ -53,6 +37,8 @@ export async function waitForAuth(
 export default function SignInScreen() {
   const router = useRouter();
   const signIn = useSignIn();
+  const resend = useResendVerification();
+  const confirm = useConfirmSignUp();
   const { isAuthenticated } = useAuth();
   const isAuthRef = useRef(isAuthenticated);
   useEffect(() => {
@@ -62,6 +48,9 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [banner, setBanner] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [pendingVerification, setPendingVerification] = useState<null | { email: string; password?: string }>(null);
+  const [verifyCode, setVerifyCode] = useState("");
 
   // Already signed in (deep link, back button, stale tab) → straight home.
   useEffect(() => {
@@ -70,6 +59,7 @@ export default function SignInScreen() {
 
   async function submit() {
     setBanner(null);
+    setNotice(null);
     const parsed = signInSchema.safeParse({ email, password });
     if (!parsed.success) {
       setErrors({
@@ -89,6 +79,59 @@ export default function SignInScreen() {
         router.replace("/");
         return;
       }
+      if (err instanceof Error && err.name === "UserNotConfirmedException") {
+        setPendingVerification({ email: parsed.data.email, password: parsed.data.password });
+        setNotice("Check your inbox for the verification code or link.");
+        return;
+      }
+      setBanner(authMessage(err));
+    }
+  }
+
+  async function handleResend() {
+    if (!pendingVerification) return;
+    setBanner(null);
+    setNotice(null);
+    try {
+      await resend.mutateAsync({ email: pendingVerification.email });
+      setNotice("Verification email resent — check your inbox.");
+    } catch (err) {
+      setBanner(authMessage(err));
+    }
+  }
+
+  async function handleVerify() {
+    if (!pendingVerification) return;
+    const code = verifyCode.trim();
+    if (!code) {
+      setBanner("Enter the verification code from your email.");
+      return;
+    }
+    setBanner(null);
+    setNotice(null);
+    try {
+      await confirm.mutateAsync({ email: pendingVerification.email, code });
+      const em = pendingVerification.email;
+      const pw = pendingVerification.password;
+      setPendingVerification(null);
+      setVerifyCode("");
+      setNotice("Email verified!");
+      if (pw) {
+        try {
+          await signIn.mutateAsync({ email: em, password: pw });
+          await waitForAuth(() => isAuthRef.current);
+          router.replace("/");
+          return;
+        } catch {
+          setBanner("Email verified. Please enter your password to sign in.");
+          setEmail(em);
+          setPassword("");
+        }
+      } else {
+        setBanner("Email verified. You can sign in now.");
+        setEmail(em);
+      }
+    } catch (err) {
       setBanner(authMessage(err));
     }
   }
@@ -98,6 +141,7 @@ export default function SignInScreen() {
       title="Welcome back"
       subtitle="Sign in to create hubs, RSVP and connect with community."
       error={banner}
+      notice={notice}
       footer={
         <>
           <Link href="/reset-password" asChild>
@@ -117,30 +161,68 @@ export default function SignInScreen() {
         </>
       }
     >
-      <Field label="Email" error={errors.email}>
-        <Input
-          value={email}
-          onChangeText={(t) => { setBanner(null); setEmail(t); }}
-          placeholder="you@example.com"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          invalid={!!errors.email}
-          onSubmitEditing={submit}
-          returnKeyType="next"
-        />
-      </Field>
-      <Field label="Password" error={errors.password}>
-        <PasswordInput
-          value={password}
-          onChangeText={(t) => { setBanner(null); setPassword(t); }}
-          placeholder="Your password"
-          invalid={!!errors.password}
-          onSubmitEditing={submit}
-          returnKeyType="go"
-        />
-      </Field>
-      <Button label="Sign in" loading={signIn.isPending} onPress={submit} />
+      {pendingVerification ? (
+        <>
+          <Text className="mb-1">
+            <Text variant="label">Email:</Text> <Text tone="pink">{pendingVerification.email}</Text>
+          </Text>
+          <Text variant="caption" className="mb-4">
+            Enter the verification code, or click the link in the email.
+          </Text>
+          <Field label="Verification code">
+            <Input
+              value={verifyCode}
+              onChangeText={(t) => { setBanner(null); setNotice(null); setVerifyCode(t); }}
+              placeholder="123456"
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+            />
+          </Field>
+          <View className="flex-row gap-3">
+            <Button label="Verify & sign in" loading={confirm.isPending} onPress={handleVerify} />
+            <Button label="Resend verification email" variant="outline" loading={resend.isPending} onPress={handleResend} />
+          </View>
+          <Pressable
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => {
+              setPendingVerification(null);
+              setVerifyCode("");
+              setBanner(null);
+              setNotice(null);
+            }}
+            className="mt-2"
+          >
+            <Text variant="label" tone="muted">Back to sign-in</Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Field label="Email" error={errors.email}>
+            <Input
+              value={email}
+              onChangeText={(t) => { setBanner(null); setNotice(null); setPendingVerification(null); setEmail(t); }}
+              placeholder="you@example.com"
+              autoCapitalize="none"
+              autoComplete="email"
+              keyboardType="email-address"
+              invalid={!!errors.email}
+              onSubmitEditing={submit}
+              returnKeyType="next"
+            />
+          </Field>
+          <Field label="Password" error={errors.password}>
+            <PasswordInput
+              value={password}
+              onChangeText={(t) => { setBanner(null); setNotice(null); setPendingVerification(null); setPassword(t); }}
+              placeholder="Your password"
+              invalid={!!errors.password}
+              onSubmitEditing={submit}
+              returnKeyType="go"
+            />
+          </Field>
+          <Button label="Sign in" loading={signIn.isPending} onPress={submit} />
+        </>
+      )}
     </AuthShell>
   );
 }
