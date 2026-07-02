@@ -18,6 +18,7 @@ import { getAmplifyDataClientConfig } from "@aws-amplify/backend/function/runtim
 import { env } from "$amplify/env/tickets-checkout";
 
 import type { Schema } from "../../data/resource";
+import { findFirst } from "../shared/list";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
 Amplify.configure(resourceConfig, libraryOptions);
@@ -119,11 +120,9 @@ export const handler: Schema["ticketsCheckout"]["functionHandler"] = async (even
   const items: CartItem[] = args.items ? (JSON.parse(args.items) as CartItem[]) : [];
 
   // Resolve the buyer's profile.
-  const { data: profiles } = await client.models.Profile.list({
-    filter: { userId: { eq: sub } },
-    limit: 1,
-  });
-  const profile = profiles[0];
+  const profile = await findFirst((nextToken) =>
+    client.models.Profile.list({ filter: { userId: { eq: sub } }, nextToken }),
+  );
   if (!profile) return { url: null, sessionId: null, error: "Complete your profile first." };
 
   const { data: ev } = await client.models.Event.get({ id: eventId });

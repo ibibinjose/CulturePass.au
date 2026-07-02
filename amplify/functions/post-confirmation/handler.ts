@@ -13,6 +13,7 @@ import { env } from "$amplify/env/post-confirmation";
 import type { PostConfirmationTriggerHandler } from "aws-lambda";
 
 import type { Schema } from "../../data/resource";
+import { findFirst } from "../shared/list";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
 Amplify.configure(resourceConfig, libraryOptions);
@@ -24,11 +25,10 @@ export const handler: PostConfirmationTriggerHandler = async (event) => {
   if (!userId) return event;
 
   // Idempotent — don't double-create on re-confirmation.
-  const { data: existing } = await client.models.Profile.list({
-    filter: { userId: { eq: userId } },
-    limit: 1,
-  });
-  if (existing && existing.length > 0) return event;
+  const existing = await findFirst((nextToken) =>
+    client.models.Profile.list({ filter: { userId: { eq: userId } }, nextToken }),
+  );
+  if (existing) return event;
 
   const fullName = attrs.name || (attrs.email ? attrs.email.split("@")[0] : "");
   // Generate initial username handle (users can change later). Real name policy

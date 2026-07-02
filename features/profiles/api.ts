@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteUser } from "aws-amplify/auth";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
-import { collectAll } from "@/lib/aws/list";
+import { collectAll, findFirst } from "@/lib/aws/list";
 import { compact, fromAwsJson, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
 import { getAwsCurrentUserId } from "@/lib/aws/auth";
-import type { Database } from "@/lib/types/database.types";
+import type { Database, HubImage } from "@/lib/types/database.types";
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type ProfileUpdate = Database["public"]["Tables"]["profiles"]["Update"];
@@ -16,7 +16,7 @@ export interface ProfileWithHubs extends Profile {
     id: string;
     name: string;
     slug: string;
-    images: any;
+    images: HubImage[];
   }[];
 }
 
@@ -49,7 +49,8 @@ function mapProfile(p: AwsItem<"Profile">): Profile {
 }
 
 function mapHubCard(h: AwsItem<"Hub">): NonNullable<ProfileWithHubs["hubs"]>[number] {
-  return { id: h.id, name: h.name, slug: h.slug, images: h.images ?? [] };
+  // `images` is AWSJSON — a string until parsed (gotcha: never pass it through raw).
+  return { id: h.id, name: h.name, slug: h.slug, images: fromAwsJson<HubImage[]>(h.images, []) };
 }
 
 /** Published hub cards owned by a profile — the `hubs` half of ProfileWithHubs. */
@@ -101,11 +102,9 @@ export function useMyProfile() {
       const userId = await getAwsCurrentUserId();
       if (!userId) return null;
       const client = getAwsDataClient();
-      const { data } = await client.models.Profile.list({
-        filter: { userId: { eq: userId } },
-        limit: 1,
-      });
-      const profile = data[0];
+      const profile = await findFirst((nextToken) =>
+        client.models.Profile.list({ filter: { userId: { eq: userId } }, nextToken }),
+      );
       if (!profile) return null;
       return { ...mapProfile(profile), hubs: await fetchAwsProfileHubs(profile.id) };
     },
@@ -240,11 +239,12 @@ export function useToggleProfileFollow() {
 
       const client = getAwsDataClient();
       if (followed) {
-        const { data } = await client.models.ProfileFollow.list({
-          filter: { followerId: { eq: currentId }, followingId: { eq: profileId } },
-          limit: 1,
-        });
-        const row = data[0];
+        const row = await findFirst((nextToken) =>
+          client.models.ProfileFollow.list({
+            filter: { followerId: { eq: currentId }, followingId: { eq: profileId } },
+            nextToken,
+          }),
+        );
         if (row) await client.models.ProfileFollow.delete({ id: row.id });
       } else {
         await client.models.ProfileFollow.create({
@@ -290,11 +290,12 @@ export function useToggleProfileSubscription() {
 
       const client = getAwsDataClient();
       if (subscribed) {
-        const { data } = await client.models.ProfileSubscription.list({
-          filter: { profileId: { eq: profileId }, subscriberId: { eq: currentId } },
-          limit: 1,
-        });
-        const row = data[0];
+        const row = await findFirst((nextToken) =>
+          client.models.ProfileSubscription.list({
+            filter: { profileId: { eq: profileId }, subscriberId: { eq: currentId } },
+            nextToken,
+          }),
+        );
         if (row) await client.models.ProfileSubscription.delete({ id: row.id });
       } else {
         await client.models.ProfileSubscription.create({

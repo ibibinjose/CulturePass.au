@@ -10,6 +10,7 @@ import { getAmplifyDataClientConfig } from "@aws-amplify/backend/function/runtim
 import { env } from "$amplify/env/dev-seed";
 
 import type { Schema } from "../../data/resource";
+import { findFirst } from "../shared/list";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
 Amplify.configure(resourceConfig, libraryOptions);
@@ -26,22 +27,20 @@ export const handler = async (event: { buyerSub?: string; email?: string }) => {
   if (!buyerSub) throw new Error("buyerSub is required");
 
   // 1. Profile for the buyer (reuse if it already exists).
-  const { data: existing } = await client.models.Profile.list({
-    filter: { userId: { eq: buyerSub } },
-    limit: 1,
-  });
+  const existing = await findFirst((nextToken) =>
+    client.models.Profile.list({ filter: { userId: { eq: buyerSub } }, nextToken }),
+  );
   const profile =
-    existing && existing.length > 0
-      ? existing[0]
-      : unwrap(
-          await client.models.Profile.create({
-            userId: buyerSub,
-            fullName: "Test Buyer",
-            isPublicProfessional: false,
-            owner: buyerSub,
-          }),
-          "Profile.create",
-        );
+    existing ??
+    unwrap(
+      await client.models.Profile.create({
+        userId: buyerSub,
+        fullName: "Test Buyer",
+        isPublicProfessional: false,
+        owner: buyerSub,
+      }),
+      "Profile.create",
+    );
 
   const rand = Math.random().toString(36).slice(2, 8);
 

@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Modal, ScrollView, View, Pressable, ActivityIndicator } from "react-native";
-import { Image } from "expo-image";
-import { Button, Card, Icon, Text, Badge } from "@/components/ui";
+import { Button, Card, Icon, Text, Badge, MediaImage } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { useEventTicketTypes, useBuyTicket, useTakenSeats } from "./api";
 import { cn } from "@/lib/utils/cn";
@@ -289,7 +288,7 @@ export function TicketBookingModal({
             <View className="gap-3">
               <Text className="font-heading text-xs text-ink-muted uppercase tracking-wider">Venue Map</Text>
               <Card padded={false} className="border border-linen overflow-hidden aspect-video bg-sand">
-                <Image source={{ uri: venueMapUrl }} style={{ width: "100%", height: "100%" }} contentFit="contain" />
+                <MediaImage uri={venueMapUrl} style={{ width: "100%", height: "100%" }} contentFit="contain" />
               </Card>
             </View>
           ) : null}

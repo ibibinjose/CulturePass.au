@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { Linking, Pressable, View } from "react-native";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import {
@@ -16,6 +15,7 @@ import {
   Avatar,
   SectionHeader,
   RichText,
+  MediaImage,
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import {
@@ -297,8 +297,8 @@ export default function EventScreen() {
           {/* Cover Image */}
           <View className="overflow-hidden rounded-3xl bg-sand shadow-subtle aspect-square w-full">
             {coverUrl ? (
-              <Image
-                source={{ uri: coverUrl }}
+              <MediaImage
+                uri={coverUrl}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
                 transition={200}

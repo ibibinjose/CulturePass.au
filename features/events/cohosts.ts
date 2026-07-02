@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
+import { fromAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
 import {
@@ -79,7 +80,7 @@ function buildAwsCohost(
       profileId: null,
       name: hub.name,
       subtitle: HUB_TYPE_LABELS[(hub.type ?? "") as HubType] ?? "Hub",
-      avatarUrl: hubLogo((hub.images ?? []) as HubImage[]),
+      avatarUrl: hubLogo(fromAwsJson<HubImage[]>(hub.images, [])),
       slug: hub.slug,
       indigenousLed: hub.indigenousLed ?? false,
     };
@@ -108,22 +109,30 @@ export function useSearchAccounts(query: string, opts: { excludeHubId?: string }
     enabled: q.length >= 2,
     queryFn: async (): Promise<AccountResult[]> => {
       const client = getAwsDataClient();
-      const [hubsRes, profilesRes] = await Promise.all([
-        client.models.Hub.list({ filter: { name: { contains: q } }, limit: 8 }),
-        client.models.Profile.list({ filter: { fullName: { contains: q } }, limit: 8 }),
+      // `limit` + `filter` truncates before filtering (see lib/aws/list.ts) —
+      // drain the filtered scan, then cap the mapped results.
+      const [hubRows, profileRows] = await Promise.all([
+        collectAll((nextToken) =>
+          client.models.Hub.list({ filter: { name: { contains: q } }, nextToken }),
+        ),
+        collectAll((nextToken) =>
+          client.models.Profile.list({ filter: { fullName: { contains: q } }, nextToken }),
+        ),
       ]);
-      const hubs: AccountResult[] = hubsRes.data
+      const hubs: AccountResult[] = hubRows
+        .slice(0, 8)
         .filter((h) => h.id !== opts.excludeHubId)
         .map((h) => ({
           kind: "hub" as const,
           id: h.id,
           name: h.name,
           subtitle: HUB_TYPE_LABELS[(h.type ?? "") as HubType] ?? "Hub",
-          avatarUrl: hubLogo((h.images ?? []) as HubImage[]),
+          avatarUrl: hubLogo(fromAwsJson<HubImage[]>(h.images, [])),
           slug: h.slug,
           indigenousLed: h.indigenousLed ?? false,
         }));
-      const profiles: AccountResult[] = profilesRes.data
+      const profiles: AccountResult[] = profileRows
+        .slice(0, 8)
         .filter((p) => (p.fullName ?? "").trim().length > 0)
         .map((p) => ({
           kind: "profile" as const,
@@ -269,7 +278,7 @@ export function useMyCohostInvitations() {
               ? client.models.Profile.get({ id: row.profileId }).then((r) => r.data)
               : null,
           ]);
-          const eventImages = (event?.images ?? []) as HubImage[];
+          const eventImages = fromAwsJson<HubImage[]>(event?.images, []);
           return buildAwsCohost(row, hub, profile, {
             eventTitle: event?.title || "Untitled Event",
             eventHostName: eventHub?.name || "Independent",

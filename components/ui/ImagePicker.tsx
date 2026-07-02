@@ -8,12 +8,19 @@ import { Text } from "./Text";
 import { Icon } from "./Icon";
 import { useToast } from "./Toast";
 import { colors } from "@/lib/theme";
-import { uploadData, getUrl } from "aws-amplify/storage";
-import { getAwsCurrentUserId } from "@/lib/aws/auth";
+import { uploadData } from "aws-amplify/storage";
+import { getAwsIdentityId } from "@/lib/aws/auth";
+import { useMediaUrl } from "@/lib/aws/media";
 
 interface ImagePickerProps {
+  /** Stored media value — an S3 `media/…` path (or a legacy/external URL). */
   currentImageUrl?: string | null;
-  onImageChange: (url: string | null) => void;
+  /**
+   * Receives the uploaded image's S3 **path** (`media/<identityId>/…`), which is
+   * what gets persisted — signed URLs expire, paths don't. Render stored values
+   * with `MediaImage`/`Avatar`/`useMediaUrl`. `null` = image removed.
+   */
+  onImageChange: (path: string | null) => void;
   imageType: "avatar" | "hub" | "event" | "cover";
   folderPath: string;
   label: string;
@@ -32,7 +39,12 @@ export function ImagePickerComponent({
   aspect = [1, 1],
   previewAspectRatio,
 }: ImagePickerProps) {
-  const [previewUri, setPreviewUri] = useState<string | null>(currentImageUrl || null);
+  // Local preview of a just-picked image; falls back to the stored image
+  // (resolved from its S3 path) when nothing new has been picked.
+  const [localPreviewUri, setLocalPreviewUri] = useState<string | null>(null);
+  const [removed, setRemoved] = useState(false);
+  const currentUrl = useMediaUrl(currentImageUrl);
+  const previewUri = localPreviewUri ?? (removed ? null : currentUrl);
   const [uploading, setUploading] = useState(false);
   const toast = useToast();
 
@@ -60,7 +72,6 @@ export function ImagePickerComponent({
           [{ resize: { width: imageType === "avatar" ? 256 : 1024 } }],
           { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
         );
-        setPreviewUri(manipulated.uri);
         await uploadImage(manipulated.uri);
       }
     }
@@ -83,8 +94,12 @@ export function ImagePickerComponent({
     if (!result.canceled) {
       const capturedImage = result.assets[0];
       if (capturedImage && capturedImage.uri) {
-        setPreviewUri(capturedImage.uri);
-        await uploadImage(capturedImage.uri);
+        const manipulated = await ImageManipulator.manipulateAsync(
+          capturedImage.uri,
+          [{ resize: { width: imageType === "avatar" ? 256 : 1024 } }],
+          { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        await uploadImage(manipulated.uri);
       }
     }
   };
@@ -92,35 +107,41 @@ export function ImagePickerComponent({
   const uploadImage = async (uri: string) => {
     setUploading(true);
     try {
-      const userId = await getAwsCurrentUserId();
-      if (!userId) throw new Error("Sign in to upload images.");
+      // Storage rules bind `media/{entity_id}/*` writes to the caller's
+      // identity-pool id — a user-pool `sub` in the path gets access-denied.
+      const identityId = await getAwsIdentityId();
+      if (!identityId) throw new Error("Sign in to upload images.");
 
       const response = await fetch(uri);
       const blob = await response.blob();
 
-      const filename = `media/${userId}/${folderPath}/${Date.now()}-${Math.random()
+      const path = `media/${identityId}/${folderPath}/${Date.now()}-${Math.random()
         .toString(36)
         .substring(2, 8)}.jpg`;
 
       await uploadData({
-        path: filename,
+        path,
         data: blob,
         options: { contentType: "image/jpeg" },
       }).result;
 
-      const { url } = await getUrl({ path: filename });
-      onImageChange(url.toString());
+      setLocalPreviewUri(uri);
+      setRemoved(false);
+      onImageChange(path);
     } catch (error) {
       console.error("Upload error:", error);
       toast.error("Upload failed — please try again.");
-      onImageChange(null);
+      // Keep whatever image was there before; a failed replacement shouldn't
+      // clear the existing one.
+      setLocalPreviewUri(null);
     } finally {
       setUploading(false);
     }
   };
 
   const removeImage = () => {
-    setPreviewUri(null);
+    setLocalPreviewUri(null);
+    setRemoved(true);
     onImageChange(null);
   };
 

@@ -31,7 +31,11 @@ export const profileSchema = z.object({
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores")
     .optional(),
   full_name: z.string().trim().min(2, "Add your name").max(120),
-  avatar_url: z.string().url().optional(),
+  // Uploaded avatars are stored as S3 media paths (`media/…`, see lib/aws/media.ts);
+  // legacy/external values are full URLs.
+  avatar_url: z
+    .union([z.string().url(), z.string().regex(/^media\//)])
+    .optional(),
   bio: z.string().trim().max(500).optional(),
   location: optionalText,
   interests: z.array(z.string().trim().min(1)).default([]),

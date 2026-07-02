@@ -1,5 +1,4 @@
 import { Linking, Pressable, View } from "react-native";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import {
@@ -15,6 +14,7 @@ import {
   ListRow,
   ShareButton,
   Icon,
+  MediaImage,
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import {
@@ -127,7 +127,7 @@ export default function PublicProfileScreen() {
             >
               {primaryHubLogo ? (
                 <View className="h-5 w-5 overflow-hidden rounded-full border border-linen/40 bg-card">
-                  <Image source={{ uri: primaryHubLogo }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                  <MediaImage uri={primaryHubLogo} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                 </View>
               ) : (
                 <View className="h-5 w-5 items-center justify-center rounded-full bg-pink-50">

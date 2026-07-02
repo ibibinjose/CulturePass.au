@@ -1,5 +1,4 @@
 import { Pressable, View } from "react-native";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 
 import {
@@ -7,6 +6,7 @@ import {
   Card,
   Icon,
   Text,
+  MediaImage,
 } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { colors } from "@/lib/theme";
@@ -156,8 +156,8 @@ export function EventCard({ event, variant = "box" }: EventCardProps) {
         {/* Left Side: Cover Image */}
         <View className="relative h-24 w-24 rounded-2xl overflow-hidden bg-sand">
           {coverUrl ? (
-            <Image
-              source={{ uri: coverUrl }}
+            <MediaImage
+              uri={coverUrl}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
               transition={150}
@@ -243,8 +243,8 @@ export function EventCard({ event, variant = "box" }: EventCardProps) {
               <View className="flex-row items-center gap-1.5 flex-1">
                 {event.hub.images && event.hub.images.length > 0 ? (
                   <View className="h-[16px] w-[16px] overflow-hidden rounded bg-sand border border-linen/20">
-                    <Image
-                      source={{ uri: event.hub.images.find((img: any) => img?.type === "logo")?.url }}
+                    <MediaImage
+                      uri={event.hub.images.find((img: any) => img?.type === "logo")?.url}
                       style={{ width: "100%", height: "100%" }}
                       contentFit="cover"
                     />
@@ -276,8 +276,8 @@ export function EventCard({ event, variant = "box" }: EventCardProps) {
       {/* Cover — 1:1 square */}
       <View className="relative aspect-square bg-sand">
         {coverUrl ? (
-          <Image
-            source={{ uri: coverUrl }}
+          <MediaImage
+            uri={coverUrl}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
             transition={150}
@@ -378,8 +378,8 @@ export function EventCard({ event, variant = "box" }: EventCardProps) {
             <View className="flex-row items-center gap-1.5 flex-1">
               {event.hub.images && event.hub.images.length > 0 ? (
                 <View className="h-[18px] w-[18px] overflow-hidden rounded bg-sand border border-linen/20">
-                  <Image
-                    source={{ uri: event.hub.images.find((img: any) => img?.type === "logo")?.url }}
+                  <MediaImage
+                    uri={event.hub.images.find((img: any) => img?.type === "logo")?.url}
                     style={{ width: "100%", height: "100%" }}
                     contentFit="cover"
                   />

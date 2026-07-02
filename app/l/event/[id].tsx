@@ -1,5 +1,4 @@
 import { View } from "react-native";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
 import {
@@ -13,6 +12,7 @@ import {
   Skeleton,
   SkeletonText,
   type LinkItem,
+  MediaImage,
 } from "@/components/ui";
 import { useEvent } from "@/features/events/api";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/constants";
@@ -74,8 +74,8 @@ export default function EventLinkInBio() {
   return (
     <Screen maxWidth="form" contentClassName="pt-section">
       {coverUrl ? (
-        <Image
-          source={{ uri: coverUrl }}
+        <MediaImage
+          uri={coverUrl}
           style={{ width: "100%", aspectRatio: 1, borderRadius: 22 }}
           contentFit="cover"
           transition={200}

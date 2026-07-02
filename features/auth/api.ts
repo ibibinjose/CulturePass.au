@@ -11,6 +11,7 @@ import {
 
 import { getAwsCurrentUserId, getAwsAuthUser, awsSignOut } from "@/lib/aws/auth";
 import { getAwsDataClient } from "@/lib/aws/data";
+import { findFirst } from "@/lib/aws/list";
 import { qk } from "@/lib/query";
 import type {
   SignInInput,
@@ -24,11 +25,10 @@ export async function getCurrentProfileId(): Promise<string | null> {
   const userId = await getAwsCurrentUserId();
   if (!userId) return null;
   const client = getAwsDataClient();
-  const { data } = await client.models.Profile.list({
-    filter: { userId: { eq: userId } },
-    limit: 1,
-  });
-  return data[0]?.id ?? null;
+  const profile = await findFirst((nextToken) =>
+    client.models.Profile.list({ filter: { userId: { eq: userId } }, nextToken }),
+  );
+  return profile?.id ?? null;
 }
 
 /** Lightweight session hook for gating create/publish actions. */

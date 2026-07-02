@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { Pressable, ScrollView, View, ActivityIndicator, Linking } from "react-native";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
 
-import { Screen, Text, Input, Button, Card, Footer, Icon, Badge, LocationPicker, Skeleton, useToast } from "@/components/ui";
+import { Screen, Text, Input, Button, Card, Footer, Icon, Badge, LocationPicker, Skeleton, useToast, MediaImage } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useHubs } from "@/features/hubs/api";
@@ -393,8 +392,8 @@ export default function MyCouncilScreen() {
                     <View className="flex-1 gap-4 justify-between">
                       <View className="flex-row items-start gap-4">
                         {councilDetails.logo_url ? (
-                          <Image
-                            source={{ uri: councilDetails.logo_url }}
+                          <MediaImage
+                            uri={councilDetails.logo_url}
                             style={{ width: 48, height: 48, borderRadius: 10 }}
                             contentFit="contain"
                             transition={150}
@@ -876,7 +875,7 @@ function SpotlightCard({ event, router }: { event: any; router: any }) {
         {/* Image / Icon container */}
         <View className="w-full md:w-[55%] min-h-[200px] md:min-h-[220px] bg-sand relative overflow-hidden">
           {coverUrl ? (
-            <Image source={{ uri: coverUrl }} style={{ width: "100%", height: "100%", position: "absolute" }} contentFit="cover" transition={150} />
+            <MediaImage uri={coverUrl} style={{ width: "100%", height: "100%", position: "absolute" }} contentFit="cover" transition={150} />
           ) : (
             <View className="absolute inset-0 items-center justify-center bg-sand">
               <Icon name="calendar" size={44} color={colors.inkFaint} />
@@ -923,7 +922,7 @@ function SpotlightCard({ event, router }: { event: any; router: any }) {
           <View className="pt-4 border-t border-linen/30 mt-4 gap-3">
             <View className="flex-row items-center gap-2">
               {event.hub?.images?.[0]?.url ? (
-                <Image source={{ uri: event.hub.images[0].url }} style={{ width: 24, height: 24, borderRadius: 12 }} contentFit="cover" />
+                <MediaImage uri={event.hub.images[0].url} style={{ width: 24, height: 24, borderRadius: 12 }} contentFit="cover" />
               ) : (
                 <View className="h-6 w-6 rounded-full bg-sand items-center justify-center">
                   <Text className="text-[10px] font-semibold text-ink-muted">H</Text>
@@ -960,7 +959,7 @@ function HubCard({ hub, router }: { hub: any; router: any }) {
     >
       <View className="flex-row items-center gap-3">
         {logoUrl ? (
-          <Image source={{ uri: logoUrl }} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
+          <MediaImage uri={logoUrl} style={{ width: 44, height: 44, borderRadius: 22 }} contentFit="cover" />
         ) : (
           <View className="h-11 w-11 items-center justify-center rounded-full bg-sand">
             <Text className="font-heading text-sm text-ink-muted">

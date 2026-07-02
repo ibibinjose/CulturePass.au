@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
-import { collectAll } from "@/lib/aws/list";
+import { collectAll, findFirst } from "@/lib/aws/list";
 import { fromAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -240,11 +240,13 @@ export function useStartConversation() {
       if (!me || !mySub) throw new Error("Sign in to message the organiser.");
 
       const client = getAwsDataClient();
-      const { data: existing } = await client.models.Conversation.list({
-        filter: { hubId: { eq: hubId }, memberId: { eq: me } },
-        limit: 1,
-      });
-      if (existing[0]) return existing[0].id;
+      const existing = await findFirst((nextToken) =>
+        client.models.Conversation.list({
+          filter: { hubId: { eq: hubId }, memberId: { eq: me } },
+          nextToken,
+        }),
+      );
+      if (existing) return existing.id;
 
       // Access is participant-scoped (`ownersDefinedIn`): the thread belongs to
       // the member and the hub owner, identified by their Cognito subs.

@@ -61,3 +61,31 @@ export function unwrapAws<T>(res: AwsResult<T>): T {
   throwIfErrors(res.errors);
   return res.data;
 }
+
+/**
+ * First row matching a filtered `.list()`.
+ *
+ * DynamoDB applies `limit` BEFORE the filter — it caps rows *scanned*, not rows
+ * matched — so `.list({ filter, limit: 1 })` returns an empty page whenever the
+ * first scanned row isn't the match, even though matching rows exist. Never
+ * pass `limit` with a filter; use this to page until a match (or the end).
+ * Same partial-page error tolerance as {@link collectAll}.
+ */
+export async function findFirst<T>(
+  page: (nextToken?: string) => Promise<AwsListPage<T>>,
+): Promise<T | undefined> {
+  let token: string | undefined;
+  do {
+    const res = await page(token);
+    if (res.errors && res.errors.length > 0) {
+      if (res.data && res.data.length > 0) {
+        console.warn("[findFirst] partial page:", res.errors.map((e) => e.message).join("; "));
+      } else {
+        throwIfErrors(res.errors);
+      }
+    }
+    if (res.data.length > 0) return res.data[0];
+    token = res.nextToken ?? undefined;
+  } while (token);
+  return undefined;
+}

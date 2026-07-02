@@ -16,6 +16,7 @@ import { env } from "$amplify/env/stripe-webhook";
 import type { LambdaFunctionURLHandler } from "aws-lambda";
 
 import type { Schema } from "../../data/resource";
+import { collectAll } from "../shared/list";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env);
 Amplify.configure(resourceConfig, libraryOptions);
@@ -81,9 +82,12 @@ export const handler: LambdaFunctionURLHandler = async (event) => {
       case "charge.refunded": {
         const paymentIntent = typeof obj.payment_intent === "string" ? obj.payment_intent : null;
         if (paymentIntent) {
-          const { data: orders } = await client.models.TicketOrder.list({
-            filter: { stripePaymentIntentId: { eq: paymentIntent } },
-          });
+          const orders = await collectAll((nextToken) =>
+            client.models.TicketOrder.list({
+              filter: { stripePaymentIntentId: { eq: paymentIntent } },
+              nextToken,
+            }),
+          );
           await Promise.all(
             orders.map((o) => client.models.TicketOrder.update({ id: o.id, status: "refunded" })),
           );

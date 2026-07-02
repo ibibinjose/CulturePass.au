@@ -1,11 +1,11 @@
 import { View } from "react-native";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
 import {
   Badge,
   Card,
   Icon,
   Text,
+  MediaImage,
 } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { colors } from "@/lib/theme";
@@ -39,8 +39,8 @@ export function HubCard({ hub }: { hub: HubCardData }) {
     <Card onPress={() => router.push(`/hub/${hub.slug}`)} padded={false} className="overflow-hidden">
       <View className="flex-row gap-4 p-4">
         {thumbUrl ? (
-          <Image
-            source={{ uri: thumbUrl }}
+          <MediaImage
+            uri={thumbUrl}
             style={{ width: 92, height: 92, borderRadius: 18 }}
             contentFit="cover"
             transition={150}

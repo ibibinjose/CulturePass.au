@@ -8,7 +8,6 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
 
 import {
   Screen,
@@ -26,6 +25,7 @@ import {
   Skeleton,
   useToast,
   Pinwheel,
+  MediaImage,
 } from "@/components/ui";
 import { useWeather } from "@/features/weather/api";
 import { FirstNationsToggle } from "@/components/cultural/FirstNationsToggle";
@@ -867,7 +867,7 @@ export default function DiscoverScreen() {
                       className="w-[280px] bg-card border border-linen p-3 rounded-2xl flex-row items-center gap-3 active:opacity-75"
                     >
                       {logoUrl ? (
-                        <Image source={{ uri: logoUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} />
+                        <MediaImage uri={logoUrl} style={{ width: 36, height: 36, borderRadius: 18 }} />
                       ) : (
                         <View className="h-9 w-9 rounded-full bg-sand items-center justify-center">
                           <Text className="font-heading text-sm text-ink-muted">
@@ -988,8 +988,8 @@ export default function DiscoverScreen() {
                         >
                           <View className="flex-row items-center gap-3">
                             {logoUrl ? (
-                              <Image
-                                source={{ uri: logoUrl }}
+                              <MediaImage
+                                uri={logoUrl}
                                 style={{ width: 44, height: 44, borderRadius: 22 }}
                                 contentFit="cover"
                               />
@@ -1143,7 +1143,7 @@ export default function DiscoverScreen() {
                                   </View>
                                   <View className="h-10 w-10 rounded-lg overflow-hidden bg-sand">
                                     {coverUrl ? (
-                                      <Image source={{ uri: coverUrl }} style={{ width: "100%", height: "100%" }} contentFit="cover" />
+                                      <MediaImage uri={coverUrl} style={{ width: "100%", height: "100%" }} contentFit="cover" />
                                     ) : (
                                       <View className="flex-1 items-center justify-center bg-sand">
                                         <Icon name="calendar" size={14} color={colors.inkFaint} />
@@ -1198,7 +1198,7 @@ export default function DiscoverScreen() {
                             className="flex-row items-center gap-3 py-2.5 border-b border-linen/15 active:opacity-75"
                           >
                             {logoUrl ? (
-                              <Image source={{ uri: logoUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
+                              <MediaImage uri={logoUrl} style={{ width: 36, height: 36, borderRadius: 18 }} contentFit="cover" />
                             ) : (
                               <View className="h-9 w-9 items-center justify-center rounded-full bg-sand">
                                 <Text className="font-heading text-sm text-ink-muted">{hub.name.charAt(0).toUpperCase()}</Text>

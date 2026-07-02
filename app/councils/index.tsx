@@ -12,8 +12,8 @@ import {
   Pinwheel,
   Screen,
   Text,
+  MediaImage,
 } from "@/components/ui";
-import { Image } from "expo-image";
 import { colors } from "@/lib/theme";
 import { cn } from "@/lib/utils/cn";
 import { useCouncils } from "@/features/reference/api";
@@ -77,8 +77,8 @@ export default function CouncilsDirectoryScreen() {
     if (council.logo_url) {
       return (
         <View className="aspect-square w-full rounded-2xl border border-linen bg-white overflow-hidden relative">
-          <Image
-            source={{ uri: council.logo_url }}
+          <MediaImage
+            uri={council.logo_url}
             style={{ width: '100%', height: '100%' }}
             contentFit="contain"
             transition={200}

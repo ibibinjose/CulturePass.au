@@ -76,7 +76,10 @@ Session; the `stripeWebhook` Lambda Function URL is the **source of truth** that
    the AppSync mapper functions. Do not delete this file.
 
 2. **AppSync lists are paginated** — always use `collectAll()` from `lib/aws/list.ts` rather than
-   calling `.list()` once. DynamoDB returns at most 100 items per page.
+   calling `.list()` once. DynamoDB returns at most 100 items per page. Never combine `limit`
+   with `filter` (`limit` caps rows *scanned before* the filter, so `limit: 1` + filter returns
+   empty pages); use `findFirst()` from `lib/aws/list.ts` (app) or
+   `amplify/functions/shared/list.ts` (Lambdas) for single-row filtered lookups.
 
 3. **AppSync uses camelCase; the rest of the app uses snake_case.** The mapper functions in each
    `features/*/api.ts` translate between them. Always go through the mapper; never spread AppSync

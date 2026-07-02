@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { View, Pressable, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
 
-import { Card, Text, Button, Icon, Badge } from "@/components/ui";
+import { Card, Text, Button, Icon, Badge, MediaImage } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { useMyCohostInvitations, useRespondToInvite, COHOST_ROLE_LABELS } from "./cohosts";
 
@@ -44,8 +43,8 @@ export function CohostInvitationsBanner() {
             <View className="flex-1 flex-row items-start gap-3.5 min-w-0">
               {/* Event Image */}
               {invite.eventImageUrl ? (
-                <Image
-                  source={{ uri: invite.eventImageUrl }}
+                <MediaImage
+                  uri={invite.eventImageUrl}
                   style={{ width: 56, height: 56, borderRadius: 12 }}
                   contentFit="cover"
                   transition={150}

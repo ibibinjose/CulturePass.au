@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { Image } from "expo-image";
 
 import {
   Avatar,
@@ -22,6 +21,7 @@ import {
   Text,
   Toggle,
   RichText,
+  MediaImage,
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
 
@@ -672,8 +672,8 @@ function StepReview({ draft, onEditStep, myHubs }: StepProps & { onEditStep: (st
           {/* Cover Image — 1:1 square */}
           <View className="overflow-hidden rounded-3xl bg-sand shadow-subtle aspect-square w-full">
             {coverUrl ? (
-              <Image
-                source={{ uri: coverUrl }}
+              <MediaImage
+                uri={coverUrl}
                 style={{ width: "100%", height: "100%" }}
                 contentFit="cover"
               />

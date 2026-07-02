@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 
-import { Screen, Text, Button, BackButton, Card, Badge, Divider } from "@/components/ui";
+import { Screen, Text, Button, BackButton, Card, Badge, Divider, MediaImage } from "@/components/ui";
 import { useMyTickets, type TicketOrder } from "@/features/tickets/api";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useSavedEvents } from "@/features/events/useSavedEvents";
@@ -224,8 +223,8 @@ function TicketRow({ ticket, onOpen }: { ticket: TicketOrder; onOpen: () => void
   return (
     <Card onPress={ticket.event_id ? onOpen : undefined} padded={false} className="overflow-hidden">
       {cover ? (
-        <Image
-          source={{ uri: cover }}
+        <MediaImage
+          uri={cover}
           style={{ width: "100%", aspectRatio: 16 / 9 }}
           contentFit="cover"
           transition={150}

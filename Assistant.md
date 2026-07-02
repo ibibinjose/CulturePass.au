@@ -144,6 +144,12 @@ warm-black `ink`; accents `ochre`, `eucalyptus`, `terracotta`). Tokens live in
    DynamoDB returns at most ~100 items per page. A single `.list()` call will silently
    miss rows in large tables.
 
+   **Never combine `limit` with `filter`.** DynamoDB applies `limit` to rows *scanned*,
+   before the filter runs, so `.list({ filter, limit: 1 })` returns an empty page whenever
+   the first scanned row isn't the match — lookups "randomly" fail as tables grow. Use
+   `findFirst()` from `lib/aws/list.ts` (or `amplify/functions/shared/list.ts` inside
+   Lambda handlers) for single-row filtered lookups.
+
 3. **camelCase ↔ snake_case.** AppSync model fields are camelCase (`hubId`, `startTime`).
    The rest of the app (UI, forms, query keys) uses the Supabase-era snake_case shapes.
    Every `features/*/api.ts` has mapper functions that translate between them. Never
@@ -182,6 +188,23 @@ warm-black `ink`; accents `ochre`, `eucalyptus`, `terracotta`). Tokens live in
 13. **Password reset on Cognito is code-based** (not link-based). The flow is:
     reset-password screen → sends 6-digit code via email → update-password screen collects
     email + code + new password → `confirmResetPassword()` from `aws-amplify/auth`.
+
+14. **Root-hoist version pins in devDependencies — do not "clean up".** Two dev-tool
+    dependency chains drag incompatible package versions into the root `node_modules` slot,
+    shadowing the versions Expo/Metro resolve with bare `require()`:
+    - `@aws-amplify/backend-cli` → `@aws-amplify/graphql-types-generator` pins
+      `@babel/types`/`@babel/generator` **7.0.0-beta.4** (2017). Hoisted to root, they crash
+      every web bundle in the Reanimated Babel plugin (`isV8IntrinsicIdentifier is not a
+      function`). Direct devDeps `@babel/types`/`@babel/generator` `^7.29` win the root slot;
+      the generator keeps its betas nested.
+    - `@testing-library/react-native@13` (jest-30 chain) hoists `pretty-format@30`, whose
+      export shape breaks `@expo/metro-runtime`'s dev-only HMR client → **white page in
+      `npm run web`** while `expo export` still succeeds. Direct devDep `pretty-format@^29.7`
+      keeps v29 at root.
+    Never install with `--legacy-peer-deps` (it permitted the broken tree); a strict
+    `npm install` resolves cleanly. If a mystery `undefined is not a function` appears at
+    module scope after dependency changes, check root `node_modules/<pkg>/package.json`
+    versions first.
 
 ---
 

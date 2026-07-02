@@ -7,6 +7,7 @@
  * call (no data client constructed yet) still works.
  */
 import {
+  fetchAuthSession,
   fetchUserAttributes,
   getCurrentUser,
   signOut as amplifySignOut,
@@ -27,6 +28,23 @@ export async function getAwsCurrentUserId(): Promise<string | null> {
     return userId;
   } catch {
     // Amplify throws when there is no authenticated user — treat as signed out.
+    return null;
+  }
+}
+
+/**
+ * Identity-pool identity id of the current session, or null.
+ *
+ * NOT the Cognito user-pool `sub`: S3 storage paths (`media/{entity_id}/*`)
+ * bind `{entity_id}` to the **identity id**, so uploads keyed by `sub` are
+ * denied by the bucket policy. Always build storage paths from this.
+ */
+export async function getAwsIdentityId(): Promise<string | null> {
+  configureAmplify();
+  try {
+    const { identityId } = await fetchAuthSession();
+    return identityId ?? null;
+  } catch {
     return null;
   }
 }

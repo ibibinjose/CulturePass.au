@@ -26,6 +26,7 @@ export { Toggle } from "./Toggle";
 export { ListRow } from "./ListRow";
 export { TagInput } from "./TagInput";
 export { ImagePickerComponent } from "./ImagePicker";
+export { MediaImage } from "./MediaImage";
 export { Carousel } from "./Carousel";
 export { SectionHeader } from "./SectionHeader";
 export { Thumbnail } from "./Thumbnail";

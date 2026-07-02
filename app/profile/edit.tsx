@@ -17,8 +17,10 @@ import {
 } from "@/components/ui";
 import { useMyProfile, useUpdateMyProfile } from "@/features/profiles/api";
 import { getAwsDataClient } from "@/lib/aws/data";
+import { findFirst } from "@/lib/aws/list";
 import { RequireAuth } from "@/features/auth/RequireAuth";
 import { profileSchema } from "@/lib/validation/profile";
+import { mapFetchError } from "@/lib/utils/errorMessage";
 import { pruneLinks } from "@/lib/social";
 import {
   PROFESSIONAL_CATEGORIES,
@@ -104,9 +106,11 @@ function EditProfileScreenInner() {
   const set = (patch: Partial<ProfileForm>) => setForm((f) => ({ ...f, ...patch }));
 
   async function submit() {
+    if (submitting) return;
     setBanner(null);
+    const username = form.username.trim();
     const parsed = profileSchema.safeParse({
-      username: form.username || undefined,
+      username: username || undefined,
       full_name: form.full_name,
       avatar_url: form.avatar_url ?? undefined,
       bio: form.bio || undefined,
@@ -133,31 +137,32 @@ function EditProfileScreenInner() {
     const prof = profile;
     if (!prof) {
       setBanner("Profile not loaded.");
-      setSubmitting(false);
       return;
-    }
-
-    // Uniqueness check for username (real name policy: prefer real identities;
-    // celebrities/businesses may claim names via support or admin override).
-    if (form.username && form.username !== prof.username) {
-      const client = getAwsDataClient();
-      const { data: existing } = await client.models.Profile.list({
-        filter: { username: { eq: form.username } },
-        limit: 1,
-      });
-      const profileId = prof.id!;
-      const match = existing?.[0];
-      if (match && match.id !== profileId) {
-        setBanner("That username is already taken. Choose another or contact support to claim if you're a verified celebrity/business.");
-        setSubmitting(false);
-        return;
-      }
     }
 
     setSubmitting(true);
     try {
+      // Uniqueness check for username (real name policy: prefer real identities;
+      // celebrities/businesses may claim names via support or admin override).
+      // Rows belonging to this user (including any legacy duplicate Profile rows
+      // for the same Cognito sub) are not conflicts.
+      if (username && username !== prof.username) {
+        const client = getAwsDataClient();
+        const profileId = prof.id!;
+        const match = await findFirst((nextToken) =>
+          client.models.Profile.list({
+            filter: { username: { eq: username } },
+            nextToken,
+          }),
+        );
+        if (match && match.id !== profileId && match.userId !== prof.user_id) {
+          setBanner("That username is already taken. Choose another or contact support to claim if you're a verified celebrity/business.");
+          return;
+        }
+      }
+
       await updateMyProfile.mutateAsync({
-        username: form.username.trim() || null,
+        username: username || null,
         full_name: form.full_name.trim(),
         avatar_url: form.avatar_url,
         bio: form.bio.trim() || null,
@@ -174,7 +179,8 @@ function EditProfileScreenInner() {
       });
       router.back();
     } catch (err) {
-      setBanner(err instanceof Error ? err.message : "Something went wrong.");
+      console.error("Profile update failed:", err);
+      setBanner(mapFetchError(err));
     } finally {
       setSubmitting(false);
     }

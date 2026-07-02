@@ -1,6 +1,7 @@
 import { View } from "react-native";
 import { Image } from "expo-image";
 import { cn } from "@/lib/utils/cn";
+import { useMediaUrl } from "@/lib/aws/media";
 import { Text } from "./Text";
 
 interface AvatarProps {
@@ -23,12 +24,15 @@ function initials(name?: string | null) {
 /** Circular avatar: image when present, otherwise warm initials. */
 export function Avatar({
   name,
-  uri,
+  uri: storedUri,
   size = 48,
   ring = false,
   className,
-  hubLogoUri,
+  hubLogoUri: storedHubLogoUri,
 }: AvatarProps) {
+  // Stored values may be S3 media paths — resolve to fresh signed URLs.
+  const uri = useMediaUrl(storedUri);
+  const hubLogoUri = useMediaUrl(storedHubLogoUri);
   const style = { width: size, height: size, borderRadius: size / 2 };
   const ringClass = ring ? "border-[3px] border-paper" : "border border-linen";
   const badgeSize = Math.max(16, Math.round(size * 0.28));

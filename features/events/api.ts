@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
-import { collectAll } from "@/lib/aws/list";
+import { collectAll, findFirst } from "@/lib/aws/list";
 import { compact, fromAwsJson, nullableList, slugify, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
@@ -245,14 +245,11 @@ async function fetchHubEventsAws(hubId: string): Promise<any[]> {
     }),
   );
   const cohostedResults = await Promise.all(
-    cohostLinks.map((c) =>
-      client.models.Event.list({
-        filter: { id: { eq: c.eventId }, status: { eq: "published" } },
-        limit: 1,
-      }),
-    ),
+    cohostLinks.map((c) => client.models.Event.get({ id: c.eventId })),
   );
-  const cohosted = cohostedResults.flatMap((r) => r.data);
+  const cohosted = cohostedResults.flatMap((r) =>
+    r.data && r.data.status === "published" ? [r.data] : [],
+  );
 
   const dedup = new Map<string, (typeof hosted)[number]>();
   hosted.forEach((e) => dedup.set(e.id, e));
@@ -372,11 +369,12 @@ export function useEventSubscriptionStatus(eventId: string) {
       if (!profileId) return { subscribed: false, status: null };
 
       const client = getAwsDataClient();
-      const { data } = await client.models.EventRsvp.list({
-        filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
-        limit: 1,
-      });
-      const row = data[0];
+      const row = await findFirst((nextToken) =>
+        client.models.EventRsvp.list({
+          filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
+          nextToken,
+        }),
+      );
       return { subscribed: !!row, status: row?.status ?? null };
     },
     enabled: !!eventId,
@@ -392,11 +390,12 @@ export function useToggleEventSubscription() {
 
       const client = getAwsDataClient();
       if (subscribed) {
-        const { data } = await client.models.EventRsvp.list({
-          filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
-          limit: 1,
-        });
-        const row = data[0];
+        const row = await findFirst((nextToken) =>
+          client.models.EventRsvp.list({
+            filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
+            nextToken,
+          }),
+        );
         if (row) await client.models.EventRsvp.delete({ id: row.id });
       } else {
         await client.models.EventRsvp.create({ eventId, profileId, status: "going" });
@@ -437,11 +436,12 @@ export function useToggleEventLike() {
 
       const client = getAwsDataClient();
       if (liked) {
-        const { data } = await client.models.EventLike.list({
-          filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
-          limit: 1,
-        });
-        const row = data[0];
+        const row = await findFirst((nextToken) =>
+          client.models.EventLike.list({
+            filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
+            nextToken,
+          }),
+        );
         if (row) await client.models.EventLike.delete({ id: row.id });
       } else {
         await client.models.EventLike.create({ eventId, profileId });
@@ -461,11 +461,13 @@ export function useEventSaveStatus(eventId: string) {
       if (!profileId) return { saved: false };
 
       const client = getAwsDataClient();
-      const { data } = await client.models.EventSave.list({
-        filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
-        limit: 1,
-      });
-      return { saved: data.length > 0 };
+      const row = await findFirst((nextToken) =>
+        client.models.EventSave.list({
+          filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
+          nextToken,
+        }),
+      );
+      return { saved: !!row };
     },
     enabled: !!eventId,
   });
@@ -480,11 +482,12 @@ export function useToggleEventSave() {
 
       const client = getAwsDataClient();
       if (saved) {
-        const { data } = await client.models.EventSave.list({
-          filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
-          limit: 1,
-        });
-        const row = data[0];
+        const row = await findFirst((nextToken) =>
+          client.models.EventSave.list({
+            filter: { eventId: { eq: eventId }, profileId: { eq: profileId } },
+            nextToken,
+          }),
+        );
         if (row) await client.models.EventSave.delete({ id: row.id });
       } else {
         await client.models.EventSave.create({ eventId, profileId });

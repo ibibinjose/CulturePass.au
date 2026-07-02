@@ -15,18 +15,18 @@ backend:
   phases:
     build:
       commands:
-        - npm ci --legacy-peer-deps --cache .npm --prefer-offline
+        - npm ci --cache .npm --prefer-offline
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
     preBuild:
       commands:
-        - npm ci --legacy-peer-deps --cache .npm --prefer-offline
+        - npm ci --cache .npm --prefer-offline
         # amplify_outputs.json (from the backend phase) → EXPO_PUBLIC_* in .env
         - node scripts/aws-env-from-outputs.mjs
     build:
       commands:
-        - npx expo export --platform web
+        - npx expo export --platform web --clear
   artifacts:
     baseDirectory: dist
     files:

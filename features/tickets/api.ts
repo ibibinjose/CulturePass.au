@@ -2,7 +2,7 @@ import { Linking, Platform } from "react-native";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
-import { collectAll } from "@/lib/aws/list";
+import { collectAll, findFirst } from "@/lib/aws/list";
 import { compact, fromAwsJson, nullableList } from "@/lib/aws/map";
 import { getAwsCurrentUserId } from "@/lib/aws/auth";
 import { qk } from "@/lib/query";
@@ -144,11 +144,12 @@ export function useTicketBySession(sessionId: string | undefined) {
       (query.state.data as TicketOrder | null)?.status === "paid" ? false : 2000,
     queryFn: async (): Promise<TicketOrder | null> => {
       const client = getAwsDataClient();
-      const { data } = await client.models.TicketOrder.list({
-        filter: { stripeCheckoutSessionId: { eq: sessionId! } },
-        limit: 1,
-      });
-      const order = data[0];
+      const order = await findFirst((nextToken) =>
+        client.models.TicketOrder.list({
+          filter: { stripeCheckoutSessionId: { eq: sessionId! } },
+          nextToken,
+        }),
+      );
       return order ? withEventEmbed(mapTicketOrder(order)) : null;
     },
   });

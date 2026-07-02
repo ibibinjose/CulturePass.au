@@ -1,11 +1,11 @@
 import { Pressable, View } from "react-native";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 
 import {
   Badge,
   Icon,
   Text,
+  MediaImage,
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { EVENT_TYPE_LABELS } from "@/lib/constants";
@@ -58,7 +58,7 @@ export function FeaturedEventCard({ event }: { event: EventCardData }) {
       {/* Cover — 1:1 square */}
       <View className="relative aspect-square bg-sand">
         {cover ? (
-          <Image source={{ uri: cover }} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={180} />
+          <MediaImage uri={cover} style={{ width: "100%", height: "100%" }} contentFit="cover" transition={180} />
         ) : (
           <View className="flex-1 items-center justify-center bg-eucalyptus-50">
             <Text className="font-display text-7xl text-eucalyptus-100">

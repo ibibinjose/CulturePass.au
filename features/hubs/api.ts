@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
-import { collectAll } from "@/lib/aws/list";
+import { collectAll, findFirst } from "@/lib/aws/list";
 import { compact, fromAwsJson, slugify, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
@@ -221,11 +221,9 @@ export function useHub(slug: string) {
     queryKey: qk.hub(slug),
     queryFn: async (): Promise<HubDetail | null> => {
       const client = getAwsDataClient();
-      const { data } = await client.models.Hub.list({
-        filter: { slug: { eq: slug } },
-        limit: 1,
-      });
-      const hub = data[0];
+      const hub = await findFirst((nextToken) =>
+        client.models.Hub.list({ filter: { slug: { eq: slug } }, nextToken }),
+      );
       if (!hub) return null;
       let council: HubCouncil | null = null;
       if (hub.locationCouncilId) {
@@ -352,11 +350,12 @@ export function useToggleHubLike() {
 
       const client = getAwsDataClient();
       if (liked) {
-        const { data } = await client.models.HubLike.list({
-          filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
-          limit: 1,
-        });
-        const row = data[0];
+        const row = await findFirst((nextToken) =>
+          client.models.HubLike.list({
+            filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
+            nextToken,
+          }),
+        );
         if (row) await client.models.HubLike.delete({ id: row.id });
       } else {
         await client.models.HubLike.create({ hubId, profileId });
@@ -396,11 +395,12 @@ export function useToggleHubFollow() {
 
       const client = getAwsDataClient();
       if (followed) {
-        const { data } = await client.models.HubFollow.list({
-          filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
-          limit: 1,
-        });
-        const row = data[0];
+        const row = await findFirst((nextToken) =>
+          client.models.HubFollow.list({
+            filter: { hubId: { eq: hubId }, profileId: { eq: profileId } },
+            nextToken,
+          }),
+        );
         if (row) await client.models.HubFollow.delete({ id: row.id });
       } else {
         await client.models.HubFollow.create({ hubId, profileId });

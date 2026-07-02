@@ -1,8 +1,7 @@
 import React from "react";
 import { Pressable, View } from "react-native";
-import { Image } from "expo-image";
 
-import { Card, Text, Icon } from "@/components/ui";
+import { Card, Text, Icon, MediaImage } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
 import { HUB_TYPE_LABELS, type HubType } from "@/lib/constants";
 import { colors } from "@/lib/theme";
@@ -33,7 +32,7 @@ export function CommunityCard({ hub, onPress, className }: CommunityCardProps) {
         <View>
           {/* Cover banner */}
           {coverUrl ? (
-            <Image source={{ uri: coverUrl }} style={{ width: "100%", height: 120 }} contentFit="cover" transition={150} />
+            <MediaImage uri={coverUrl} style={{ width: "100%", height: 120 }} contentFit="cover" transition={150} />
           ) : (
             <View className="h-[120px] bg-sand items-center justify-center">
               <Icon name="image" size={24} color={colors.inkFaint} />
@@ -43,8 +42,8 @@ export function CommunityCard({ hub, onPress, className }: CommunityCardProps) {
           {/* Logo crest + status badges */}
           <View className="px-5 -mt-7 flex-row items-end justify-between gap-3">
             {logoUrl ? (
-              <Image
-                source={{ uri: logoUrl }}
+              <MediaImage
+                uri={logoUrl}
                 style={{ width: 54, height: 54, borderRadius: 14, borderWidth: 3, borderColor: colors.card }}
                 contentFit="cover"
                 transition={150}

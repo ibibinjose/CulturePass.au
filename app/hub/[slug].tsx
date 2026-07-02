@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Linking, Pressable, View, ActivityIndicator } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image } from "expo-image";
 import { useMobileLayout } from "@/lib/useMobileLayout";
 import { getEventTimezone } from "@/lib/utils/timezone";
 
@@ -17,6 +16,7 @@ import {
   ShareButton,
   Icon,
   type IconName,
+  MediaImage,
 } from "@/components/ui";
 import { colors } from "@/lib/theme";
 import { WelcomeToCountry } from "@/components/cultural/WelcomeToCountry";
@@ -229,8 +229,8 @@ export default function HubScreen() {
         style={{ aspectRatio: 5 / 2, marginLeft: -20, marginRight: -20 }}
       >
         {coverUrl ? (
-          <Image
-            source={{ uri: coverUrl }}
+          <MediaImage
+            uri={coverUrl}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
             transition={200}
