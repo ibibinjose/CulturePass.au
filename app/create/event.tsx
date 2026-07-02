@@ -113,9 +113,11 @@ export default function CreateEventScreen() {
 
     const payload = {
       ...draft,
-      location_city: locationCity || null,
-      ticket_url: ticketUrl || null,
-      description: finalDescription || null,
+      // undefined (not null): the zod schemas use `.optional()` fields, which
+      // reject null with "Expected string, received null".
+      location_city: locationCity || undefined,
+      ticket_url: ticketUrl || undefined,
+      description: finalDescription || undefined,
     };
 
     // Remove temp local fields to satisfy validation and Supabase table schema

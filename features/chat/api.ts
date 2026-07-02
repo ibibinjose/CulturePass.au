@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
+import { fromAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { getCurrentProfileId } from "@/features/auth/api";
@@ -66,7 +67,7 @@ async function buildAwsConversation(c: AwsItem<"Conversation">): Promise<Convers
       ? {
           name: hub.name,
           slug: hub.slug,
-          images: (hub.images ?? []) as HubImage[],
+          images: fromAwsJson<HubImage[]>(hub.images, []),
           owner_id: hub.ownerId,
         }
       : null,

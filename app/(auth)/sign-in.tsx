@@ -23,13 +23,13 @@ export const COGNITO_MESSAGES: Record<string, string> = {
   ExpiredCodeException: "That code has expired — please request a new one.",
   LimitExceededException: "Too many attempts — please wait a few minutes and try again.",
   InvalidPasswordException: "Password does not meet the requirements.",
+  UserAlreadyAuthenticatedException: "You're already signed in.",
 };
 
 export function authMessage(err: unknown): string {
-  if (err instanceof Error) {
-    return COGNITO_MESSAGES[err.name] ?? err.message;
-  }
-  return "Something went wrong.";
+  const mapped = err instanceof Error ? COGNITO_MESSAGES[err.name] : undefined;
+  // Mapped by error.name only — raw Cognito messages never reach the UI.
+  return mapped ?? "Something went wrong. Please try again.";
 }
 
 /** Poll until isAuthenticated is true or the timeout elapses. */
@@ -63,6 +63,11 @@ export default function SignInScreen() {
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const [banner, setBanner] = useState<string | null>(null);
 
+  // Already signed in (deep link, back button, stale tab) → straight home.
+  useEffect(() => {
+    if (isAuthenticated) router.replace("/");
+  }, [isAuthenticated, router]);
+
   async function submit() {
     setBanner(null);
     const parsed = signInSchema.safeParse({ email, password });
@@ -79,6 +84,11 @@ export default function SignInScreen() {
       await waitForAuth(() => isAuthRef.current);
       router.replace("/");
     } catch (err) {
+      // A lingering session isn't a failure — recover by continuing home.
+      if (err instanceof Error && err.name === "UserAlreadyAuthenticatedException") {
+        router.replace("/");
+        return;
+      }
       setBanner(authMessage(err));
     }
   }

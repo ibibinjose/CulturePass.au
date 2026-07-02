@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
+import { fromAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useMyProfile } from "@/features/profiles/api";
@@ -17,7 +18,7 @@ function mapNotification(n: AwsItem<"Notification">): NotificationRow {
     type: n.type ?? "",
     title: n.title,
     body: n.body ?? null,
-    data: (n.data ?? {}) as NotificationRow["data"],
+    data: fromAwsJson<NotificationRow["data"]>(n.data, {}),
     read_at: n.readAt ?? null,
     created_at: n.createdAt,
   };

@@ -32,3 +32,30 @@ export function slugify(name: string): string {
   const suffix = Math.random().toString(36).slice(2, 8);
   return base ? `${base}-${suffix}` : suffix;
 }
+
+/**
+ * AWSJSON write encoding (CLAUDE.md gotcha #5): AppSync's `a.json()` scalar
+ * takes a JSON **string** on the wire — sending a raw object fails the mutation
+ * with "Variable '<field>' has an invalid value". Every mapper that writes a
+ * JSON column must go through this.
+ */
+export function toAwsJson(value: unknown): string | null {
+  return value == null ? null : JSON.stringify(value);
+}
+
+/**
+ * AWSJSON read decoding: tolerate both a JSON string (raw scalar) and an
+ * already-parsed value (client versions differ), falling back when absent or
+ * malformed. Every mapper that reads a JSON column must go through this.
+ */
+export function fromAwsJson<T>(value: unknown, fallback: T): T {
+  if (value == null) return fallback;
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as T;
+    } catch {
+      return fallback;
+    }
+  }
+  return value as T;
+}

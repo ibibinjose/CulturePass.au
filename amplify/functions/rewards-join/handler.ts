@@ -34,6 +34,7 @@ export const handler: Schema["rewardsJoin"]["functionHandler"] = async (event) =
         status: "active",
       });
       if (errors || !updated) {
+        console.error("[rewards-join] reactivate failed:", JSON.stringify(errors));
         return { userId: null, joinedAt: null, tier: null, status: null, error: "Couldn't rejoin CulturePass Plus." };
       }
       return {
@@ -63,6 +64,7 @@ export const handler: Schema["rewardsJoin"]["functionHandler"] = async (event) =
     owner: sub,
   });
   if (errors || !created) {
+    console.error("[rewards-join] create failed:", JSON.stringify(errors));
     return { userId: null, joinedAt: null, tier: null, status: null, error: "Couldn't join CulturePass Plus." };
   }
   return {

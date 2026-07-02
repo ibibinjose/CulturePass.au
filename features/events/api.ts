@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
-import { compact, nullableList } from "@/lib/aws/map";
+import { compact, fromAwsJson, nullableList, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
 import type { Database, HubImage } from "@/lib/supabase/database.types";
@@ -44,7 +44,7 @@ function mapEventRow(e: AwsItem<"Event">): EventRow {
     coordinates: e.coordinates ?? null,
     capacity: e.capacity ?? null,
     rsvp_count: e.rsvpCount ?? 0,
-    images: (e.images ?? []) as HubImage[],
+    images: fromAwsJson<HubImage[]>(e.images, []),
     tags: compact(e.tags),
     cultural_focus: compact(e.culturalFocus),
     status: (e.status ?? "draft") as EventRow["status"],
@@ -52,7 +52,7 @@ function mapEventRow(e: AwsItem<"Event">): EventRow {
     updated_at: e.updatedAt,
     event_dates: nullableList(e.eventDates),
     has_assigned_seating: e.hasAssignedSeating ?? null,
-    seating_layout: (e.seatingLayout ?? null) as EventRow["seating_layout"],
+    seating_layout: fromAwsJson<EventRow["seating_layout"]>(e.seatingLayout, null),
     venue_map_url: e.venueMapUrl ?? null,
   };
 }
@@ -77,7 +77,7 @@ function toAwsEventInput(input: EventInsert) {
     ...(input.coordinates !== undefined ? { coordinates: input.coordinates } : {}),
     ...(input.capacity !== undefined ? { capacity: input.capacity } : {}),
     ...(input.rsvp_count !== undefined ? { rsvpCount: input.rsvp_count } : {}),
-    ...(input.images !== undefined ? { images: input.images } : {}),
+    ...(input.images !== undefined ? { images: toAwsJson(input.images) } : {}),
     ...(input.tags !== undefined ? { tags: input.tags } : {}),
     ...(input.cultural_focus !== undefined ? { culturalFocus: input.cultural_focus } : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
@@ -85,7 +85,7 @@ function toAwsEventInput(input: EventInsert) {
     ...(input.has_assigned_seating !== undefined
       ? { hasAssignedSeating: input.has_assigned_seating }
       : {}),
-    ...(input.seating_layout !== undefined ? { seatingLayout: input.seating_layout } : {}),
+    ...(input.seating_layout !== undefined ? { seatingLayout: toAwsJson(input.seating_layout) } : {}),
     ...(input.venue_map_url !== undefined ? { venueMapUrl: input.venue_map_url } : {}),
   };
 }
@@ -110,7 +110,7 @@ function buildHubEmbed(h: AwsItem<"Hub">) {
     owner_id: h.ownerId,
     indigenous_led: h.indigenousLed ?? false,
     traditional_custodians: compact(h.traditionalCustodians),
-    images: (h.images ?? []) as HubImage[],
+    images: fromAwsJson<HubImage[]>(h.images, []),
   };
 }
 

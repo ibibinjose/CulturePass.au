@@ -26,7 +26,16 @@ function throwIfErrors(errors?: readonly { readonly message: string }[] | null):
   }
 }
 
-/** Drain a paginated Amplify `.list()` into a single array, throwing on errors. */
+/**
+ * Drain a paginated Amplify `.list()` into a single array.
+ *
+ * Errors accompanied by a non-empty `data` page are field-level serialization
+ * problems (e.g. a stored value AppSync can't render as `AWSURL`) — AppSync
+ * nulls the offending field and still returns the rows. Dropping the whole
+ * list for one bad field on one row would blank entire screens, so those are
+ * logged and tolerated; errors with no data (auth failures, bad queries)
+ * still throw.
+ */
 export async function collectAll<T>(
   page: (nextToken?: string) => Promise<AwsListPage<T>>,
 ): Promise<T[]> {
@@ -34,7 +43,13 @@ export async function collectAll<T>(
   let token: string | undefined;
   do {
     const res = await page(token);
-    throwIfErrors(res.errors);
+    if (res.errors && res.errors.length > 0) {
+      if (res.data && res.data.length > 0) {
+        console.warn("[collectAll] partial page:", res.errors.map((e) => e.message).join("; "));
+      } else {
+        throwIfErrors(res.errors);
+      }
+    }
     out.push(...res.data);
     token = res.nextToken ?? undefined;
   } while (token);

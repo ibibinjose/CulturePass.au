@@ -281,7 +281,7 @@ function StepPlace({ draft, update }: StepProps) {
               </Text>
             ) : filtered.length === 0 ? (
               <Text variant="caption" tone="faint">
-                No councils match — connect Supabase to load reference data.
+                No councils match — try a different search.
               </Text>
             ) : (
               filtered.map((c) => (

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
-import { compact, slugify } from "@/lib/aws/map";
+import { compact, fromAwsJson, slugify, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
 import type { Database, HubImage } from "@/lib/supabase/database.types";
@@ -64,12 +64,12 @@ function mapHub(h: AwsItem<"Hub">): HubRow {
     website: h.website ?? null,
     contact_email: h.contactEmail ?? null,
     phone: h.phone ?? null,
-    images: (h.images ?? []) as HubImage[],
+    images: fromAwsJson<HubImage[]>(h.images, []),
     categories: compact(h.categories),
     tags: compact(h.tags),
     verification_status: (h.verificationStatus ?? "pending") as HubRow["verification_status"],
     status: (h.status ?? "draft") as HubRow["status"],
-    metadata: (h.metadata ?? {}) as HubRow["metadata"],
+    metadata: fromAwsJson<HubRow["metadata"]>(h.metadata, {}),
     created_at: h.createdAt,
     updated_at: h.updatedAt,
   };
@@ -86,7 +86,7 @@ function mapHubCard(h: AwsItem<"Hub">): HubCard {
     location_city: h.locationCity ?? null,
     indigenous_led: h.indigenousLed ?? false,
     traditional_custodians: compact(h.traditionalCustodians),
-    images: (h.images ?? []) as HubImage[],
+    images: fromAwsJson<HubImage[]>(h.images, []),
     verification_status: (h.verificationStatus ?? "pending") as HubRow["verification_status"],
     status: (h.status ?? "draft") as HubRow["status"],
     categories: compact(h.categories),
@@ -122,14 +122,14 @@ function toAwsHubInput(input: HubInsert) {
     ...(input.website !== undefined ? { website: input.website } : {}),
     ...(input.contact_email !== undefined ? { contactEmail: input.contact_email } : {}),
     ...(input.phone !== undefined ? { phone: input.phone } : {}),
-    ...(input.images !== undefined ? { images: input.images } : {}),
+    ...(input.images !== undefined ? { images: toAwsJson(input.images) } : {}),
     ...(input.categories !== undefined ? { categories: input.categories } : {}),
     ...(input.tags !== undefined ? { tags: input.tags } : {}),
     ...(input.verification_status !== undefined
       ? { verificationStatus: input.verification_status }
       : {}),
     ...(input.status !== undefined ? { status: input.status } : {}),
-    ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
+    ...(input.metadata !== undefined ? { metadata: toAwsJson(input.metadata) } : {}),
   };
 }
 
@@ -161,14 +161,14 @@ function toAwsHubPatch(patch: HubUpdate) {
     ...(patch.website !== undefined ? { website: patch.website } : {}),
     ...(patch.contact_email !== undefined ? { contactEmail: patch.contact_email } : {}),
     ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
-    ...(patch.images !== undefined ? { images: patch.images } : {}),
+    ...(patch.images !== undefined ? { images: toAwsJson(patch.images) } : {}),
     ...(patch.categories !== undefined ? { categories: patch.categories } : {}),
     ...(patch.tags !== undefined ? { tags: patch.tags } : {}),
     ...(patch.verification_status !== undefined
       ? { verificationStatus: patch.verification_status }
       : {}),
     ...(patch.status !== undefined ? { status: patch.status } : {}),
-    ...(patch.metadata !== undefined ? { metadata: patch.metadata } : {}),
+    ...(patch.metadata !== undefined ? { metadata: toAwsJson(patch.metadata) } : {}),
   };
 }
 

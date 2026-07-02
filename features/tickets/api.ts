@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
-import { compact, nullableList } from "@/lib/aws/map";
+import { compact, fromAwsJson, nullableList } from "@/lib/aws/map";
 import { getAwsCurrentUserId } from "@/lib/aws/auth";
 import { qk } from "@/lib/query";
 import type { Database, HubImage } from "@/lib/supabase/database.types";
@@ -44,7 +44,7 @@ function mapTicketOrder(o: AwsItem<"TicketOrder">): TicketOrderRow {
     ticket_type_id: o.ticketTypeId ?? null,
     selected_date: o.selectedDate ?? null,
     seat_numbers: nullableList(o.seatNumbers),
-    line_items: (o.lineItems ?? []) as TicketOrderRow["line_items"],
+    line_items: fromAwsJson<TicketOrderRow["line_items"]>(o.lineItems, []),
   };
 }
 
@@ -60,7 +60,7 @@ async function withEventEmbed(order: TicketOrderRow): Promise<TicketOrder> {
           id: e.id,
           title: e.title ?? "",
           start_time: e.startTime ?? null,
-          images: (e.images ?? []) as HubImage[],
+          images: fromAwsJson<HubImage[]>(e.images, []),
           location_city: e.locationCity ?? null,
           location_state: e.locationState ?? null,
         }

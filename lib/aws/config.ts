@@ -89,16 +89,21 @@ export const isAwsConfigured = Boolean(userPoolId && userPoolClientId);
  * sync via {@link setDataSignedIn}; it defaults to guest so the public-facing
  * shell works before (and without) any sign-in.
  */
-let dataSignedIn = false;
+// Kept on globalThis (not a module `let`): Metro hot-reload re-evaluates this
+// module without remounting the AuthProvider, so a plain module variable would
+// silently reset a signed-in session to guest mode and every subsequent
+// mutation would 401 with "Permission denied".
+const DATA_SIGNED_IN_KEY = "__culturepassDataSignedIn" as const;
+const flagHost = globalThis as { [DATA_SIGNED_IN_KEY]?: boolean };
 
 /** Called by the AuthProvider whenever the Cognito session resolves/changes. */
 export function setDataSignedIn(signedIn: boolean): void {
-  dataSignedIn = signedIn;
+  flagHost[DATA_SIGNED_IN_KEY] = signedIn;
 }
 
 /** Auth mode for data-client operations, chosen from the current session. */
 export function getDataAuthMode(): "userPool" | "identityPool" {
-  return dataSignedIn ? "userPool" : "identityPool";
+  return flagHost[DATA_SIGNED_IN_KEY] ? "userPool" : "identityPool";
 }
 
 // ─── Hot-reload fingerprint ────────────────────────────────────────────────

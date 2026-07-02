@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteUser } from "aws-amplify/auth";
 import { type AwsItem, getAwsDataClient } from "@/lib/aws/data";
 import { collectAll } from "@/lib/aws/list";
-import { compact } from "@/lib/aws/map";
+import { compact, fromAwsJson, toAwsJson } from "@/lib/aws/map";
 import { qk } from "@/lib/query";
 import { getCurrentProfileId } from "@/features/auth/api";
 import { getAwsCurrentUserId } from "@/lib/aws/auth";
@@ -40,8 +40,8 @@ function mapProfile(p: AwsItem<"Profile">): Profile {
     professional_category: (p.professionalCategory ?? null) as Profile["professional_category"],
     professional_title: p.professionalTitle ?? null,
     public_bio: p.publicBio ?? null,
-    public_links: (p.publicLinks ?? {}) as Profile["public_links"],
-    preferences: (p.preferences ?? {}) as Profile["preferences"],
+    public_links: fromAwsJson<Profile["public_links"]>(p.publicLinks, {}),
+    preferences: fromAwsJson<Profile["preferences"]>(p.preferences, {}),
     created_at: p.createdAt,
     updated_at: p.updatedAt,
   };
@@ -86,8 +86,8 @@ function toAwsProfilePatch(p: ProfileUpdate) {
       : {}),
     ...(p.professional_title !== undefined ? { professionalTitle: p.professional_title } : {}),
     ...(p.public_bio !== undefined ? { publicBio: p.public_bio } : {}),
-    ...(p.public_links !== undefined ? { publicLinks: p.public_links } : {}),
-    ...(p.preferences !== undefined ? { preferences: p.preferences } : {}),
+    ...(p.public_links !== undefined ? { publicLinks: toAwsJson(p.public_links) } : {}),
+    ...(p.preferences !== undefined ? { preferences: toAwsJson(p.preferences) } : {}),
   };
 }
 
