@@ -59,8 +59,9 @@ TypeScript strict, `noUncheckedIndexedAccess: true`, path alias `@/*` → repo r
 - `components/ui/` — design-system primitives; `components/cultural/` — `AcknowledgementBar`,
   `WelcomeToCountry`, `IndigenousLedBadge`.
 
-**Backend (`amplify/`):** `auth/resource.ts`, `data/resource.ts` (18 domain models), `storage/resource.ts`,
-`functions/` (tickets-checkout, stripe-webhook, get-taken-seats). `amplify_outputs.json` is generated
+**Backend (`amplify/`):** `auth/resource.ts`, `data/resource.ts` (20 domain models), `storage/resource.ts`,
+`functions/` (tickets-checkout, stripe-webhook, get-taken-seats, post-confirmation, rewards-join,
+rewards-tier-recompute, dev-seed). `amplify_outputs.json` is generated
 by `npx ampx sandbox` and provides all runtime config values. `lib/supabase/database.types.ts` is
 kept for TypeScript row-shape types but Supabase itself is not used.
 

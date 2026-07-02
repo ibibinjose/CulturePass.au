@@ -1,7 +1,7 @@
 import { View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
-import { Screen, Text, Button, Avatar, Badge, LinkButtons, ShareBar, Icon, Pinwheel } from "@/components/ui";
+import { Screen, Text, Button, Avatar, Badge, LinkButtons, ShareBar, Icon, Pinwheel, Skeleton, SkeletonText } from "@/components/ui";
 import { useProfile } from "@/features/profiles/api";
 import { colors } from "@/lib/theme";
 import { resolveLinks } from "@/lib/social";
@@ -17,9 +17,14 @@ export default function ProfileLinkInBio() {
   if (isLoading) {
     return (
       <Screen maxWidth="form" contentClassName="pt-section">
-        <Text variant="caption" tone="faint">
-          Loading…
-        </Text>
+        <View className="items-center gap-3">
+          <Skeleton className="h-24 w-24 rounded-pill" />
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+        </View>
+        <SkeletonText lines={3} className="mt-8" />
+        <Skeleton className="mt-8 h-12 w-full rounded-xl" />
+        <Skeleton className="mt-3 h-12 w-full rounded-xl" />
       </Screen>
     );
   }

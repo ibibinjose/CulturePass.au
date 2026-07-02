@@ -21,19 +21,25 @@ const client = generateClient<Schema>({ authMode: "iam" });
 export const handler: Schema["getTakenSeats"]["functionHandler"] = async (event) => {
   const { eventId, selectedDate } = event.arguments;
 
-  const { data: orders } = await client.models.TicketOrder.list({
-    filter: {
-      eventId: { eq: eventId },
-      or: [{ status: { eq: "pending" } }, { status: { eq: "paid" } }],
-      ...(selectedDate ? { selectedDate: { eq: selectedDate } } : {}),
-    },
-  });
-
   const seats = new Set<string>();
-  for (const order of orders) {
-    for (const seat of order.seatNumbers ?? []) {
-      if (seat) seats.add(seat);
+  let nextToken: string | null | undefined;
+  do {
+    // Paginate — DynamoDB caps pages at 100, and a single .list() call would
+    // silently drop taken seats on busy events.
+    const { data: orders, nextToken: token } = await client.models.TicketOrder.list({
+      filter: {
+        eventId: { eq: eventId },
+        or: [{ status: { eq: "pending" } }, { status: { eq: "paid" } }],
+        ...(selectedDate ? { selectedDate: { eq: selectedDate } } : {}),
+      },
+      nextToken,
+    });
+    for (const order of orders) {
+      for (const seat of order.seatNumbers ?? []) {
+        if (seat) seats.add(seat);
+      }
     }
-  }
+    nextToken = token;
+  } while (nextToken);
   return [...seats];
 };

@@ -85,3 +85,35 @@ npm run db:types                         # regenerate lib/supabase/database.type
 > Note: the hand-authored `lib/supabase/database.types.ts` mirrors these
 > migrations so the app typechecks before a database exists. Replace it with the
 > generated output once a project is linked.
+
+## AWS (AppSync/DynamoDB) authorization model
+
+Production data now lives in DynamoDB behind AppSync (`amplify/data/resource.ts`);
+the RLS notes above describe the legacy Supabase schema the models were ported
+from. The AppSync rules that replace RLS, in brief:
+
+- **Reference data** (`AustralianState`, `AustralianCouncil`) — guest +
+  authenticated read; `admin` Cognito-group writes.
+- **`Profile` / `Hub` / `Event`** — world-readable, owner-writable. The
+  `Profile.isAdmin` field carries **field-level auth**: world-readable but only
+  the `admin` group can write it (an owner rule would allow self-elevation).
+  Admin capability is enforced by the Cognito `admin` group, not this flag —
+  the flag only drives UI.
+- **`TicketOrder`** — buyer is **read-only** (`allow.owner().to(["read"])`).
+  Orders are written exclusively by the `tickets-checkout` / `stripe-webhook`
+  Lambdas over IAM, which set `owner` to the buyer's Cognito sub so the buyer
+  can read their orders. A writable owner rule would let a buyer mark their own
+  order `paid`.
+- **`Conversation` / `Message`** — participant-scoped via
+  `allow.ownersDefinedIn("participants")` (Cognito subs of the member + hub
+  owner). The client copies `participants` onto every message it sends. Rows
+  created before this rule (no `participants`) are only visible to the `admin`
+  group; backfill them if pre-existing threads must survive.
+- **`Membership`** (CulturePass Plus) — owner read-only. Joining goes through
+  the `rewardsJoin` custom mutation (Lambda, IAM) so `userId`, `joinedAt` and
+  `tier` are always identity-derived; the nightly `rewards-tier-recompute`
+  Lambda additionally clamps tenure to the row's server-set `createdAt` and
+  corrects any tier that doesn't match tenure.
+
+Any change to these rules requires an `npx ampx sandbox` (or pipeline) redeploy
+before the client sees it.

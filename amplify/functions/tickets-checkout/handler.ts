@@ -65,6 +65,45 @@ async function stripe(path: string, params: Record<string, unknown>) {
 
 type CartItem = { ticketTypeId: string; quantity: number };
 
+type ActiveOrder = {
+  quantity: number | null;
+  selectedDate: string | null;
+  seatNumbers: (string | null)[] | null;
+  lineItems: unknown;
+};
+
+/** All pending + paid orders for an event (paginated — DynamoDB caps pages at 100). */
+async function listActiveOrders(eventId: string): Promise<ActiveOrder[]> {
+  const orders: ActiveOrder[] = [];
+  let nextToken: string | null | undefined;
+  do {
+    const { data, nextToken: token } = await client.models.TicketOrder.list({
+      filter: {
+        eventId: { eq: eventId },
+        or: [{ status: { eq: "pending" } }, { status: { eq: "paid" } }],
+      },
+      nextToken,
+    });
+    orders.push(...data);
+    nextToken = token;
+  } while (nextToken);
+  return orders;
+}
+
+/** Sum quantities already ordered per ticket type from stored order lineItems. */
+function soldByTicketType(orders: ActiveOrder[]): Map<string, number> {
+  const sold = new Map<string, number>();
+  for (const order of orders) {
+    const raw = typeof order.lineItems === "string" ? JSON.parse(order.lineItems) : order.lineItems;
+    if (!Array.isArray(raw)) continue;
+    for (const line of raw as { ticket_type_id?: string; quantity?: number }[]) {
+      if (!line?.ticket_type_id) continue;
+      sold.set(line.ticket_type_id, (sold.get(line.ticket_type_id) ?? 0) + (Number(line.quantity) || 0));
+    }
+  }
+  return sold;
+}
+
 export const handler: Schema["ticketsCheckout"]["functionHandler"] = async (event) => {
   const args = event.arguments;
   const sub = event.identity && "sub" in event.identity ? event.identity.sub : null;
@@ -92,6 +131,29 @@ export const handler: Schema["ticketsCheckout"]["functionHandler"] = async (even
     return { url: null, sessionId: null, error: "This event isn’t available." };
   }
 
+  // One snapshot of active (pending-hold + paid) orders backs the capacity and
+  // seat-conflict checks below. Best-effort — DynamoDB has no transaction here
+  // (see NOTE at top); pending holds expire via checkout.session.expired.
+  const activeOrders = await listActiveOrders(eventId);
+
+  if (seatNumbers.length > 0) {
+    const taken = new Set<string>();
+    for (const order of activeOrders) {
+      if (selectedDate && order.selectedDate && order.selectedDate !== selectedDate) continue;
+      for (const seat of order.seatNumbers ?? []) {
+        if (seat) taken.add(seat);
+      }
+    }
+    const clash = seatNumbers.filter((s) => taken.has(s));
+    if (clash.length > 0) {
+      return {
+        url: null,
+        sessionId: null,
+        error: `Seat${clash.length > 1 ? "s" : ""} ${clash.join(", ")} ${clash.length > 1 ? "are" : "is"} no longer available — please pick again.`,
+      };
+    }
+  }
+
   let lineItems: Record<string, unknown>[] = [];
   let orderLineItems: { ticket_type_id: string; name: string; unit_amount: number; quantity: number }[] = [];
   let quantity = 0;
@@ -99,12 +161,16 @@ export const handler: Schema["ticketsCheckout"]["functionHandler"] = async (even
 
   if (items.length > 0) {
     // Multi-type cart — price each tier from the DB (trusted).
+    const soldPerType = soldByTicketType(activeOrders);
     for (const item of items) {
       const qty = Math.max(0, Math.min(20, Number(item.quantity) || 0));
       if (qty <= 0) continue;
       const { data: tt } = await client.models.EventTicketType.get({ id: item.ticketTypeId });
       if (!tt || tt.eventId !== eventId) {
         return { url: null, sessionId: null, error: "That ticket type isn’t available." };
+      }
+      if (tt.capacity != null && (soldPerType.get(tt.id) ?? 0) + qty > tt.capacity) {
+        return { url: null, sessionId: null, error: `Sorry, “${tt.name}” is sold out.` };
       }
       quantity += qty;
       orderLineItems.push({ ticket_type_id: tt.id, name: tt.name, unit_amount: tt.priceCents, quantity: qty });
@@ -132,10 +198,8 @@ export const handler: Schema["ticketsCheckout"]["functionHandler"] = async (even
     unitAmount = Math.round(Number(ev.price) * 100);
 
     if (ev.capacity != null) {
-      const { data: paid } = await client.models.TicketOrder.list({
-        filter: { eventId: { eq: eventId }, status: { eq: "paid" } },
-      });
-      const sold = paid.reduce((s, r) => s + (r.quantity ?? 0), 0);
+      // Count pending holds too — they hold capacity until the session expires.
+      const sold = activeOrders.reduce((s, r) => s + (r.quantity ?? 0), 0);
       if (sold + quantity > ev.capacity) {
         return { url: null, sessionId: null, error: "Sorry, this event is sold out." };
       }
@@ -166,6 +230,10 @@ export const handler: Schema["ticketsCheckout"]["functionHandler"] = async (even
     selectedDate,
     seatNumbers,
     lineItems: orderLineItems,
+    // IAM creates don't auto-populate the owner claim; without it the buyer
+    // can't read their own order (My Tickets + the success screen both list
+    // owner-scoped). Plain sub passes the owner check.
+    owner: sub,
   });
   if (errors || !order) return { url: null, sessionId: null, error: "Couldn’t start checkout." };
 

@@ -80,9 +80,11 @@ lib/
   theme.ts, query.ts, storage.ts, utils/cn.ts
 amplify/
   auth/resource.ts         Cognito user pool + admin group
-  data/resource.ts         18 domain models (AppSync/DynamoDB schema)
+  data/resource.ts         20 domain models (AppSync/DynamoDB schema)
   storage/resource.ts      S3 media bucket
-  functions/               tickets-checkout · stripe-webhook · get-taken-seats (Lambda)
+  functions/               tickets-checkout · stripe-webhook · get-taken-seats ·
+                           post-confirmation · rewards-join · rewards-tier-recompute ·
+                           dev-seed (Lambda)
   backend.ts               assembles the backend + wires Function URLs
 scripts/
   aws-env-from-outputs.mjs   populate .env from amplify_outputs.json
@@ -98,7 +100,19 @@ Defined in `amplify/data/resource.ts`. Core models:
 `Profile` (1:1 Cognito user), `Hub` (owned by Profile), `HubMember`, `Event` (belongs to Hub),
 `EventRsvp`, `EventCohost`, `EventTicketType`, `TicketOrder`, `Notification`, `Conversation`,
 `Message`, `EventLike`, `EventSave`, `HubLike`, `HubFollow`, `ProfileFollow`,
-`ProfileSubscription`, `AustralianState`, `AustralianCouncil`.
+`ProfileSubscription`, `Membership` (CulturePass Plus), `AustralianState`, `AustralianCouncil`.
+
+Authorization guardrails worth knowing before you touch a model (full detail in
+the "AWS (AppSync/DynamoDB) authorization model" section of `docs/SCHEMA.md`):
+
+- `TicketOrder` and `Membership` are **owner read-only** — they are written
+  exclusively by Lambdas over IAM (`tickets-checkout`/`stripe-webhook`,
+  `rewardsJoin`). Lambdas must set `owner` to the buyer's/member's Cognito sub
+  on create or the user can't read their own row.
+- `Conversation`/`Message` use `allow.ownersDefinedIn("participants")` (Cognito
+  subs); `features/chat/api.ts` populates `participants` on every create.
+- `Profile.isAdmin` has field-level auth (admin-group write only); the real
+  admin gate is the Cognito `admin` group, the flag only drives UI.
 
 Reference: `docs/SCHEMA.md` is the human-readable model.
 

@@ -21,12 +21,17 @@ const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env)
 Amplify.configure(resourceConfig, libraryOptions);
 const client = generateClient<Schema>({ authMode: "iam" });
 
+/** Reject events signed more than 5 minutes ago (Stripe's recommended replay window). */
+const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
+
 /** Verify a Stripe `Stripe-Signature` header (t=…,v1=…) against the raw body. */
 function verify(payload: string, header: string, secret: string): boolean {
   const parts = Object.fromEntries(header.split(",").map((p) => p.split("=")) as [string, string][]);
   const timestamp = parts["t"];
   const expected = parts["v1"];
   if (!timestamp || !expected) return false;
+  const age = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(age) || age > SIGNATURE_TOLERANCE_SECONDS) return false;
   const signed = createHmac("sha256", secret).update(`${timestamp}.${payload}`).digest("hex");
   const a = Buffer.from(signed);
   const b = Buffer.from(expected);

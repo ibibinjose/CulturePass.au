@@ -10,6 +10,8 @@ import {
   LinkButtons,
   ShareBar,
   Pinwheel,
+  Skeleton,
+  SkeletonText,
   type LinkItem,
 } from "@/components/ui";
 import { useEvent } from "@/features/events/api";
@@ -26,9 +28,13 @@ export default function EventLinkInBio() {
   if (isLoading) {
     return (
       <Screen maxWidth="form" contentClassName="pt-section">
-        <Text variant="caption" tone="faint">
-          Loading…
-        </Text>
+        <Skeleton className="w-full rounded-[22px]" style={{ aspectRatio: 1 }} />
+        <View className="mt-6 items-center gap-3">
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-1/2" />
+        </View>
+        <SkeletonText lines={3} className="mt-6" />
+        <Skeleton className="mt-8 h-12 w-full rounded-xl" />
       </Screen>
     );
   }

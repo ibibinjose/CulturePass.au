@@ -38,6 +38,7 @@ export const handler = async (event: { buyerSub?: string; email?: string }) => {
             userId: buyerSub,
             fullName: "Test Buyer",
             isPublicProfessional: false,
+            owner: buyerSub,
           }),
           "Profile.create",
         );

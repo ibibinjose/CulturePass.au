@@ -24,7 +24,7 @@ type HubAdminItem = {
   slug: string;
   type: string;
   verification_status: "pending" | "verified" | "rejected";
-  status: "draft" | "active" | "inactive";
+  status: "draft" | "published" | "archived";
   location_state: string | null;
   location_city: string | null;
 };
@@ -253,8 +253,8 @@ export default function AdminDashboardScreen() {
                   </Text>
                   <View className="flex-row gap-1.5 mt-1">
                     <Badge
-                      label={hub.status === "active" ? "Active" : hub.status === "draft" ? "Draft" : "Inactive"}
-                      variant={hub.status === "active" ? "success" : "neutral"}
+                      label={hub.status === "published" ? "Published" : hub.status === "draft" ? "Draft" : "Archived"}
+                      variant={hub.status === "published" ? "success" : "neutral"}
                     />
                     <Badge
                       label={hub.verification_status === "verified" ? "Verified" : hub.verification_status === "rejected" ? "Rejected" : "Verification Pending"}

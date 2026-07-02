@@ -6,6 +6,7 @@ import { collectAll } from "@/lib/aws/list";
 import { qk } from "@/lib/query";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { getCurrentProfileId } from "@/features/auth/api";
+import { getAwsCurrentUserId } from "@/lib/aws/auth";
 import { encryptBody, decryptBody } from "@/lib/utils/crypto";
 import type { HubImage, MessageRow } from "@/lib/supabase/database.types";
 
@@ -96,8 +97,9 @@ export function useConversations() {
         : [];
       const managedHubIds = new Set(memberships.map((m) => m.hubId));
 
-      // The model grants authenticated read; scope in memory to the member +
-      // hub-editor visibility Supabase RLS enforced.
+      // The server already scopes this list to threads the caller participates
+      // in (`ownersDefinedIn("participants")`); the filter below is kept as
+      // defence-in-depth and to drop any legacy rows without participants.
       const all = await collectAll((nextToken) =>
         client.models.Conversation.list({ nextToken }),
       );
@@ -186,10 +188,15 @@ export function useSendMessage(conversationId: string) {
       const encrypted = encryptBody(trimmed, conversationId);
 
       const client = getAwsDataClient();
+      // Messages carry the conversation's participants (Cognito subs) so the
+      // `ownersDefinedIn("participants")` rule lets both parties read them.
+      const { data: conversation } = await client.models.Conversation.get({ id: conversationId });
+      if (!conversation) throw new Error("This conversation is no longer available.");
       const { errors } = await client.models.Message.create({
         conversationId,
         senderId: me,
         body: encrypted,
+        participants: conversation.participants ?? [],
       });
       if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
       // No DB trigger on AWS — bump the conversation so the inbox re-sorts.
@@ -228,7 +235,8 @@ export function useStartConversation() {
   return useMutation({
     mutationFn: async (hubId: string): Promise<string> => {
       const me = await getCurrentProfileId();
-      if (!me) throw new Error("Sign in to message the organiser.");
+      const mySub = await getAwsCurrentUserId();
+      if (!me || !mySub) throw new Error("Sign in to message the organiser.");
 
       const client = getAwsDataClient();
       const { data: existing } = await client.models.Conversation.list({
@@ -236,10 +244,19 @@ export function useStartConversation() {
         limit: 1,
       });
       if (existing[0]) return existing[0].id;
+
+      // Access is participant-scoped (`ownersDefinedIn`): the thread belongs to
+      // the member and the hub owner, identified by their Cognito subs.
+      const { data: hub } = await client.models.Hub.get({ id: hubId });
+      if (!hub) throw new Error("This hub is no longer available.");
+      const { data: ownerProfile } = await client.models.Profile.get({ id: hub.ownerId });
+      const participants = [...new Set([mySub, ownerProfile?.userId].filter((s): s is string => !!s))];
+
       const { data, errors } = await client.models.Conversation.create({
         hubId,
         memberId: me,
         lastMessageAt: new Date().toISOString(),
+        participants,
       });
       if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
       if (!data) throw new Error("Could not start conversation.");

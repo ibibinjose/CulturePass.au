@@ -42,7 +42,11 @@ export function useMyMembership() {
   });
 }
 
-/** Join CulturePass Plus — creates the membership row at the VIP tier. */
+/**
+ * Join CulturePass Plus via the `rewardsJoin` mutation (Lambda). The server
+ * derives userId/joinedAt/tier from the caller's identity — the Membership
+ * model is owner read-only, so a direct create would be rejected.
+ */
 export function useJoinRewards() {
   const qc = useQueryClient();
   const { user } = useAuth();
@@ -50,15 +54,17 @@ export function useJoinRewards() {
     mutationFn: async (): Promise<MembershipRow> => {
       if (!user) throw new Error("Sign in to join CulturePass Plus.");
       const client = getAwsDataClient();
-      const { data, errors } = await client.models.Membership.create({
-        userId: user.id,
-        joinedAt: new Date().toISOString(),
-        tier: "vip",
-        status: "active",
-      });
+      const { data, errors } = await client.mutations.rewardsJoin();
       if (errors && errors.length > 0) throw new Error(errors.map((e) => e.message).join("; "));
-      if (!data) throw new Error("Couldn't join CulturePass Plus.");
-      return mapMembership(data);
+      if (data?.error) throw new Error(data.error);
+      if (!data?.userId || !data.joinedAt) throw new Error("Couldn't join CulturePass Plus.");
+      return {
+        user_id: data.userId,
+        joined_at: data.joinedAt,
+        tier: (data.tier ?? "vip") as RewardsTier,
+        status: (data.status ?? "active") as MembershipRow["status"],
+        last_tier_check_at: null,
+      };
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.myMembership });

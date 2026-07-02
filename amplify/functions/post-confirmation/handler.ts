@@ -34,9 +34,10 @@ export const handler: PostConfirmationTriggerHandler = async (event) => {
   await client.models.Profile.create({
     userId,
     fullName,
-    // owner is auto-managed; with IAM the owner field isn't set to the user, so
-    // profile *reads* work (authenticated read) but owner-scoped *edits* may need
-    // a follow-up (set the owner claim) — not required for discovery/checkout.
+    // IAM creates don't auto-populate the owner claim, and without it the user
+    // can never pass the `allow.owner()` rule to edit their own profile. Plain
+    // sub is accepted by the owner check (`sub` / `username` / `sub::username`).
+    owner: userId,
   });
 
   return event;

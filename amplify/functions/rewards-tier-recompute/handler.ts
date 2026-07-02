@@ -71,24 +71,35 @@ export const handler = async () => {
 
     for (const membership of page) {
       checked += 1;
-      const targetTier = tierForYears(yearsElapsed(membership.joinedAt, now));
+      // Trust floor: tenure can't start before the row existed. `createdAt` is
+      // server-set, so a backdated `joinedAt` (e.g. written before joins moved
+      // into the rewards-join Lambda) can never fake extra years.
+      const joinedAt =
+        membership.createdAt && membership.createdAt > membership.joinedAt
+          ? membership.createdAt
+          : membership.joinedAt;
+      const targetTier = tierForYears(yearsElapsed(joinedAt, now));
       const currentIndex = membership.tier ? TIER_ORDER.indexOf(membership.tier as Tier) : 0;
       const targetIndex = TIER_ORDER.indexOf(targetTier);
 
-      if (targetIndex > currentIndex) {
+      if (targetIndex !== currentIndex) {
+        // `!==` (not `>`) so a tier that was ever set too high gets corrected
+        // back down to what tenure actually earns.
         await client.models.Membership.update({
           userId: membership.userId,
           tier: targetTier,
           lastTierCheckAt: nowIso,
         });
-        await client.models.Notification.create({
-          userId: membership.userId,
-          type: "tier_upgrade",
-          title: `You've reached ${TIER_LABELS[targetTier]}!`,
-          body: `Your CulturePass Plus tier is now ${TIER_LABELS[targetTier]}.`,
-          data: JSON.stringify({ tier: targetTier }),
-        });
-        upgraded += 1;
+        if (targetIndex > currentIndex) {
+          await client.models.Notification.create({
+            userId: membership.userId,
+            type: "tier_upgrade",
+            title: `You've reached ${TIER_LABELS[targetTier]}!`,
+            body: `Your CulturePass Plus tier is now ${TIER_LABELS[targetTier]}.`,
+            data: JSON.stringify({ tier: targetTier }),
+          });
+          upgraded += 1;
+        }
       } else {
         await client.models.Membership.update({
           userId: membership.userId,

@@ -10,6 +10,8 @@ import {
   LinkButtons,
   ShareBar,
   Pinwheel,
+  Skeleton,
+  SkeletonText,
   type LinkItem,
 } from "@/components/ui";
 import { IndigenousLedBadge } from "@/components/cultural/IndigenousLedBadge";
@@ -26,9 +28,14 @@ export default function HubLinkInBio() {
   if (isLoading) {
     return (
       <Screen maxWidth="form" contentClassName="pt-section">
-        <Text variant="caption" tone="faint">
-          Loading…
-        </Text>
+        <View className="items-center gap-3">
+          <Skeleton className="h-24 w-24 rounded-pill" />
+          <Skeleton className="h-6 w-2/3" />
+          <Skeleton className="h-4 w-1/3" />
+        </View>
+        <SkeletonText lines={3} className="mt-8" />
+        <Skeleton className="mt-8 h-12 w-full rounded-xl" />
+        <Skeleton className="mt-3 h-12 w-full rounded-xl" />
       </Screen>
     );
   }

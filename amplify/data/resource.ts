@@ -6,6 +6,7 @@ import { getTakenSeats } from "../functions/get-taken-seats/resource";
 import { postConfirmation } from "../functions/post-confirmation/resource";
 import { devSeed } from "../functions/dev-seed/resource";
 import { rewardsTierRecompute } from "../functions/rewards-tier-recompute/resource";
+import { rewardsJoin } from "../functions/rewards-join/resource";
 
 /**
  * `allow.resource(fn)` (Lambda → data access) resolves under the backend
@@ -86,7 +87,16 @@ const schema = a.schema({
       indigenousConnection: a.string(),
       preferredLanguages: a.string().array(),
       isPublicProfessional: a.boolean(),
-      isAdmin: a.boolean(),
+      // Field-level auth: world-readable but only the admin group may write it.
+      // Without this, `allow.owner()` on the model would let any user set
+      // isAdmin=true on their own profile and unlock the admin dashboard.
+      isAdmin: a
+        .boolean()
+        .authorization((allow) => [
+          allow.group("admin"),
+          allow.authenticated().to(["read"]),
+          allow.guest().to(["read"]),
+        ]),
       professionalCategory: a.enum([
         "artist",
         "politician",
@@ -278,7 +288,10 @@ const schema = a.schema({
       seatNumbers: a.string().array(),
       lineItems: a.json(),
     })
-    .authorization((allow) => [allow.owner(), allow.group("admin")]),
+    // Read-only for the buyer: orders are written exclusively by the
+    // checkout/webhook Lambdas (IAM). A mutable owner rule would let a buyer
+    // flip their own order to `paid` without paying.
+    .authorization((allow) => [allow.owner().to(["read"]), allow.group("admin")]),
 
   // ---- Social / messaging ---------------------------------------------------
   Notification: a
@@ -292,14 +305,22 @@ const schema = a.schema({
     })
     .authorization((allow) => [allow.owner()]),
 
+  // Private messaging: scoped to the two parties via `participants` (Cognito
+  // subs — the member + the hub owner), NOT authenticated-read. The client
+  // populates participants on create (features/chat/api.ts) and copies them
+  // onto each Message so both sides can read/update the thread.
   Conversation: a
     .model({
       hubId: a.id().required(),
       memberId: a.id().required(),
       lastMessageAt: a.datetime(),
+      participants: a.string().array(),
       messages: a.hasMany("Message", "conversationId"),
     })
-    .authorization((allow) => [allow.owner(), allow.authenticated().to(["read"])]),
+    .authorization((allow) => [
+      allow.ownersDefinedIn("participants"),
+      allow.group("admin"),
+    ]),
 
   Message: a
     .model({
@@ -307,8 +328,12 @@ const schema = a.schema({
       conversation: a.belongsTo("Conversation", "conversationId"),
       senderId: a.string().required(),
       body: a.string().required(),
+      participants: a.string().array(),
     })
-    .authorization((allow) => [allow.owner(), allow.authenticated().to(["read"])]),
+    .authorization((allow) => [
+      allow.ownersDefinedIn("participants"),
+      allow.group("admin"),
+    ]),
 
   EventLike: a
     .model({ eventId: a.id().required(), profileId: a.id().required() })
@@ -337,9 +362,10 @@ const schema = a.schema({
   // ---- CulturePass Plus (tenure-based rewards program) -----------------------
   // Tier is a pure function of `joinedAt`, recomputed nightly by the
   // rewardsTierRecompute Lambda (see amplify/backend.ts for the EventBridge
-  // schedule). The owner can read + create (joining) but never update — tier
-  // changes only ever come from the Lambda (IAM) or an admin, same shape as
-  // `TicketOrder` below where the Lambda/webhook is the sole writer of status.
+  // schedule). The owner is read-only: joining goes through the `rewardsJoin`
+  // mutation (Lambda, IAM) so `userId`, `joinedAt` and `tier` are derived from
+  // the caller's identity server-side — a client-side create would let a user
+  // backdate `joinedAt` (instant Platinum) or squat another user's `userId`.
   Membership: a
     .model({
       userId: a.string().required(),
@@ -350,7 +376,7 @@ const schema = a.schema({
     })
     .identifier(["userId"])
     .authorization((allow) => [
-      allow.owner().to(["read", "create"]),
+      allow.owner().to(["read"]),
       allow.group("admin"),
     ]),
 
@@ -377,6 +403,23 @@ const schema = a.schema({
     .returns(a.string().array())
     .authorization((allow) => [allow.authenticated()])
     .handler(a.handler.function(getTakenSeats)),
+
+  // Join CulturePass Plus. Identity-derived server-side (see Membership above);
+  // idempotent — re-joining reactivates a cancelled membership, keeping the
+  // original joinedAt.
+  rewardsJoin: a
+    .mutation()
+    .returns(
+      a.customType({
+        userId: a.string(),
+        joinedAt: a.string(),
+        tier: a.string(),
+        status: a.string(),
+        error: a.string(),
+      }),
+    )
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(rewardsJoin)),
 })
   // Lambda → data access is granted at the SCHEMA level in data-schema 1.26.0
   // (`allow.resource` is not yet available per-model — see Authorization.js TODO).
@@ -388,6 +431,7 @@ const schema = a.schema({
     awsFnAccess(allow).resource(postConfirmation),
     awsFnAccess(allow).resource(devSeed),
     awsFnAccess(allow).resource(rewardsTierRecompute),
+    awsFnAccess(allow).resource(rewardsJoin),
   ]);
 
 export type Schema = ClientSchema<typeof schema>;

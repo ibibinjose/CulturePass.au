@@ -11,6 +11,7 @@ import { stripeWebhook } from "./functions/stripe-webhook/resource";
 import { getTakenSeats } from "./functions/get-taken-seats/resource";
 import { devSeed } from "./functions/dev-seed/resource";
 import { rewardsTierRecompute } from "./functions/rewards-tier-recompute/resource";
+import { rewardsJoin } from "./functions/rewards-join/resource";
 
 /**
  * CulturePass AWS backend (Amplify Gen 2).
@@ -31,6 +32,7 @@ const backend = defineBackend({
   getTakenSeats,
   devSeed,
   rewardsTierRecompute,
+  rewardsJoin,
 });
 
 // Email verification uses LINK style (see amplify/auth/resource.ts), which
